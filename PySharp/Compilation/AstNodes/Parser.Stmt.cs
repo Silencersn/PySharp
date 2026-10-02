@@ -1,5 +1,6 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -90,13 +91,24 @@ partial class Parser
         }
 
         var targets = _context.BuilderPool.Rent<AstExprNode>();
+        var isFirstTarget = true;
 
         while (CurrentTokenType is TokenType.Equal)
         {
             if (!IsStarTarget(starExpressions, out var nonStarTargetNode))
-                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(nonStarTargetNode));
+            {
+                // parser.c's invalid-target rule carries the '==' hint; the
+                // reserved-name check in ast.c and the chained targets of
+                // `x = 2 = 3` keep the bare sentence
+                var bare = !isFirstTarget
+                    || nonStarTargetNode is ConstantNode { Value: PyNoneObject or PyBoolObject };
+                throw SyntaxError(
+                    bare ? PySR.InvalidSyntax_InvalidTarget : PySR.InvalidSyntax_InvalidTargetStatement,
+                    AstUtils.GetExprNodeName(nonStarTargetNode));
+            }
 
             targets.Add(starExpressions);
+            isFirstTarget = false;
 
             MoveNextToken();
 
@@ -236,7 +248,13 @@ partial class Parser
             return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
+        // "import math as 5" / "import a.b.c as d.e": the target must be a
+        // plain name; the offending node kind picks the sentence
+        if (CurrentTokenType is not TokenType.Name)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetLiteral);
         var asName = ParseIdentifier();
+        if (CurrentTokenType is TokenType.Dot)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetAttribute);
         return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
     }
 
@@ -254,8 +272,19 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("import");
+        // "import" alone: the statement ends where a name was required —
+        // any other stray token keeps the generic sentence
+        if (!IsCurrentIdentifier && CurrentTokenType is TokenType.NewLine or TokenType.EndMarker)
+            throw SyntaxError(PySR.InvalidSyntax_ImportExpectedNames);
         var names = ParseDottedAsNames();
-        return Ast.Import(names).With(metaInfo);
+        // "import a from b": CPython's py2-style recovery points at the
+        // from-import form instead of a generic failure
+        if (IsCurrentKeyword("from"))
+            throw SyntaxError(PySR.InvalidSyntax_ImportFromInstead);
+        // the node spans the whole statement: the import's caret rule
+        // suppresses on a statement-sized range, so a keyword-sized one
+        // would draw a caret CPython never draws
+        return Ast.Import(names).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("import_from_as_name")]
@@ -267,7 +296,11 @@ partial class Parser
             return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
+        if (CurrentTokenType is not TokenType.Name)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetLiteral);
         var asName = ParseIdentifier();
+        if (CurrentTokenType is TokenType.Dot)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetAttribute);
         return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
     }
 
@@ -298,7 +331,7 @@ partial class Parser
         {
             var result = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
-                throw SyntaxError();
+                throw SyntaxError(PySR.InvalidSyntax_ImportFromTrailingComma);
             return result.MakeArray();
         }
     }
@@ -319,7 +352,8 @@ partial class Parser
 
         EnsureKeywordThenMove("import");
         var names = ParseImportFromTargets();
-        return Ast.ImportFrom(module, names, level).With(metaInfo);
+        // whole-statement range, same caret rule as import_name
+        return Ast.ImportFrom(module, names, level).With(metaInfo.WithPreviousEnd());
 
         int ParseLevel()
         {
@@ -346,17 +380,20 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("raise");
 
+        // the statement range covers the whole raise: the RAISE instruction
+        // reports it, and a frame leaving at the raise then prints no caret
+        // row because nothing in the shown line falls outside the range
         if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-            return Ast.Raise().With(metaInfo);
+            return Ast.Raise().With(metaInfo.WithPreviousEnd());
 
         var exc = ParseExpression();
 
         if (!IsCurrentKeyword("from"))
-            return Ast.Raise(exc).With(metaInfo);
+            return Ast.Raise(exc).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
         var cause = ParseExpression();
-        return Ast.Raise(exc, cause).With(metaInfo);
+        return Ast.Raise(exc, cause).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("pass_stmt")]
@@ -370,7 +407,7 @@ partial class Parser
     [GrammarSyntaxRule("del_target")]
     private AstExprNode ParseDelTarget()
     {
-        var target = ParseStarTarget();
+        var target = ParseStarTarget(PySR.InvalidSyntax_DelStmt_CannotDelete);
         CheckNoStarred(target);
         return target;
 
@@ -425,11 +462,11 @@ partial class Parser
         var test = ParseExpression();
 
         if (CurrentTokenType is not TokenType.Comma)
-            return Ast.Assert(test).With(metaInfo);
+            return Ast.Assert(test).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
         var msg = ParseExpression();
-        return Ast.Assert(test, msg).With(metaInfo);
+        return Ast.Assert(test, msg).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("break_stmt")]
@@ -463,7 +500,9 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("nonlocal");
         var names = ParseIdentifiers().MakeArray();
-        return Ast.Nonlocal(names).With(metaInfo);
+        // the statement-sized range gives the deferred no-binding error its
+        // whole-statement caret, like CPython's symtable_error
+        return Ast.Nonlocal(names).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("simple_stmt")]
@@ -873,7 +912,7 @@ partial class Parser
         EnsureColonThenMove();
         var body = ParseBlock("for");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
-        return Ast.For(target, iter, body, orElse).With(metaInfo);
+        return Ast.For(target, iter, body, orElse).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("with_stmt")]
@@ -886,7 +925,7 @@ partial class Parser
 
         var body = ParseBlock("with");
 
-        return Ast.With(items, body).With(metaInfo);
+        return Ast.With(items, body).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -958,7 +997,9 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftSquareBracket)
             typeParams = ParseTypeParams();
 
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
+        // "def f:" / "def f -> int:": the parameter list is not optional
+        // in a function definition header
+        EnsureTokenTypeThenMove(TokenType.LeftParen, PySR.InvalidSyntax_FunctionExpectedParen);
         var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 
@@ -999,13 +1040,27 @@ partial class Parser
         _classNameTrimmedStack.Push(className.TrimStart('_'));
         body = ParseBlock("class");
         _classNameTrimmedStack.Pop();
-        return Ast.ClassDef(name, bases, keywords, body, decorators ?? [], typeParams).With(metaInfo);
+        // the statement spans through the whole body: the build-class call
+        // and the name store report this range, so a class-body error shows
+        // the whole header in the module frame's traceback. The token walk
+        // back also skips the block's closing dedent, whose span would
+        // otherwise stretch the range past the last body line.
+        var span = _tokenSequence.AsSpan();
+        var endTokenPosition = TokenPosition - 1;
+        while (span[endTokenPosition].Type is TokenType.NL or TokenType.NewLine
+               or TokenType.Comment or TokenType.Dedent)
+            endTokenPosition--;
+        return Ast.ClassDef(name, bases, keywords, body, decorators ?? [], typeParams)
+            .With(new AstMetaInfo(this, metaInfo.StartTokenPosition, endTokenPosition));
     }
 
     [GrammarSyntaxRule("type_params")]
     private ImmutableArray<AstTypeParamNode> ParseTypeParams()
     {
         EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
+        // PEP 695: an empty type parameter list is not a declaration
+        if (CurrentTokenType is TokenType.RightSquareBracket)
+            throw SyntaxError(PySR.InvalidSyntax_TypeParamsEmpty);
         var result = ParseTypeParamSeq(StopPredicates.UntilRightSquareBracket);
         EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
         return result.MakeArray();
@@ -1132,7 +1187,9 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftSquareBracket)
             typeParams = ParseTypeParams();
 
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
+        // "def f:" / "def f -> int:": the parameter list is not optional
+        // in a function definition header
+        EnsureTokenTypeThenMove(TokenType.LeftParen, PySR.InvalidSyntax_FunctionExpectedParen);
         var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 

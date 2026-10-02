@@ -199,7 +199,7 @@ internal static class PyUtils
         {
             var pairList = IterableToList(context, pairs.Value[i]);
             if (pairList.IsError)
-                return pairList.ExceptionResult;
+                return NotIterablePairResult(pairList, i).ExceptionResult;
 
             var count = pairList.Value.Count;
             if (count is not 2)
@@ -213,6 +213,35 @@ internal static class PyUtils
         }
 
         return dict;
+    }
+
+    // PySequence_Fast receives the caller's fixed sentence when the pairs
+    // loop converts an element (dict_update_arg / dict_merge), so the
+    // element's type never enters the message; a TypeError also gains the
+    // failing element's index as a note
+    internal static PyResult NotIterablePairResult(PyResult pairList, int index)
+    {
+        if (pairList.Exception is { } failure && PyTypeErrorObjectType.Shared.IsInstance(failure))
+        {
+            var notIterable = PyResult.TypeError(PySR.Runtime_Sequence_ObjectNotIterable);
+            if (notIterable.Exception is { } notIterableException)
+                notIterableException.AddNote(PySR.Format(PySR.Runtime_Dict_UpdateEltNote, index));
+            return notIterable;
+        }
+        return pairList;
+    }
+
+    // PyErr_SetFromErrnoWithFilenameObject shape: the errno/strerror pair
+    // feeds OSError.__str__ and the filename rides along as an attribute,
+    // so the exception must be built with all three instead of a single
+    // pre-formatted message that leaves errno/strerror/filename unset
+    internal static PyResult OSErrorFromErrno(PyTypeObject exceptionType, int errno, string strerror, string? path = null)
+    {
+        return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+            exceptionType,
+            path is null
+                ? [PyIntObject.FromInteger(errno), PyStrObject.FromString(strerror)]
+                : [PyIntObject.FromInteger(errno), PyStrObject.FromString(strerror), PyStrObject.FromString(path)]));
     }
 
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)
@@ -307,7 +336,7 @@ internal static class PyUtils
         return index >= count || index < -count;
     }
 
-    public static PyResult GetSequenceItem(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item, Func<List<PyObject>, PyObject> factory, string outOfRangeErrMsg)
+    public static PyResult GetSequenceItem(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item, Func<List<PyObject>, PyObject> factory, string outOfRangeErrMsg, string indexTypeName)
     {
         if (item is PySliceObject slice)
         {
@@ -321,11 +350,17 @@ internal static class PyUtils
             return factory(resultList);
         }
 
+        // list_subscript/tuple_subscript branch on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, indexTypeName, item.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, item.PyType.TpName);
 
         var index = indexResult.Value.Int32Value;
         if (IsIndexOutOfRange(index, items.Length))

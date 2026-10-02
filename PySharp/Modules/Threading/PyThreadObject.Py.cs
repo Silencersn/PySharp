@@ -15,11 +15,14 @@ partial class PyThreadObject : PyObject
 
         _thread = new Thread(() =>
         {
-            using var threadContext = PyCallContext.FromCreatingThread(context);
+            using var threadContext = PyCallContext.FromCreatingThread(context, _name);
             ref var frame = ref threadContext.CurrentInternalFrame;
             try
             {
-                PyInterpreter.PyTryCatch(threadContext, () => PyDispatchRun(threadContext));
+                // a worker thread's uncaught exception only reports through
+                // the excepthook channel; the process exit code stays with
+                // the main thread
+                PyInterpreter.PyThreadExceptionReport(threadContext, () => PyDispatchRun(threadContext));
             }
             catch (ThreadInterruptedException)
             {

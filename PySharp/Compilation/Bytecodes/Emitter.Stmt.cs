@@ -407,7 +407,11 @@ partial class Emitter
         Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.ForLoop, LoopBegin = forIterLabel, LoopEnd = endForLabel });
 
         LoadExpr(node.Iter);
+        // compiler_for tags GET_ITER with the iterable's own location, so
+        // a non-iterable blames the operand instead of the `for` keyword
+        Builder.PushMetaInfo(node.Iter.MetaInfo);
         Builder.Emit(OpCode.GetIter);
+        Builder.PopMetaInfo();
 
         Builder.MarkLabel(forIterLabel);
         Builder.Emit(OpCode.ForIter, forElseLabel);
@@ -1127,6 +1131,10 @@ partial class Emitter
         if (OptimizationLevel > 0)
             return;
 
+        // compiler_assert tags every instruction with the test's own
+        // location, so the traceback caret lands on the failed
+        // subexpression instead of the statement keyword
+        Builder.PushMetaInfo(node.Test.MetaInfo);
         var noRaisingLabel = Builder.DefineLabel();
 
         LoadExpr(node.Test);
@@ -1143,6 +1151,7 @@ partial class Emitter
 
         Builder.Emit(OpCode.RaiseVarArgs, 1);
         Builder.MarkLabel(noRaisingLabel);
+        Builder.PopMetaInfo();
     }
 
     private void EmitAugAssign(AugAssignNode node)
@@ -1355,6 +1364,10 @@ partial class Emitter
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
+            // compiler_with tags the whole context-manager prologue with the
+            // context expression's location, so a protocol violation blames
+            // the operand instead of the `with` keyword
+            Builder.PushMetaInfo(item.ContextExpr.MetaInfo);
             // CPython probes __exit__ before __enter__ (codegen_with_inner);
             // the probe order decides which slot name the missing-slot
             // TypeError reports when both are absent
@@ -1363,6 +1376,7 @@ partial class Emitter
             Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [exit, manager, enter]
             Builder.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [exit, manager, value]
+            Builder.PopMetaInfo();
 
             Builder.Emit(OpCode._SetupFinally, finallyLabel);
             Builder.Emit(OpCode._SetupExcept, exceptLabel);
@@ -1434,12 +1448,15 @@ partial class Emitter
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
             // Mirrors sync with: probe __aexit__ before __aenter__, matching
-            // CPython's slot probe order for the missing-slot TypeError
+            // CPython's slot probe order for the missing-slot TypeError, and
+            // tags the prologue with the context expression's location
+            Builder.PushMetaInfo(item.ContextExpr.MetaInfo);
             Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AExit); // -> [manager, aexit]
             Builder.Emit(OpCode.Swap, 2); // -> [aexit, manager]
             Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [aexit, manager, aenter]
             Builder.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
+            Builder.PopMetaInfo();
 
             // Await __aenter__() result; oparg 1 selects the
             // __aenter__-specific message when the result is not awaitable

@@ -80,6 +80,11 @@ public sealed partial class PyEnvironment : IDisposable
     internal Stream OutStream => _outStream;
     internal Stream ErrorStream => _errorStream;
 
+    // Serializes the uncaught-exception reports that several threads may
+    // write to stderr at once: each report renders and writes whole, so
+    // concurrent reports interleave between reports but never tear one.
+    internal object ErrorSyncRoot { get; } = new();
+
     // The encodings the standard streams were opened with; the stdio
     // TextIOWrapper objects report these as their encoding attribute and
     // encode/decode through them.

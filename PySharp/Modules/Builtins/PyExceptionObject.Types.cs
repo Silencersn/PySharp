@@ -46,6 +46,30 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
         return PyNoneObject.None;
     }
 
+    // CPython BaseException_add_note: the note must be str; the container
+    // is the instance's __notes__ list, created on first use, and an
+    // existing non-list container is rejected
+    [PyMethod("add_note")]
+    [PyFunctionParameters("note", "/")]
+    private static PyResult AddNote(PyCallContext context, PyExceptionObject self, PyArguments arguments)
+    {
+        var note = arguments[0];
+        if (note is not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Exception_NoteMustBeStr, note.PyType.TpName);
+
+        if (self.PyAttributes.TryGetValue(PySpecialNames.Notes, out var existing))
+        {
+            if (existing is not PyListObject notes)
+                return PyResult.TypeError(PySR.Runtime_Exception_NotesMustBeList);
+            notes.PyAppend(note);
+        }
+        else
+        {
+            self.PyAttributes[PySpecialNames.Notes] = PyListObject.CreateList(note);
+        }
+        return PyNoneObject.None;
+    }
+
     protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();

@@ -62,13 +62,17 @@ public sealed class PyDeprecatedObject : PyObject
     {
         var message = PyStrObject.FromString(Message);
 
+        // The user-facing stacklevel counts from the caller of the decorated
+        // object. CPython's wrappers are Python frames, so its warn passes
+        // stacklevel + 1 to step out of the wrapper; these C# wrappers hold
+        // no Python frame of their own, so the user value applies as-is.
         // Wrap __new__ so instantiating the decorated class warns once.
         var originalNew = PyOperators.GetAttr(context, cls, "__new__");
         var newWrapper = PyBuiltinFunctionOrMethodObject.CreateFunction("__new__", (ctx, callArgs, callKwargs) =>
         {
             if (callArgs.Count > 0 && ReferenceEquals(callArgs[0], cls))
             {
-                var warnResult = ctx.Warn(message, Category, Stacklevel + 1);
+                var warnResult = ctx.Warn(message, Category, Stacklevel);
                 if (warnResult.IsError)
                     return warnResult;
             }
@@ -85,17 +89,36 @@ public sealed class PyDeprecatedObject : PyObject
         if (setNew.IsError)
             return setNew;
 
-        // Wrap __init_subclass__ so creating a subclass warns.
+        // Wrap __init_subclass__ so creating a subclass warns. A hook living
+        // directly on the decorated class is called as-is; an inherited one
+        // forwards through super(cls, newClass), which re-binds the default
+        // implementation to the class being created — a bound forward would
+        // name the decorated base in the default hook's rejection message
+        var hookIsOwn = cls.PyAttributes.ContainsKey(PySpecialNames.InitSubclass);
         var originalInitSubclass = PyOperators.GetAttr(context, cls, "__init_subclass__");
         var initSubclassWrapper = PyBuiltinFunctionOrMethodObject.CreateFunction("__init_subclass__", (ctx, callArgs, callKwargs) =>
         {
-            var warnResult = ctx.Warn(message, Category, Stacklevel + 1);
+            var warnResult = ctx.Warn(message, Category, Stacklevel);
             if (warnResult.IsError)
                 return warnResult;
-            if (originalInitSubclass.IsError)
-                return originalInitSubclass;
-            // The classmethod descriptor binds cls, so only pass the keyword args through.
-            return originalInitSubclass.Value.Call(ctx, [], callKwargs);
+
+            if (hookIsOwn)
+            {
+                if (originalInitSubclass.IsError)
+                    return originalInitSubclass;
+                // The classmethod descriptor binds cls, so only pass the keyword args through.
+                return originalInitSubclass.Value.Call(ctx, [], callKwargs);
+            }
+
+            if (callArgs.Count is 0)
+                return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, PySpecialNames.InitSubclass, cls.Name);
+            var superObj = PySuperObject.CreateSuper(cls, callArgs[0]);
+            if (superObj.IsError)
+                return superObj;
+            var hook = PyOperators.GetAttr(ctx, superObj.Value, PySpecialNames.Interned.InitSubclass);
+            if (hook.IsError)
+                return hook;
+            return hook.Value.Call(ctx, [], callKwargs);
         });
         var setInit = PyOperators.SetAttr(context, cls, "__init_subclass__", new PyClassMethodObject(initSubclassWrapper));
         if (setInit.IsError)
@@ -174,7 +197,7 @@ public sealed partial class PyDeprecatedWrapperObjectType : PyTypeObject<PyDepre
 {
     protected override PyResult Call(PyCallContext context, PyDeprecatedWrapperObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var warnResult = context.Warn(PyStrObject.FromString(self.Owner.Message), self.Owner.Category, self.Owner.Stacklevel + 1);
+        var warnResult = context.Warn(PyStrObject.FromString(self.Owner.Message), self.Owner.Category, self.Owner.Stacklevel);
         if (warnResult.IsError)
             return warnResult;
         return self.Original.Call(context, args, kwargs);

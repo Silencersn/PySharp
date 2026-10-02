@@ -47,8 +47,20 @@ public class PySuperObject : PyObject
         _object = obj;
     }
 
+    // supercheck's return value, which CPython caches as obj_type: the obj
+    // itself when it is a class, its type otherwise
+    internal static PyTypeObject SelfClassOf(PySuperObject self)
+    {
+        return self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
+    }
+
     public static PyResult CreateSuper(PyTypeObject type, PyObject objectOrType)
     {
+        // super_init_impl folds obj is None into an unbound super before
+        // supercheck would reject it (Objects/typeobject.c:12182)
+        if (objectOrType is PyNoneObject)
+            return new PySuperObject(type, objectOrType);
+
         if (objectOrType is PyTypeObject pyTypeObject && pyTypeObject.IsSubclassOf(type))
             return new PySuperObject(type, objectOrType);
 
@@ -134,7 +146,18 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         if (item is not PyStrObject str)
             return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.TpName);
 
-        PyTypeObject startType = self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
+        // super_getattro reads __class__ through GenericGetAttr so the
+        // answer is super's own class even when the MRO carries a shadow
+        if (str.Value is PySpecialNames.Class)
+            return base.GetAttribute(context, self, item);
+
+        // an unbound super has no obj_type (obj is None was folded to NULL
+        // at init), so there is no MRO to walk and the read falls through
+        // to super's own members (do_super_lookup's skip branch)
+        if (self._object is PyNoneObject)
+            return base.GetAttribute(context, self, item);
+
+        PyTypeObject startType = PySuperObject.SelfClassOf(self);
         var iter = startType.MRO.GetEnumerator();
         while (iter.MoveNext())
         {
@@ -152,11 +175,20 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
             {
                 var getFunc = attr.PyType.Slots.Get;
                 if (getFunc is not null)
-                    return getFunc(context, attr, self._object, self._type);
+                {
+                    // do_super_lookup binds through the obj's own type, not
+                    // super's first argument: instance mode passes the obj,
+                    // class mode (obj is itself the type) passes NULL so a
+                    // classmethod binds that class instead of the metaclass
+                    PyObject instanceArg = ReferenceEquals(self._object, startType) ? PyNoneObject.None : self._object;
+                    return getFunc(context, attr, instanceArg, startType);
+                }
                 return attr;
             }
         }
-        return PyResult.AttributeError(PySR.Runtime_Super_HasNoAttribute, str.Value);
+        // the MRO walk missed, yet do_super_lookup still answers through
+        // GenericGetAttr on the super object itself
+        return base.GetAttribute(context, self, item);
     }
 
     protected override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)
@@ -168,6 +200,34 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
 
     protected override PyResult Repr(PyCallContext context, PySuperObject self)
     {
-        return PyStrObject.FromString($"<super: {self._type.Name}, {self._object.PyType.Name}>");
+        // super_repr formats the obj_type supercheck produced; the NULL
+        // obj_type an unbound super keeps prints verbatim
+        if (self._object is PyNoneObject)
+            return PyStrObject.FromString($"<super: <class '{self._type.TpName}'>, NULL>");
+        return PyStrObject.FromString(
+            $"<super: <class '{self._type.TpName}'>, <{PySuperObject.SelfClassOf(self).TpName} object>>");
+    }
+
+    // super_members: the three read-only members answer through
+    // GenericGetAttr, so they read even while the super is unbound
+    [PyProperty(PySpecialNames.ThisClass)]
+    private static PyResult Get_ThisClass(PyCallContext context, PySuperObject self)
+    {
+        return self._type;
+    }
+
+    [PyProperty(PySpecialNames.Self)]
+    private static PyResult Get_Self(PyCallContext context, PySuperObject self)
+    {
+        return self._object;
+    }
+
+    [PyProperty(PySpecialNames.SelfClass)]
+    private static PyResult Get_SelfClass(PyCallContext context, PySuperObject self)
+    {
+        // the NULL obj_type CPython leaves while unbound reads as None
+        if (self._object is PyNoneObject)
+            return PyNoneObject.None;
+        return PySuperObject.SelfClassOf(self);
     }
 }

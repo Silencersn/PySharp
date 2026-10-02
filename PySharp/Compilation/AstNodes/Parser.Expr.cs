@@ -1053,6 +1053,10 @@ partial class Parser
 
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
+            // "1 + not 2": CPython's ensure_not rejects a bare 'not' as the
+            // right operand of a binary operator
+            if (IsCurrentKeyword("not"))
+                throw SyntaxError(PySR.InvalidSyntax_NotAfterOperator);
             var rightExpr = parse();
             leftExpr = combines[index](leftExpr, rightExpr).With(currentMetaInfo.WithPreviousEnd());
         }
@@ -1226,7 +1230,11 @@ partial class Parser
 
         MoveNextToken();
         var test = ParseDisjunction();
-        EnsureKeywordThenMove("else");
+        // EOF or ')' before the else fails the keyword precheck first, so
+        // the dedicated sentence is raised directly
+        if (!IsCurrentKeyword("else"))
+            throw SyntaxError(PySR.InvalidSyntax_ExpectedElseAfterIf);
+        MoveNextToken();
         var orElse = ParseExpression();
         return Ast.IfExp(test, body, orElse).With(metaInfo.WithPreviousEnd());
     }
@@ -1459,6 +1467,13 @@ partial class Parser
                     needDefault = false;
                     break;
 
+                case TokenType.LeftParen:
+                    // CPython's py2 compatibility sentence for a parenthesized
+                    // parameter list
+                    throw SyntaxError(isLambda
+                        ? PySR.InvalidSyntax_LambdaParamsParenthesized
+                        : PySR.InvalidSyntax_Parameters_FunctionParenthesized);
+
                 case TokenType.DoubleStar:
                     MoveNextToken();
                     kwArg = ParseParam(isLambda);
@@ -1475,6 +1490,14 @@ partial class Parser
                     AstExprNode? defaultValue = null;
                     if (needDefault || CurrentTokenType is TokenType.Equal)
                     {
+                        // after the last parameter only '=' or the list's stop
+                        // token can legally follow; anything else is a broken
+                        // construct that CPython's PEG fails as invalid syntax
+                        // before any parameter check runs
+                        if (needDefault && CurrentTokenType is not TokenType.Equal
+                            && CurrentTokenType is not TokenType.RightParen
+                            && CurrentTokenType is not TokenType.Colon)
+                            throw SyntaxError();
                         defaultValue = ParseDefault();
                         if (state is StateMaybePosonlyArgsOrArgs or StateArgs)
                             needDefault = true;
@@ -1588,12 +1611,12 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("star_target")]
-    private AstExprNode ParseStarTarget()
+    private AstExprNode ParseStarTarget(string invalidTargetMessage = PySR.InvalidSyntax_InvalidTarget)
     {
         if (CurrentTokenType is TokenType.Star)
         {
             MoveNextToken();
-            var target = ParseStarTarget();
+            var target = ParseStarTarget(invalidTargetMessage);
             if (target is StarredNode)
                 throw SyntaxError(PySR.InvalidSyntax_StarredExpression_Invalid);
             return Ast.Starred(target);
@@ -1602,7 +1625,7 @@ partial class Parser
         {
             var target = ParsePrimary();
             if (!target.IsValidTarget())
-                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(target));
+                throw SyntaxError(invalidTargetMessage, AstUtils.GetExprNodeName(target));
             return target;
         }
     }
@@ -1610,7 +1633,7 @@ partial class Parser
     [GrammarSyntaxRule("star_targets")]
     private AstExprNode ParseStarTargets(StopPredicate predicate)
     {
-        var targets = ParseSomethingList(ParseStarTarget, predicate, out var endsWithComma);
+        var targets = ParseSomethingList(() => ParseStarTarget(), predicate, out var endsWithComma);
         return UnwrapOrMakeTuple(targets, endsWithComma);
     }
 
@@ -1649,7 +1672,8 @@ partial class Parser
 
     private TComprehension ParseComp<TComprehension, TItem>(
         TokenType openToken, TokenType closeToken,
-        Func<TItem> parseItem, Func<TItem, List<AstComprehensionNode>, TComprehension> factory)
+        Func<TItem> parseItem, Func<TItem, List<AstComprehensionNode>, TComprehension> factory,
+        string closeMessage = PySR.InvalidSyntax)
         where TComprehension : AstNode
     {
         var metaInfo = CreateAstMetaInfo();
@@ -1657,7 +1681,9 @@ partial class Parser
 
         var elt = parseItem();
         var generators = ParseForIfClauses();
-        EnsureTokenTypeThenMove(closeToken);
+        // "sum(x for x in y, 1)": the generator expression's close check
+        // carries its own sentence, not the generic one
+        EnsureTokenTypeThenMove(closeToken, closeMessage);
 
         return factory(elt, generators).With(metaInfo.WithPreviousEnd());
     }
@@ -1680,7 +1706,7 @@ partial class Parser
     private GeneratorExpNode ParseGenExp()
     {
         return ParseComp(TokenType.LeftParen, TokenType.RightParen,
-            ParseNamedExpression, Ast.GeneratorExp);
+            ParseNamedExpression, Ast.GeneratorExp, PySR.InvalidSyntax_GenexpMustBeParenthesized);
     }
 
     [GrammarSyntaxRule("dictcomp")]
@@ -1760,6 +1786,9 @@ partial class Parser
     {
         var key = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);
+        // '{1: *x}': a dictionary value cannot unpack
+        if (CurrentTokenType is TokenType.Star)
+            throw SyntaxError(PySR.InvalidSyntax_StarredInDictValue);
         var value = ParseExpression();
         return KeyValuePair.Create(key, value);
     }
@@ -1781,6 +1810,11 @@ partial class Parser
     private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArguments()
     {
         var result = ParseArgs(out _);
+        // "sum(x for x in y, 1)": an unparenthesized generator expression
+        // cannot be followed by more arguments
+        if (CurrentTokenType is TokenType.Comma && result.Args.Count() is 1
+            && result.Args.Single() is GeneratorExpNode)
+            throw SyntaxError(PySR.InvalidSyntax_GenexpMustBeParenthesized);
         EnsureTokenType(TokenType.RightParen, PySR.InvalidSyntax_RightParenNeverClosed);
         return result;
     }
@@ -1800,6 +1834,11 @@ partial class Parser
         var args = ParseSomethingList(ParseStarredExpressionOrNamedExpression,
             _ => CurrentTokenType is TokenType.RightParen or TokenType.Equal || TestIsKwarg(), out endsWithComma);
 
+        // "f(*x for x in y)": an unpacked argument cannot carry a
+        // comprehension suffix
+        if (IsCurrentKeyword("for") && args.MakeArray() is [StarredNode])
+            throw SyntaxError(PySR.InvalidSyntax_UnpackingInComprehension);
+
         if (CurrentTokenType is TokenType.RightParen)
             return (args.MakeArray(), []);
 
@@ -1813,7 +1852,16 @@ partial class Parser
     private AstExprNode ParseStarredExpressionOrNamedExpression()
     {
         if (CurrentTokenType is TokenType.Star)
+        {
+            // "print(*)": a star right before the closing paren has nothing
+            // to unpack (CPython star_expressions normalization)
+            var starPos = TokenPosition;
+            MoveNextToken();
+            if (CurrentTokenType is TokenType.RightParen)
+                throw SyntaxError(PySR.InvalidSyntax_StarredExpression_Invalid);
+            TokenPosition = starPos;
             return ParseStarredExpression();
+        }
 
         return ParseNamedExpression();
     }
@@ -1871,6 +1919,9 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         var arg = ParseNonMangledIdentifier();
         EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Arguments_PosArgFollowsKeyword);
+        // "f(a=)": the keyword's value is missing entirely
+        if (CurrentTokenType is TokenType.RightParen or TokenType.Comma)
+            throw SyntaxError(PySR.InvalidSyntax_Arguments_ExpectedValue);
         var value = ParseExpression();
         return Ast.Keyword(arg, value).With(metaInfo.WithPreviousEnd());
     }
@@ -1955,7 +2006,9 @@ partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Parameters_ParameterWithoutDefault);
 
-        if (CurrentTokenType is TokenType.RightParen or TokenType.Colon)
+        // "def foo(a=1, d=, c)": the list may also continue after an empty
+        // default
+        if (CurrentTokenType is TokenType.RightParen or TokenType.Colon or TokenType.Comma)
             throw SyntaxError(PySR.InvalidSyntax_Parameters_ExpectedDefault);
 
         return ParseExpression();

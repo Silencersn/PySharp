@@ -11,6 +11,8 @@ public static partial class PySpecialNames
     public const string Name = "__name__";
     public const string Value = "__value__";
     public const string Self = "__self__";
+    public const string SelfClass = "__self_class__";
+    public const string ThisClass = "__thisclass__";
     public const string Func = "__func__";
     public const string Doc = "__doc__";
     public const string Code = "__code__";
@@ -45,6 +47,7 @@ public static partial class PySpecialNames
 
     public const string Dict = "__dict__";
     public const string Defaults = "__defaults__";
+    public const string Notes = "__notes__";
 
     // exception attributes
     public const string Cause = "__cause__";

@@ -12,13 +12,33 @@ internal static partial class BytecodeVirtualMachine
     {
         var postCount = instructionArg & ushort.MaxValue;
         var preCount = (instructionArg >> 16) & ushort.MaxValue;
-        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var value = stack.Pop();
+        var list = UnpackToList(context, value);
         var span = list.AsSpan();
         if (span.Length < preCount + postCount)
             throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
         stack.PushReversedRange(span[^postCount..]);
         stack.Push(PyListObject.CreateList(span[preCount..^postCount]));
         stack.PushReversedRange(span[..preCount]);
+    }
+
+    // unpack_iterable (Python/ceval.c) swaps the generic iteration
+    // message for the unpack-specific sentence only when the type's MRO
+    // carries no __iter__ of its own; a TypeError raised by a custom
+    // __iter__ passes through unchanged
+    private static PyListObject UnpackToList(PyCallContext context, PyObject value)
+    {
+        var list = PyUtils.IterableToList(context, value);
+        if (list.IsError)
+        {
+            if (value.PyType.Slots.Iter is null
+                && list.Exception is { } failure
+                && PyTypeErrorObjectType.Shared.IsInstance(failure))
+                throw context.TypeError(PySR.Runtime_Assignment_UnpackNonIterable, value.PyType.TpName);
+
+        }
+
+        return list.PyUnwrap(context);
     }
 
     private static void InternalMatchClass(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
@@ -628,7 +648,7 @@ internal static partial class BytecodeVirtualMachine
     private static void InternalUnpackSequence(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
     {
         var seq = stack.Pop();
-        var list = PyUtils.IterableToList(context, seq).PyUnwrap(context);
+        var list = UnpackToList(context, seq);
         var span = list.AsSpan();
         if (span.Length > instructionArg)
         {
@@ -712,7 +732,10 @@ internal static partial class BytecodeVirtualMachine
 
     // CPython import_from (ceval.c): a missing from-import name surfaces as
     // ImportError ("cannot import name ..."), never the underlying
-    // AttributeError; other attribute errors propagate unchanged.
+    // AttributeError; other attribute errors propagate unchanged. An
+    // attribute miss first falls back to the "<module>.<name>" entry of the
+    // import registry (sys.modules), and the failure message trails the
+    // module's file location when it has one.
     private static PyObject InternalImportFrom(PyCallContext context, PyObject module, string name)
     {
         var attrResult = PyOperators.GetAttr(context, module, name);
@@ -733,6 +756,14 @@ internal static partial class BytecodeVirtualMachine
             moduleName = !nameResult.IsError && nameResult.Value is PyStrObject nameStr ? nameStr.Value : "<unknown>";
         }
 
-        throw context.ImportError(PySR.Runtime_Import_CannotImportName, name, moduleName);
+        if (context.PyEnvironment.Modules.TryGetValue($"{moduleName}.{name}", out var submodule)
+            && submodule is not null)
+            return submodule;
+
+        string location = "unknown location";
+        if (module.PyAttributes.TryGetValue(PySpecialNames.File, out var file) && file is PyStrObject fileString)
+            location = fileString.Value;
+
+        throw context.ImportError(PySR.Runtime_Import_CannotImportName, name, moduleName, location);
     }
 }

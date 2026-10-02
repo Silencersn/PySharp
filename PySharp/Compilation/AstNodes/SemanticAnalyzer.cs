@@ -1,5 +1,6 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
@@ -40,6 +41,11 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     private readonly Stack<NestedComprehensionStats> _nestedComprehensionStatsStack;
     private NestedComprehensionStats _currentNestedComprehensionStats;
 
+    // the closure pass reports unbound nonlocals after the tree walk, when
+    // _nodesToRoot is empty, so the declaring statements are kept here to
+    // locate the deferred error (CPython's symtable carries the node)
+    private readonly Dictionary<(VariableScope Scope, string Name), NonlocalNode> _nonlocalDeclarations = [];
+
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange) : null;
 
     private SemanticAnalyzer(PyCallContext context, CodeSource source, CompileSession session)
@@ -63,6 +69,15 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         var metaInfo = CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange);
         return _context.SyntaxError(new FixedMetaInfoProvider(metaInfo), message, args);
+    }
+
+    // CPython's symtable errors carry a location but no source text
+    // (symtable_error passes a NULL text); the display re-reads the file
+    // for the caret line, while e.text stays None
+    private static PyRuntimeException WithoutSourceText(PyRuntimeException error)
+    {
+        error.PyException.SetMember("text", PyNoneObject.None);
+        return error;
     }
 
     // Locates a deferred error at a node that is no longer on _nodesToRoot.
@@ -758,7 +773,12 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 while (true)
                 {
                     if (parent is null)
-                        throw SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalNoBinding, name);
+                    {
+                        var declaration = _nonlocalDeclarations.TryGetValue((scope, name), out var nonlocalNode)
+                            ? SyntaxErrorAt(nonlocalNode, PySR.InvalidSyntax_Semantic_NonlocalNoBinding, name)
+                            : SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalNoBinding, name);
+                        throw WithoutSourceText(declaration);
+                    }
 
                     if (parent is CallableVariableScope callableVariableScope &&
                             parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&

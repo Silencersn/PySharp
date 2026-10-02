@@ -438,7 +438,14 @@ partial class PyListObject
             var (start, stop, step, sliceLength) = indices;
             var iterableResult = PyUtils.IterableToList(context, value);
             if (iterableResult.IsError)
+            {
+                // PySequence_Fast takes the caller's fixed sentence for both
+                // the step-1 and extended paths, so the value's type never
+                // enters the message
+                if (iterableResult.Exception is { } failure && PyTypeErrorObjectType.Shared.IsInstance(failure))
+                    return PyResult.TypeError(PySR.Runtime_List_AssignIterableToSlice);
                 return iterableResult;
+            }
 
             var values = iterableResult.Value._list;
 
@@ -461,12 +468,18 @@ partial class PyListObject
             return PyNoneObject.None;
         }
 
+        // list_ass_subscript branches on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "list", key.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
             return indexResult;
 
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         int index = indexResult.Value.Int32Value;
         if (PyUtils.IsIndexOutOfRange(index, _list.Count))
@@ -505,12 +518,17 @@ partial class PyListObject
             return PyNoneObject.None;
         }
 
+        // same PyIndex_Check-first shape as assignment: the container names
+        // the rejected operand type before any conversion runs
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "list", key.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
             return indexResult;
 
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         int index = indexResult.Value.Int32Value;
         if (PyUtils.IsIndexOutOfRange(index, _list.Count))

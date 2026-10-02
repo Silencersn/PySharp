@@ -1,3 +1,5 @@
+using PySharp.Compilation;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -11,6 +13,12 @@ namespace PySharp.Modules.Builtins;
 public sealed class PyExceptionObject : PyObjectManagedDict
 {
     public override PyTypeObject DefaultPyType => PyBaseExceptionObjectType.Shared;
+
+    // CPython's _Py_Offer_Suggestions: the "Did you mean" sentence is a
+    // display-time append over the traceback, so the exception's own
+    // message stays clean; the internal field keeps it off the Python
+    // attribute surface
+    internal string? DisplaySuggestion;
 
     internal PyExceptionObject(PyTypeObject exceptionType, IEnumerable<PyObject> args, ExceptionGroupInfo? asGroup = null)
     {
@@ -49,7 +57,6 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // later propagation hops through deferred error results must not chain
     // again
     internal bool ContextSettled { get; set; }
-    internal string? CauseReason { get; set; }
     // Rebindable per CPython BaseException_init: when __new__ is overridden
     // but __init__ is not, the inherited __init__ re-binds e.args to the
     // original instantiation arguments.
@@ -83,6 +90,22 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // PyMember_SetOne only raises for _EX. The attribute stays present and
     // reads back as None.
     internal void DeleteMember(string name) => _members?.Remove(name);
+
+    // CPython _PyErr_FormatNote appends a str to the per-instance __notes__
+    // list, creating it on first use; the list lives in the instance dict
+    // like BaseException_add_note's container
+    internal void AddNote(string note)
+    {
+        if (PyAttributes.TryGetValue(PySpecialNames.Notes, out var existing) && existing is PyListObject notes)
+        {
+            notes.PyAppend(PyStrObject.FromString(note));
+        }
+        else
+        {
+            var fresh = PyListObject.CreateList(PyStrObject.FromString(note));
+            PyAttributes[PySpecialNames.Notes] = fresh;
+        }
+    }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;
@@ -148,9 +171,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         if (Cause is not null && !seen.Contains(Cause))
         {
             Cause.PrintMessage(builder, context, seen);
+            // which separator to print is decided at print time from the
+            // chain links alone: a non-null __cause__ is always the direct
+            // cause, whoever set it
             builder
                 .AppendLine()
-                .AppendLine(CauseReason)
+                .AppendLine(PySR.Runtime_RaiseStmt_Cause)
                 .AppendLine();
         }
         else if (!SuppressContext && Context is not null && !seen.Contains(Context))
@@ -192,7 +218,28 @@ public sealed class PyExceptionObject : PyObjectManagedDict
             PrintSyntaxErrorMessage(builder, context);
         else
             PrintSimpleMessage(builder, context);
-        builder.AppendLine();
+        // format_exception_only appends each note after the exception line;
+        // when notes rendered their last line already carries the break
+        if (!PrintNotes(builder, context))
+            builder.AppendLine();
+    }
+
+    private bool PrintNotes(IndentedStringBuilder builder, PyCallContext context)
+    {
+        if (PyAttributes.TryGetValue(PySpecialNames.Notes, out var notes) && notes is PyListObject noteList)
+        {
+            foreach (var note in noteList.AsSpan())
+            {
+                builder.AppendLine();
+                var strResult = PySpecialMethods.Str(context, note);
+                var text = strResult.IsSuccessful ? strResult.Value.Value : note.ToString();
+                builder.Append(text);
+                if (!text.EndsWith('\n'))
+                    builder.AppendLine();
+            }
+            return true;
+        }
+        return false;
     }
 
     private void PrintSimpleMessage(IndentedStringBuilder builder, PyCallContext context)
@@ -210,6 +257,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         {
             builder.Append(": ").Append("<exception str() failed>");
         }
+        builder.Append(PyNameSuggestions.FormatHint(DisplaySuggestion));
     }
 
     // CPython traceback.TracebackException._format_syntax_error: for the
@@ -226,6 +274,28 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         var endLinenoValue = GetMember("end_lineno");
         var endOffsetValue = GetMember("end_offset");
 
+        // CPython's symtable errors carry no text, yet the display still
+        // shows the source line: print time re-reads the file for it, so
+        // an unreadable source simply renders without the line block
+        if (textValue is not PyStrObject
+            && filenameValue is PyStrObject readName
+            && linenoValue is PyIntObject readLine
+            && linenoValue is not PyBoolObject)
+        {
+            try
+            {
+                var sourceBytes = context.PyEnvironment.Host.FileSystem.ReadAllBytes(readName.Value);
+                var decoded = PySourceDecoder.Decode(context, sourceBytes, readName.Value);
+                var line = new CodeSource(readName.Value, decoded).Code.GetLineOrDefault((int)readLine.Value, false);
+                if (line.Length > 0)
+                    textValue = PyStrObject.FromString(line.ToString());
+            }
+            catch (Exception)
+            {
+                // unreadable source: no line block, like CPython
+            }
+        }
+
         string filenameSuffix = string.Empty;
         if (linenoValue is PyIntObject linenoInt && linenoValue is not PyBoolObject)
         {
@@ -239,7 +309,9 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
         if (textValue is PyStrObject text)
         {
-            string rtext = text.Value.TrimEnd('\n');
+            // the line break in any of its shapes goes: a manually built
+            // SyntaxError can still carry a CRLF or a bare CR here
+            string rtext = text.Value.TrimEnd('\r', '\n');
             string ltext = rtext.TrimStart(' ', '\n', '\f');
             int spaces = rtext.Length - ltext.Length;
 

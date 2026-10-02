@@ -146,22 +146,7 @@ public sealed class PyInterpreter : IDisposable
                         if (context.PyEnvironment.ExitCode is 0)
                             context.PyEnvironment.ExitCode = 1;
 
-                        const string ANSIColorRed = "\e[31m";
-                        const string ANSIClearColor = "\e[0m";
-                        // the message already ends in its own line break
-                        // (print_exception writes one "\n" after the block
-                        // and no more), so Write instead of WriteLine keeps
-                        // a stray blank line off the end
-                        if (context.PyEnvironment.ErrorSupportsColor)
-                        {
-                            context.Error.Write(ANSIColorRed);
-                            context.Error.Write(exc.ToMessage(context));
-                            context.Error.Write(ANSIClearColor);
-                        }
-                        else
-                        {
-                            context.Error.Write(exc.ToMessage(context));
-                        }
+                        WriteTopLevelExceptionMessage(context, exc);
                     }
 
                     if (alwaysThrow)
@@ -177,6 +162,66 @@ public sealed class PyInterpreter : IDisposable
             // If no PyRuntimeException was found in the exception chain,
             // re-throw the original exception (non-Python errors).
             throw;
+        }
+    }
+
+    // The threading excepthook channel: a worker thread's uncaught exception
+    // (SystemExit included) is only reported — the default hook prints it and
+    // returns silently for SystemExit — and never touches the process exit
+    // status, which stays with the main thread.
+    internal static void PyThreadExceptionReport(PyCallContext context, Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception e)
+        {
+            var currentException = e;
+            while (currentException is not null)
+            {
+                if (currentException is PyRuntimeException pyRuntimeException)
+                {
+                    var exc = pyRuntimeException.PyException;
+                    context.PyEnvironment.FlushStandardStreams();
+
+                    if (!PySystemExitObjectType.Shared.IsInstance(exc))
+                        WriteTopLevelExceptionMessage(context, exc);
+
+                    return;
+                }
+
+                currentException = currentException.InnerException;
+            }
+
+            Debug.Assert(currentException is null);
+            throw;
+        }
+    }
+
+    private static void WriteTopLevelExceptionMessage(PyCallContext context, PyExceptionObject exc)
+    {
+        const string ANSIColorRed = "\e[31m";
+        const string ANSIClearColor = "\e[0m";
+        // the message already ends in its own line break (print_exception
+        // writes one "\n" after the block and no more), so Write instead of
+        // WriteLine keeps a stray blank line off the end; concurrent worker
+        // threads report through the same stream, so the message is rendered
+        // and written under one lock — lines may interleave between threads,
+        // a single report never tears
+        var environment = context.PyEnvironment;
+        lock (environment.ErrorSyncRoot)
+        {
+            if (environment.ErrorSupportsColor)
+            {
+                environment.Error.Write(ANSIColorRed);
+                environment.Error.Write(exc.ToMessage(context));
+                environment.Error.Write(ANSIClearColor);
+            }
+            else
+            {
+                environment.Error.Write(exc.ToMessage(context));
+            }
         }
     }
 

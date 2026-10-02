@@ -364,6 +364,456 @@ public sealed class TracebackTests
         Assert.IsTrue(stderr.EndsWith("SyntaxError: '(' was never closed\r\n", StringComparison.Ordinal), FormatBytes(stderr));
     }
 
+    // The chain separator line is chosen at print time from the chain links
+    // alone: a non-null __cause__ is always the direct cause — whoever set
+    // it, the raise-from machinery, the PEP 479 StopIteration conversion or
+    // the user-facing __cause__ setter — while the implicit context only
+    // prints when it was not suppressed.
+    private const string DirectCauseSeparator =
+        "The above exception was the direct cause of the following exception:";
+
+    [TestMethod]
+    public void CauseSetter_PrintsTheDirectCauseSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            e = ValueError('outer')
+            e.__cause__ = KeyError('inner')
+            raise e
+            """);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+    }
+
+    [TestMethod]
+    public void GeneratorStopIterationConversion_PrintsTheDirectCauseSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            def gen():
+                value = yield 1
+
+
+            g = gen()
+            next(g)
+            g.throw(StopIteration('inner'))
+            """);
+        StringAssert.Contains(stderr, "StopIteration: inner", stderr);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+        StringAssert.Contains(stderr, "RuntimeError: generator raised StopIteration", stderr);
+    }
+
+    [TestMethod]
+    public void ImplicitContext_PrintsTheContextSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError:
+                raise ValueError('wrap')
+            """);
+        StringAssert.Contains(stderr, "During handling of the above exception, another exception occurred:", stderr);
+    }
+
+    [TestMethod]
+    public void RaiseFromNone_PrintsNoSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError as e0:
+                raise ValueError('wrap') from None
+            """);
+        Assert.IsFalse(stderr.Contains("During handling", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("direct cause", StringComparison.Ordinal), stderr);
+    }
+
+    // A non-null cause wins over the implicit context even when the context
+    // was never suppressed (the __cause__ setter does not suppress it).
+    [TestMethod]
+    public void ExplicitCauseWinsOverImplicitContext()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError as e0:
+                e = ValueError('wrap')
+                e.__cause__ = TypeError('inner')
+                raise e
+            """);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+        Assert.IsFalse(stderr.Contains("During handling", StringComparison.Ordinal), stderr);
+    }
+
+    // The statement-shape rule cuts the caret row before the anchor pass: a
+    // return or a plain-name assignment whose call spans the whole instruction
+    // range would only repeat what the source line already shows. Other
+    // shapes keep theirs — attribute/tuple targets, trailing operands, and
+    // non-name callees on return.
+    private const string AddCallerPrelude = """
+        def add(a, b):
+            return a + b
+
+
+        """;
+
+    [TestMethod]
+    public void AssignShapeCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr(AddCallerPrelude + "x = add(1, 'x')");
+        Assert.IsFalse(stderr.Contains("~~~^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void ReturnShapeCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            def caller():
+                return add(1, 'x')
+
+
+            caller()
+            """);
+        // the caller() frame's own anchors (~~~~~~^^) must not trip the check
+        Assert.IsFalse(stderr.Contains("~~~^^^^^^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void MultiLineSpanningCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr(AddCallerPrelude + "x = add(1,\n        'x')");
+        Assert.IsFalse(stderr.Contains("~~~^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void AttributeTargetAssignment_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            self.y = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "~~~^^^^^^^^", stderr);
+    }
+
+    [TestMethod]
+    public void TupleTargetAssignment_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            x, y = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "~~~^^^^^^^^", stderr);
+    }
+
+    [TestMethod]
+    public void TrailingOperand_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def f():
+                raise ValueError('boom')
+
+
+            x = f() + 1
+            """);
+        StringAssert.Contains(stderr, "~^^", stderr);
+    }
+
+    [TestMethod]
+    public void ReturnShapeWithAttributeCallee_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class C:
+                def m(self):
+                    raise ValueError('boom')
+
+
+            def caller():
+                return obj.m()
+
+
+            obj = C()
+            caller()
+            """);
+        StringAssert.Contains(stderr, "~~~~~^^", stderr);
+    }
+
+    // An instruction spanning several lines prints the whole block it covers
+    // (dedented, with the anchor rows drawn line by line); long gaps collapse
+    // into a "...<N lines>..." marker.
+    [TestMethod]
+    public void MultiLineCall_PrintsTheWholeBlock()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            x = add(
+                1,
+                'x',
+                )
+            """);
+        StringAssert.Contains(stderr, "    x = add(\r\n", stderr);
+        StringAssert.Contains(stderr, "    'x',\r\n", stderr);
+        // the assignment shape keeps its caret row suppressed across lines too
+        Assert.IsFalse(stderr.Contains('~', StringComparison.Ordinal) && stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void ClassBodyError_PrintsTheClassHeader()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            class C:
+                x = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "    class C:\r\n        x = add(1, 'x')\r\n", stderr);
+        // the build-class range covers the whole statement, so nothing is
+        // left uncovered and no caret row is drawn for the module frame
+        Assert.IsFalse(stderr.Contains("^^^^^", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void RaiseFromFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class C:
+                def m(self):
+                    raise KeyError('k') from None
+
+
+            C().m()
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "KeyError: 'k'\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void CrossLineSubscript_PrintsPerLineAnchors()
+    {
+        var stderr = RunCapturingStderr("""
+            d = {"k": {"a": 1}}
+            v = (d["k"]
+                 ["more"])
+            """);
+        StringAssert.Contains(stderr, "    v = (d[\"k\"]\r\n         ~~~~~~\r\n         [\"more\"])\r\n         ^^^^^^^^\r\n", stderr);
+    }
+
+    // The raise instruction reports the whole statement range, so a frame
+    // leaving at the raise has nothing uncovered and prints no caret row —
+    // bare raise, raise <exc> and raise ... from ... alike.
+    [TestMethod]
+    public void RaiseFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def boom():
+                raise RuntimeError('inner')
+
+
+            boom()
+            """);
+        Assert.IsFalse(stderr.Contains("^^^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "    raise RuntimeError('inner')\r\n", stderr);
+        StringAssert.Contains(stderr, "    ~~~~^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void BareReraiseFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            e = ValueError('v')
+            try:
+                raise e
+            except ValueError:
+                pass
+
+            raise
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+    }
+
+    // Statement-level ranges follow compiler_assert/compiler_for/compiler_with:
+    // the failing instruction carries the operand's own location, so the caret
+    // lands on the test / iterable / context expression instead of the keyword.
+    [TestMethod]
+    public void AssertFailure_CaretCoversTheTestOperand()
+    {
+        var stderr = RunCapturingStderr("assert False");
+        StringAssert.Contains(stderr, "    assert False\r\n           ^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NonIterableFor_CaretCoversTheIterable()
+    {
+        var stderr = RunCapturingStderr("""
+            for i in 1:
+                pass
+            """);
+        StringAssert.Contains(stderr, "    for i in 1:\r\n             ^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NonContextManagerWith_CaretCoversTheContextExpression()
+    {
+        var stderr = RunCapturingStderr("""
+            with 1 as x:
+                pass
+            """);
+        StringAssert.Contains(stderr, "    with 1 as x:\r\n         ^\r\n", stderr);
+    }
+
+    // A whole-statement range has nothing uncovered on either side, and the
+    // statement-shape rule then drops the caret row entirely — the import and
+    // class-creation errors name no operand to point at.
+    [TestMethod]
+    public void MissingModuleImport_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("import nosuchmodule_xyz");
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void MissingModuleImportFrom_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("from nosuchmod import thing");
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void InconsistentMro_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class A: pass
+            class B(A): pass
+            class C(A, B): pass
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    // Without anchors the primary character starts at '^' (the tilde split
+    // only exists around extracted anchors), so an operand-shaped range like
+    // a name read or a whole del statement reads as one caret run.
+    [TestMethod]
+    public void NameErrorOnNameRead_CaretIsAllCarets()
+    {
+        var stderr = RunCapturingStderr("print(undefined_xyz)");
+        StringAssert.Contains(stderr, "    print(undefined_xyz)\r\n          ^^^^^^^^^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NameErrorOnDel_CaretCoversTheWholeStatement()
+    {
+        var stderr = RunCapturingStderr("del undefined_name_xyz");
+        StringAssert.Contains(stderr, "    del undefined_name_xyz\r\n        ^^^^^^^^^^^^^^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void ModuleLevelReturnSyntaxError_CaretCoversTheWholeStatement()
+    {
+        var stderr = RunCapturingStderr("return 1+2");
+        StringAssert.Contains(stderr, "    return 1+2\r\n    ^^^^^^^^^^\r\n", stderr);
+    }
+
+    // A worker thread's uncaught exception only reports through the
+    // excepthook channel: the exit code stays with the main thread (0), a
+    // SystemExit inside the thread is swallowed silently, and the report
+    // header carries the Thread object's construction-time name.
+    private static (string Stderr, int ExitCode) RunScriptWithExitCode(string code)
+    {
+        var error = new MemoryStream();
+        var host = new StderrHost(error);
+
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        PyInterpreter.PyTryCatch(context, () =>
+            PyInterpreter.RunCodeWithContext(context, code, "<module>", "<traceback>", isMain: true));
+
+        return (Encoding.UTF8.GetString(error.ToArray()), environment.ExitCode);
+    }
+
+    [TestMethod]
+    public void WorkerThreadException_LeavesTheExitCodeAlone()
+    {
+        var (stderr, exitCode) = RunScriptWithExitCode("""
+            import threading
+
+            def boom():
+                raise ValueError('kaboom')
+
+            t = threading.Thread(target=boom)
+            t.start()
+            t.join()
+            print('main continues')
+            """);
+        Assert.AreEqual(0, exitCode, stderr);
+        StringAssert.StartsWith(stderr, "Exception in thread Thread-", stderr);
+        StringAssert.Contains(stderr, "(boom):\r\nTraceback (most recent call last):", stderr);
+        StringAssert.Contains(stderr, "ValueError: kaboom", stderr);
+    }
+
+    [TestMethod]
+    public void WorkerThreadSystemExit_IsSwallowedSilently()
+    {
+        var (stderr, exitCode) = RunScriptWithExitCode("""
+            import threading
+
+            def exiter():
+                raise SystemExit(3)
+
+            t = threading.Thread(target=exiter)
+            t.start()
+            t.join()
+            print('main continues')
+            """);
+        Assert.AreEqual(0, exitCode, stderr);
+        Assert.AreEqual(string.Empty, stderr, stderr);
+    }
+
+    [TestMethod]
+    public void WorkerThreadDefaultName_CarriesTheTargetName()
+    {
+        var (stderr, _) = RunScriptWithExitCode("""
+            import threading
+
+            t = threading.Thread(target=lambda: 1 / 0)
+            t.start()
+            t.join()
+            """);
+        // the counter is consumed at construction and never resets — only
+        // the shape of the header is stable, not the number
+        StringAssert.Matches(stderr, new System.Text.RegularExpressions.Regex(@"Exception in thread Thread-\d+ \(<lambda>\):"));
+    }
+
+    [TestMethod]
+    public void WorkerThreadExplicitName_WinsWithoutSuffix()
+    {
+        var (stderr, _) = RunScriptWithExitCode("""
+            import threading
+
+            t = threading.Thread(target=lambda: 1 / 0, name='worker-x')
+            t.start()
+            t.join()
+            """);
+        StringAssert.StartsWith(stderr, "Exception in thread worker-x:\r\n", stderr);
+    }
+
     private static string FormatBytes(string stderr) =>
         string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 

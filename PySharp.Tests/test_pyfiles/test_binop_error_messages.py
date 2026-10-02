@@ -18,6 +18,54 @@ def raises_type_error(src, expected):
     else:
         raise AssertionError("expected TypeError for " + src)
 
+# sequence_repeat checks the index protocol before converting, so a
+# non-int operand reports the non-int message, not the index-conversion one
+class _NoIndex:
+    pass
+
+
+for seq in ["ab", b"ab", bytearray(b"ab"), [1, 2], (1, 2)]:
+    try:
+        seq * _NoIndex()
+        assert False, "TypeError expected"
+    except TypeError as e:
+        assert str(e) == "can't multiply sequence by non-int of type '_NoIndex'", str(e)
+    try:
+        seq *= _NoIndex()
+        assert False, "TypeError expected"
+    except TypeError as e:
+        assert str(e) == "can't multiply sequence by non-int of type '_NoIndex'", str(e)
+    try:
+        _NoIndex() * seq
+        assert False, "TypeError expected"
+    except TypeError as e:
+        assert str(e) == "can't multiply sequence by non-int of type '_NoIndex'", str(e)
+
+try:
+    "ab" * 1.5
+    assert False, "TypeError expected"
+except TypeError as e:
+    assert str(e) == "can't multiply sequence by non-int of type 'float'", str(e)
+
+# objects speaking __index__ keep converting, negative counts stay empty
+class _Ix:
+    def __index__(self):
+        return 3
+
+
+assert "ab" * _Ix() == "ababab"
+assert [1] * _Ix() == [1, 1, 1]
+assert b"z" * _Ix() == b"zzz"
+assert (1,) * _Ix() == (1, 1, 1)
+
+class _Neg:
+    def __index__(self):
+        return -1
+
+
+assert "ab" * _Neg() == ""
+assert [0] * _Neg() == []
+
 # the generic template across the arithmetic/bitwise family
 for src, op in [
     ("5 + None", "+"),

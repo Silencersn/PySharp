@@ -10,11 +10,28 @@ public class PyStrIteratorObject : PyObject
     internal readonly string _value;
     internal int _index;
 
-    public override PyTypeObject DefaultPyType => PyStrIteratorObjectType.Shared;
+    public override PyTypeObject DefaultPyType { get; }
 
-    internal PyStrIteratorObject(string str)
+    internal PyStrIteratorObject(string str, bool asciiOnly)
     {
+        // CPython picks the iterator type from the string's storage form:
+        // a UCS-1 ascii string reports str_ascii_iterator, everything
+        // else (any non-ascii kind) reports str_iterator
+        DefaultPyType = asciiOnly ? PyStrAsciiIteratorObjectType.Shared : PyStrIteratorObjectType.Shared;
         _value = str;
+    }
+
+    internal PyResult Next()
+    {
+        if (_index >= _value.Length)
+            return PyResult.StopIteration();
+
+        var width = PyStrObject.CharWidthAt(_value, _index);
+        var codePoint = width is 2
+            ? char.ConvertToUtf32(_value[_index], _value[_index + 1])
+            : _value[_index];
+        _index += width;
+        return PyStrObject.FromCodePoint(codePoint);
     }
 }
 
@@ -29,14 +46,21 @@ public sealed partial class PyStrIteratorObjectType : PyTypeObject<PyStrIterator
 
     protected override PyResult Next(PyCallContext context, PyStrIteratorObject self)
     {
-        if (self._index >= self._value.Length)
-            return PyResult.StopIteration();
+        return self.Next();
+    }
+}
 
-        var width = PyStrObject.CharWidthAt(self._value, self._index);
-        var codePoint = width is 2
-            ? char.ConvertToUtf32(self._value[self._index], self._value[self._index + 1])
-            : self._value[self._index];
-        self._index += width;
-        return PyStrObject.FromCodePoint(codePoint);
+[PyType("str_ascii_iterator")]
+public sealed partial class PyStrAsciiIteratorObjectType : PyTypeObject<PyStrIteratorObject>
+{
+
+    protected override PyResult Iter(PyCallContext context, PyStrIteratorObject self)
+    {
+        return self;
+    }
+
+    protected override PyResult Next(PyCallContext context, PyStrIteratorObject self)
+    {
+        return self.Next();
     }
 }

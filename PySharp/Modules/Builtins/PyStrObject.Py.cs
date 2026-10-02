@@ -10,7 +10,14 @@ partial class PyStrObject
     {
         var list = PyUtils.IterableToList(context, iterable);
         if (list.IsError)
+        {
+            // PySequence_Fast replaces only the TypeError of the iteration
+            // protocol with the caller's fixed sentence; a failure raised
+            // inside a custom __iter__/__next__ passes through unchanged
+            if (list.Exception is { } failure && PyTypeErrorObjectType.Shared.IsInstance(failure))
+                return PyResult.TypeError(PySR.Runtime_String_JoinNotIterable);
             return list;
+        }
 
         var builder = new StringBuilder();
         int index = 0;

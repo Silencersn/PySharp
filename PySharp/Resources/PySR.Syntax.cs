@@ -91,7 +91,7 @@ partial class PySR
     public const string InvalidSyntax_Parameters_ArgsFollowVarKwArg = "arguments cannot follow var-keyword argument";
     public const string InvalidSyntax_Parameters_MultipleSlashes = "/ may appear only once";
     public const string InvalidSyntax_Parameters_SlashAfterStar = "/ must be ahead of *";
-    public const string InvalidSyntax_Parameters_MultipleStars = "* may appear only once";
+    public const string InvalidSyntax_Parameters_MultipleStars = "* argument may appear only once";
     public const string InvalidSyntax_Parameters_NoNamedArgsAfterStar = "named arguments must follow bare *";
     public const string InvalidSyntax_Parameters_VarKwArgWithDefault = "var-keyword argument cannot have default value";
     public const string InvalidSyntax_Parameters_ParameterWithoutDefault = "parameter without a default follows parameter with a default";
@@ -102,6 +102,8 @@ partial class PySR
     public const string InvalidSyntax_StarredExpression_TargetMustBeInListOrTuple = "starred assignment target must be in a list or tuple";
 
     public const string InvalidSyntax_InvalidTarget = "cannot assign to {0}";
+    public const string InvalidSyntax_InvalidTargetStatement = "cannot assign to {0} here. Maybe you meant '==' instead of '='?";
+    public const string InvalidSyntax_Semantic_AwaitOutsideFunction = "'await' outside function";
 
     public const string InvalidSyntax_ForStmt_ExpectedIn = "'in' expected after for-loop variables";
 
@@ -115,6 +117,26 @@ partial class PySR
     public const string InvalidSyntax_Arguments_ExpressionContainsAssignment = "expression cannot contain assignment, perhaps you meant \"==\"?";
     public const string InvalidSyntax_Arguments_PosArgFollowsKeyword = "positional argument follows keyword argument";
     public const string InvalidSyntax_Arguments_AssignToKeywordArgumentUnpacking = "cannot assign to keyword argument unpacking";
+    public const string InvalidSyntax_Arguments_ExpectedValue = "expected argument value expression";
+
+    // PEG error-recovery points that carry a dedicated sentence instead of
+    // the generic invalid syntax
+    public const string InvalidSyntax_GenexpMustBeParenthesized = "Generator expression must be parenthesized";
+    public const string InvalidSyntax_NotAfterOperator = "'not' after an operator must be parenthesized";
+    public const string InvalidSyntax_StarredInDictValue = "cannot use a starred expression in a dictionary value";
+    public const string InvalidSyntax_ExpectedElseAfterIf = "expected 'else' after 'if' expression";
+    public const string InvalidSyntax_ImportExpectedNames = "Expected one or more names after 'import'";
+    public const string InvalidSyntax_UnpackingInComprehension = "iterable unpacking cannot be used in comprehension";
+    public const string InvalidSyntax_TypeParamsEmpty = "Type parameter list cannot be empty";
+    public const string InvalidSyntax_LambdaParamsParenthesized = "Lambda expression parameters cannot be parenthesized";
+    public const string InvalidSyntax_URPrefixesIncompatible = "'u' and '{0}' prefixes are incompatible";
+    public const string InvalidSyntax_PositionalAfterKeywordPatterns = "positional patterns follow keyword patterns";
+    public const string InvalidSyntax_ImportFromInstead = "Did you mean to use 'from ... import ...' instead?";
+    public const string InvalidSyntax_FunctionExpectedParen = "expected '('";
+    public const string InvalidSyntax_ImportFromTrailingComma = "trailing comma not allowed without surrounding parentheses";
+    public const string InvalidSyntax_ImportTargetLiteral = "cannot use literal as import target";
+    public const string InvalidSyntax_ImportTargetAttribute = "cannot use attribute as import target";
+    public const string InvalidSyntax_Parameters_FunctionParenthesized = "Function parameters cannot be parenthesized";
 
     public const string InvalidSyntax_Assignment_IllegalTargetForAnnotation = "illegal target for annotation";
     public const string InvalidSyntax_Assignment_MultipleTargetsForAnnotation = "only single target (not tuple) can be annotated";
@@ -145,7 +167,9 @@ partial class PySR
     #region SemanticAnalyzer
 
     public const string InvalidSyntax_Semantic_BreakOutsideLoop = "'break' outside loop";
-    public const string InvalidSyntax_Semantic_ContinueOutsideLoop = "'continue' outside loop";
+    // codegen_continue keeps its historical sentence (it once had to
+    // single out continue-in-finally), unlike break's "outside loop"
+    public const string InvalidSyntax_Semantic_ContinueOutsideLoop = "'continue' not properly in loop";
     public const string InvalidSyntax_Semantic_ReturnOutsideFunction = "'return' outside function";
     public const string InvalidSyntax_Semantic_BreakInFinally = "'break' in a 'finally' block";
     public const string InvalidSyntax_Semantic_ContinueInFinally = "'continue' in a 'finally' block";

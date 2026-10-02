@@ -342,13 +342,10 @@ internal static class PyCore
             exc.SuppressContext = true;
 
             if (causeObj is PyNoneObject)
-            {
                 exc.Cause = null;
-            }
             else
             {
                 exc.Cause = ToException(context, causeObj, isCause: true);
-                exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
             }
         }
 
@@ -759,6 +756,6 @@ internal static class PyCore
         if (getAttrFunc is not null)
             return getAttrFunc(context, self, context.PyEnvironment.InternPool.Intern(name));
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+        return PyTypeObject.AttributeNotFound(self, name);
     }
 }

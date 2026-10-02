@@ -176,13 +176,15 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
         return PyBoolObject.False;
     }
 
+    // CPython range_reversed reuses the forward iterator type, starting
+    // at the last value with the step negated — it is an iterator, not
+    // a new range object
     protected override PyResult Reversed(PyCallContext context, PyRangeObject self)
     {
-        // reversed(range(start, stop, step)) = range(start + (len-1)*step, start - step, -step)
-        BigInteger newStart = self.Start + (self.RangeLen - 1) * self.Step;
-        BigInteger newStop = self.Start - self.Step;
-        BigInteger newStep = -self.Step;
-        return PyRangeObject.CreateRange(newStart, newStop, newStep);
+        if (!self._isLong)
+            return new PyRangeIteratorObject((long)(self.Start + (self.RangeLen - 1) * self.Step), -(long)self.Step, (long)self.RangeLen);
+
+        return new PyLongRangeIteratorObject(self.Start + (self.RangeLen - 1) * self.Step, -self.Step, self.RangeLen);
     }
 
     protected override PyResult GetItem(PyCallContext context, PyRangeObject self, PyObject item)
@@ -203,6 +205,11 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
             BigInteger newStep = self.Step * sStep;
             return PyRangeObject.CreateRange(newStart, newStop, newStep);
         }
+
+        // range_subscript branches on PyIndex_Check before any conversion,
+        // so an operand without the index protocol names the container
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "range", item.PyType.TpName);
 
         var idxResult = PySpecialMethods.Index(context, item);
         if (idxResult.IsError)

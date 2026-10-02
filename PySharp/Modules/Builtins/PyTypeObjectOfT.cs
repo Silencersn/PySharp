@@ -172,19 +172,17 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         // CPython type_new_set_ht_name: __qualname__ moves to ht_qualname
         // (read by the accessor), is not kept as a dict entry, and must be
-        // a str when present
+        // a str when present. Only the class dict carries it — a __qualname__
+        // call keyword is not consumed by type() at all: the whole kwds
+        // reaches __init_subclass__ untouched (type_new passes ctx->kwds
+        // nowhere else), so the default hook rejects it by the unadorned
+        // class name.
         var typeQualName = typeName;
         if (dict.TryGetValue(PySpecialNames.QualName, out var qualNameObj))
         {
             if (qualNameObj is not PyStrObject { Value: var qualNameStr })
                 return PyResult.TypeError($"type __qualname__ must be a str, not {qualNameObj.PyType.Name}");
             typeQualName = qualNameStr;
-        }
-        else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj))
-        {
-            if (qualNameObj is not PyStrObject { Value: var qualNameStrFromKwargs })
-                return PyResult.TypeError($"type __qualname__ must be a str, not {qualNameObj.PyType.Name}");
-            typeQualName = qualNameStrFromKwargs;
         }
 
         var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);

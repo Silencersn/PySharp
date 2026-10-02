@@ -167,7 +167,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
-        return PyUtils.GetSequenceItem(context, self.AsSpan(), item, PyListObject.CreateList, PySR.Runtime_List_IndexOutOfRange);
+        return PyUtils.GetSequenceItem(context, self.AsSpan(), item, PyListObject.CreateList, PySR.Runtime_List_IndexOutOfRange, "list");
     }
 
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
@@ -198,6 +198,11 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     protected override PyResult Len(PyCallContext context, PyListObject self)
     {
         return PyIntObject.FromInteger(self.Count);
+    }
+
+    protected override PyResult Reversed(PyCallContext context, PyListObject self)
+    {
+        return new PyListReverseIteratorObject(self, self.Count);
     }
 
     protected override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
@@ -253,11 +258,14 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Repeat(PyCallContext context, PyListObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
         if (!result.Value.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return self.PyMul((int)result.Value.Value);
     }
 
@@ -268,11 +276,13 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult InplaceRepeat(PyCallContext context, PyListObject self, PyObject other)
     {
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
         if (!result.Value.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return self.PyIMul((int)result.Value.Value);
     }
 

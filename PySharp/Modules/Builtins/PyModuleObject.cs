@@ -87,7 +87,14 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
         }
 
         if (self.PyAttributes.TryGetValue(PySpecialNames.File, out var file) && file is PyStrObject fileStr)
+        {
+            // the filename renders as a repr of its own (CPython {filename!r}),
+            // so a Windows path shows its backslashes escaped
+            var fileRepr = PySpecialMethods.Repr(context, fileStr);
+            if (fileRepr.IsSuccessful)
+                return PyStrObject.FromString($"<module '{self.Name}' from {fileRepr.Value.Value}>");
             return PyStrObject.FromString($"<module '{self.Name}' from '{fileStr.Value}'>");
+        }
 
         return PyStrObject.FromString($"<module '{self.Name}'>");
     }

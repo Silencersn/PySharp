@@ -2389,7 +2389,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult Iter(PyCallContext context, PyStrObject self)
     {
-        return new PyStrIteratorObject(self.Value);
+        // CPython str_iter names the iterator after the string's storage
+        // kind: UCS-1 ascii strings report str_ascii_iterator
+        return new PyStrIteratorObject(self.Value, HasOnlyAscii(self.Value));
+    }
+
+    private static bool HasOnlyAscii(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c > 127)
+                return false;
+        }
+        return true;
     }
     protected override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
     {
@@ -2412,6 +2424,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 PyStrObject.AppendCodePoint(sb, codePoints[i]);
             return PyStrObject.FromString(sb.ToString());
         }
+
+        // unicode_subscript branches on PyIndex_Check before any conversion;
+        // the str wording is its own sentence and quotes the type name
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_String_IndicesMustBeIntegers, item.PyType.TpName);
 
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
@@ -2470,6 +2487,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult Repeat(PyCallContext context, PyStrObject self, PyObject other)
     {
+        // sequence_repeat: the repeat count must speak the index protocol
+        // before the conversion runs, or the non-int shape wins the message
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
@@ -2477,7 +2498,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (count.Value < 0)
             return PyStrObject.Empty;   // CPython: 'x' * -1 == ''
         if (!count.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, count.Int32Value)));
     }
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
@@ -2814,7 +2835,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         string fmt = fmtType is 'e' ? $"e{prec}" : $"E{prec}";
@@ -2857,7 +2878,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         string fmt = $"F{prec}";
@@ -2889,7 +2910,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         // CPython %g treats precision 0 as 1 significant digit;
@@ -2924,11 +2945,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         {
                             formatted = cStr.Value;
                         }
+                        else if (value is PyStrObject wrongLength)
+                        {
+                            // formatchar (Objects/unicodeobject.c) names the
+                            // offending length for a longer string
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatCharRequiresIntOrUnicodeLength, wrongLength.Value.Length);
+                        }
                         else
                         {
                             var indexResult = PySpecialMethods.Index(context, value);
                             if (indexResult.IsError)
-                                return indexResult;
+                                return PyResult.TypeError(PySR.Runtime_Str_PctFormatCharRequiresIntOrUnicode, value.PyType.TpName);
                             var codePoint = indexResult.Value.Value;   // BigInteger: range check before narrowing
                             if (codePoint < 0 || codePoint > 0x10FFFF)
                                 return PyResult.OverflowError("%c arg not in range(0x110000)");
@@ -2939,7 +2966,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         break;
                     }
                 default:
-                    return PyResult.ValueError($"unsupported format character '{fmtType}' (0x{(int)fmtType:x})");
+                    // CPython prints the character only when printable ASCII
+                    // and points at its position in the format string itself
+                    var displayChar = fmtType is >= (char)31 and <= (char)126 ? fmtType : '?';
+                    return PyResult.ValueError($"unsupported format character '{displayChar}' (0x{(int)fmtType:x}) at index {i}");
             }
 
             // Apply # flag for float formats that already handled precision decimal point
@@ -3005,6 +3035,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return PyStrObject.FromString(sb.ToString());
     }
 
+    // the CPython None split by entry path (getargs.c): positional
+    // _PyArg_BadArgument prints tp_name, the keyword converterr prints
+    // "None"; every other type keeps its plain type name
+    private static string ArgumentNameForRejected(PyObject value, bool fromKwargs) =>
+        value is PyNoneObject && !fromKwargs ? "NoneType" : PyUtils.ArgumentTypeName(value);
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython str_new: a missing object is the empty string regardless
@@ -3016,6 +3052,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         PyObject? source = args.Count > 0 ? args[0] : null;
         PyObject? encoding = args.Count > 1 ? args[1] : null;
         PyObject? errors = args.Count > 2 ? args[2] : null;
+        // CPython names a rejected None differently by entry path: the
+        // positional _PyArg_BadArgument prints tp_name ("NoneType") while
+        // the keyword converterr prints "None"
+        bool encodingFromKwargs = false;
+        bool errorsFromKwargs = false;
         foreach (var (name, value) in kwargs)
         {
             switch (name)
@@ -3029,16 +3070,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     if (encoding is not null)
                         return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 2);
                     encoding = value;
+                    encodingFromKwargs = true;
                     break;
                 case "errors":
                     if (errors is not null)
                         return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 3);
                     errors = value;
+                    errorsFromKwargs = true;
                     break;
                 default:
                     return PyResult.TypeError(PySR.Runtime_Str_UnexpectedKeyword, name);
             }
         }
+
+        // the clinic 'str' converters reject non-str before any conversion —
+        // including before the missing-object shortcut, which stays the
+        // empty string
+        if (encoding is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", ArgumentNameForRejected(encoding, encodingFromKwargs));
+        if (errors is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", ArgumentNameForRejected(errors, errorsFromKwargs));
 
         PyResult result;
         if (source is null)
@@ -3047,13 +3098,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
         else
         {
-            // the clinic 'str' converters reject non-str before any conversion;
-            // None reports as "NoneType" here (unlike bytes())
-            if (encoding is not null and not PyStrObject)
-                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", encoding.PyType.Name);
-            if (errors is not null and not PyStrObject)
-                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", errors.PyType.Name);
-
             if (encoding is null && errors is null)
             {
                 result = PySpecialMethods.Str(context, source);
@@ -3103,6 +3147,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var chars = sb.ToString().ToCharArray();
         Array.Reverse(chars);
         return new string(chars);
+    }
+
+    // PyFloat_AsDouble's formatting-context sentence replaces the float()
+    // constructor one; a custom __float__ still propagates unchanged
+    private static PyResult AsPctFormatDouble(PyObject value, PyResult floatResult)
+    {
+        if (value.PyType.Slots.Float is null)
+            return PyResult.TypeError(PySR.Runtime_Str_PctFormatMustBeRealNumber, value.PyType.TpName);
+        return floatResult;
     }
 
     private static string FormatNonFinite(double d, bool upper)

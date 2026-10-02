@@ -48,7 +48,7 @@ partial class PySR
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";
     public const string Runtime_Import_NonIterableAll = "{0}.__all__ must be iterable";
     public const string Runtime_Import_NonStringAllElt = "Item in {0}.__all__ must be str, not {1}";
-    public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}'";
+    public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}' ({2})";
     public const string Runtime_Import_ErrorUnexpectedKeyword = "ImportError() got an unexpected keyword argument '{0}'";
 
     public const string Runtime_Inheritance_UnacceptableBaseType = "type '{0}' is not an acceptable base type";
@@ -59,6 +59,7 @@ partial class PySR
     public const string Runtime_Inheritance_PrepareMustReturnMapping = "{0}.__prepare__() must return a mapping, not {1}";
 
     public const string Runtime_Assignment_UnpackCountNotMatch = "too many or too few values to unpack";
+    public const string Runtime_Assignment_UnpackNonIterable = "cannot unpack non-iterable {0} object";
     public const string Runtime_Assignment_NotEnoughToUnpack = "not enough values to unpack (expected {0}, got {1})";
     public const string Runtime_Assignment_NotEnoughToUnpackStarred = "not enough values to unpack (expected at least {0}, got {1})";
     public const string Runtime_Assignment_TooManyToUnpack = "too many values to unpack (expected {0}, got {1})";
@@ -80,6 +81,7 @@ partial class PySR
 
     public const string Runtime_Type_InitTakesNoKeywordArguments = "type.__init__() takes no keyword arguments";
     public const string Runtime_Exception_TakesNoKeywordArguments = "{0}() takes no keyword arguments";
+    public const string Runtime_Exception_TakesNoArgumentsGiven = "{0}() takes no arguments ({1} given)";
     public const string Runtime_Type_InitTakes1Or3Arguments = "type.__init__() takes 1 or 3 arguments";
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
     public const string Runtime_Type_New_NotEnoughArguments = "{0}.__new__(): not enough arguments";
@@ -93,6 +95,7 @@ partial class PySR
     // the non-<type> template the other slots share, and reports no type name
     public const string Runtime_Object_HashShouldReturnInteger = "__hash__ method should return an integer";
     public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";
+    public const string Runtime_Object_CantMultiplySequenceByNonInt = "can't multiply sequence by non-int of type '{0}'";
     public const string Runtime_Object_NonCallable = "'{0}' object is not callable";
     public const string Runtime_Object_FormatReturnsNonString = "__format__ must return a str, not {0}";
     public const string Runtime_Object_FormatArg2NonString = "format() argument 2 must be str, not {0}";
@@ -125,7 +128,6 @@ partial class PySR
     public const string Runtime_Object_InitTakesExactlyOneArg = "object.__init__() takes exactly one argument (the instance to initialize)";
     public const string Runtime_Object_TypeInitTakesExactlyOneArg = "{0}.__init__() takes exactly one argument (the instance to initialize)";
     public const string Runtime_Attribute_NoDelete = "__delete__";
-    public const string Runtime_Super_HasNoAttribute = "'super' object has no attribute '{0}'";
 
     public const string Runtime_Sequence_ItemAssignmentNotSupported = "'{0}' object does not support item assignment";
     public const string Runtime_Sequence_ItemDeletionNotSupported = "'{0}' object doesn't support item deletion";
@@ -140,6 +142,13 @@ partial class PySR
     public const string Runtime_String_IndexOutOfRange = "string index out of range";
     public const string Runtime_String_AddNonStr = "can only concatenate str (not \"{0}\") to str";
     public const string Runtime_String_JoinNonStrAt = "sequence item {0}: expected str instance, {1} found";
+    public const string Runtime_String_JoinNotIterable = "can only join an iterable";
+    public const string Runtime_String_IndicesMustBeIntegers = "string indices must be integers, not '{0}'";
+    public const string Runtime_Sequence_IndicesMustBeIntegersOrSlices = "{0} indices must be integers or slices, not {1}";
+    public const string Runtime_Sequence_ObjectNotIterable = "object is not iterable";
+    public const string Runtime_Dict_UpdateEltNote = "Cannot convert dictionary update sequence element #{0} to a sequence";
+    public const string Runtime_Exception_NoteMustBeStr = "add_note() argument must be str, not {0}";
+    public const string Runtime_Exception_NotesMustBeList = "Cannot add note: __notes__ is not a list";
 
     public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj ({0} {1}) is not an instance or subtype of type ({2}).";
     public const string Runtime_Super_NoArgs = "super(): no arguments";
@@ -236,6 +245,7 @@ partial class PySR
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";
     public const string Runtime_List_PopFromEmpty = "pop from empty list";
     public const string Runtime_List_IndexOutOfRange = "list index out of range";
+    public const string Runtime_List_AssignIterableToSlice = "must assign iterable to extended slice";
     public const string Runtime_List_AssignmentIndexOutOfRange = "list assignment index out of range";
 
     [AIGenerated]
@@ -338,6 +348,11 @@ partial class PySR
     public const string Runtime_Sys_LostStderr = "lost sys.stderr";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
+    // formatchar (Objects/unicodeobject.c) and PyFloat_AsDouble's own
+    // sentences, distinct from the float()/__index__ constructor wording
+    public const string Runtime_Str_PctFormatCharRequiresIntOrUnicode = "%c requires an int or a unicode character, not {0}";
+    public const string Runtime_Str_PctFormatCharRequiresIntOrUnicodeLength = "%c requires an int or a unicode character, not a string of length {0}";
+    public const string Runtime_Str_PctFormatMustBeRealNumber = "must be real number, not {0}";
     public const string Runtime_Str_StartswithTupleItemMustBeStr = "tuple for startswith must only contain str, not {0}";
     public const string Runtime_Str_EndswithTupleItemMustBeStr = "tuple for endswith must only contain str, not {0}";
     public const string Runtime_Str_StartswithFirstArgMustBeStr = "startswith first arg must be str or a tuple of str, not {0}";
@@ -353,10 +368,11 @@ partial class PySR
     public const string Runtime_Math_MustBeReal = "must be real number, not {0}";
     public const string Runtime_Property_NoSetter = "property '{0}' of '{1}' object has no setter";
     public const string Runtime_Property_NoDeleter = "property '{0}' of '{1}' object has no deleter";
-    public const string Runtime_Os_FileNotFoundErrno = "[Errno 2] No such file or directory: '{0}'";
-    public const string Runtime_Os_PermissionDeniedErrno = "[Errno 13] Permission denied: '{0}'";
-    public const string Runtime_Os_IsADirectoryErrno = "[Errno 21] Is a directory: '{0}'";
-    public const string Runtime_Os_InvalidArgumentErrno = "[Errno 22] Invalid argument";
+    public const string Runtime_Os_StrerrorFileNotFound = "No such file or directory";
+    public const string Runtime_Os_StrerrorFileExists = "File exists";
+    public const string Runtime_Os_StrerrorPermissionDenied = "Permission denied";
+    public const string Runtime_Os_StrerrorIsADirectory = "Is a directory";
+    public const string Runtime_Os_StrerrorInvalidArgument = "Invalid argument";
 
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
     // descr_check (Objects/descrobject.c)
@@ -407,6 +423,7 @@ partial class PySR
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
+    public const string Runtime_AsyncGen_SendNonNoneAtFirst = "can't send non-None value to a just-started async generator";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
     public const string Runtime_Async_CoroutineRaisedStopIteration = "coroutine raised StopIteration";
     public const string Runtime_Async_CoroutineCannotReuse = "cannot reuse already awaited coroutine";
@@ -438,9 +455,9 @@ partial class PySR
     public const string Runtime_Bytes_CannotConcat = "can't concat {0} to bytes";
     public const string Runtime_Bytes_NegativeCount = "negative count";
     public const string Runtime_Bytes_CannotConvert = "cannot convert '{0}' object to bytes";
-    public const string Runtime_Bytes_IndexOverflow = "cannot fit '{0}' into an index-sized integer";
     public const string Runtime_ByteArray_CannotConvert = "cannot convert '{0}' object to bytearray";
     public const string Runtime_ByteArray_ResizedWhileExported = "Existing exports of data: object cannot be re-sized";
+    public const string Runtime_ByteArray_IndexOutOfRange = "bytearray index out of range";
 
     public const string Runtime_Memoryview_InvalidFormatValue = "memoryview: invalid value for format '{0}'";
     public const string Runtime_Memoryview_InvalidFormatType = "memoryview: invalid type for format '{0}'";
@@ -453,9 +470,14 @@ partial class PySR
     public const string Runtime_Codec_EncodingWithoutString = "encoding without a string argument";
     public const string Runtime_Codec_ErrorsWithoutString = "errors without a string argument";
     public const string Runtime_StrEncode_ArgMustBeStr = "encode() argument '{0}' must be str, not {1}";
+    public const string Runtime_StrDecode_ArgMustBeStr = "decode() argument '{0}' must be str, not {1}";
 
     public const string Runtime_IndexOutOfRange = "index out of range";
-    public const string Runtime_Index_CannotFitInt = "cannot fit 'int' into an index-sized integer";
+    // PyNumber_AsSsize_t (Objects/abstract.c) names the object that
+    // produced the out-of-range value, not the normalized int — except
+    // where the value was already an int when it reached the narrowing
+    // (a __len__ result), which is why the len() site passes "int"
+    public const string Runtime_Index_CannotFitInt = "cannot fit '{0}' into an index-sized integer";
 
     public const string Runtime_Variable_UnboundLocalError = "cannot access local variable '{0}' where it is not associated with a value";
     public const string Runtime_Variable_UnboundFreeError = "cannot access free variable '{0}' where it is not associated with a value in enclosing scope";

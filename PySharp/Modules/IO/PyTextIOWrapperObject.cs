@@ -381,8 +381,8 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
         return exception switch
         {
             FileNotFoundException or DirectoryNotFoundException =>
-                PyResult.RaiseException(PyFileNotFoundErrorObjectType.Shared, PySR.Runtime_Os_FileNotFoundErrno, path),
-            _ => PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path),
+                PyUtils.OSErrorFromErrno(PyFileNotFoundErrorObjectType.Shared, 2, PySR.Runtime_Os_StrerrorFileNotFound, path),
+            _ => PyUtils.OSErrorFromErrno(PyPermissionErrorObjectType.Shared, 13, PySR.Runtime_Os_StrerrorPermissionDenied, path),
         };
     }
 
@@ -464,7 +464,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             // most negative offset there is
             long target = whence is 1 ? _stream.Position : whence is 2 ? _stream.Length : 0;
             if (offset < 0 && (offset is long.MinValue || target < -offset))
-                return PyResult.OSError(PySR.Runtime_Os_InvalidArgumentErrno);
+                return PyUtils.OSErrorFromErrno(PyOSErrorObjectType.Shared, 22, PySR.Runtime_Os_StrerrorInvalidArgument);
         }
         try
         {
@@ -1090,7 +1090,7 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
         }
         var bigSize = size.Value;
         if (bigSize > long.MaxValue || bigSize < long.MinValue)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, sizeObj.PyType.TpName);
         if (bigSize > int.MaxValue || bigSize < int.MinValue)
             return self.Read(context); // beyond C int the limit never binds
         return self.Read(context, size.Int32Value);
@@ -1144,7 +1144,7 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
                 // returns the cookie as passed
                 var truncated = bigOffset & (BigInteger)ulong.MaxValue;
                 if (truncated > long.MaxValue)
-                    return PyResult.OSError(PySR.Runtime_Os_InvalidArgumentErrno);
+                    return PyUtils.OSErrorFromErrno(PyOSErrorObjectType.Shared, 22, PySR.Runtime_Os_StrerrorInvalidArgument);
                 var seekResult = self.Seek((long)truncated, 0);
                 if (!seekResult.IsError)
                     return PyIntObject.FromInteger(bigOffset);
@@ -1206,7 +1206,7 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
         {
             return self._isTextMode
                 ? PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize)
-                : PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+                : PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, arguments[0].PyType.TpName);
         }
         if (bigSize > int.MaxValue || bigSize < int.MinValue)
             return self.ReadLine(); // beyond C int the limit never binds
@@ -1233,7 +1233,7 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
                 return hintError;
             }
             if (hintInt.Value > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, hintObj.PyType.TpName);
             hint = hintInt.Value;
         }
 

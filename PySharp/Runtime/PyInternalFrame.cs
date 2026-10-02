@@ -26,6 +26,9 @@ internal partial struct PyInternalFrame
     internal PyCodeObject? CodeObject;
     internal FrameType FrameType;
     internal int InstructionIndex;
+    // the excepthook report titles a thread with the Thread object's
+    // construction-time name, carried on its root frame
+    internal string? ThreadName;
 
     // currently, only thread root frame do not have code object at runtime
     internal readonly string CallerName => CodeObject is null ?
@@ -124,9 +127,9 @@ internal partial struct PyInternalFrame
         { CodeObject = code };
     }
 
-    internal readonly PyInternalFrame CreateThreadRootFrame()
+    internal readonly PyInternalFrame CreateThreadRootFrame(string? threadName)
     {
-        return new PyInternalFrame(Variables);
+        return new PyInternalFrame(Variables) { ThreadName = threadName };
     }
 
     internal readonly PyInternalFrame CreateExecEvalFrame(PyCallContext context, FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyCodeObject? code = null, PyTupleObject? closure = null)

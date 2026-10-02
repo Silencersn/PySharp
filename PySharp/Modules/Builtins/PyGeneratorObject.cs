@@ -276,7 +276,9 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (!IsGeneratorRunning && pyObject is not PyNoneObject)
         {
             return PyResult.TypeError(IsCoroutine ?
-                PySR.Runtime_Async_SendNonNoneAtFirst : PySR.Runtime_Generator_SendNonNoneAtFirst);
+                PySR.Runtime_Async_SendNonNoneAtFirst :
+                IsAsyncGenerator ? PySR.Runtime_AsyncGen_SendNonNoneAtFirst :
+                PySR.Runtime_Generator_SendNonNoneAtFirst);
         }
 
         return Send(context, pyObject);

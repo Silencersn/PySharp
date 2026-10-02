@@ -394,7 +394,7 @@ internal sealed class PyVariables
         Debug.Assert(HasLocals, "no locals");
 
         if (!TryLoadFromLocals(name, out var value))
-            return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
+            return NameNotFound(name);
 
         if (value is null)
             return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name);
@@ -437,7 +437,57 @@ internal sealed class PyVariables
         if (builtins.HasValue)
             return builtins.Value;
 
-        return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
+        return NameNotFound(name);
+    }
+
+    // CPython attaches the suggestion at display time (_Py_Offer_Suggestions),
+    // so the exception's own message stays clean and str(exc) matches too
+    private PyResult NameNotFound(string name)
+    {
+        var result = PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
+        if (result.Exception is { } error)
+            error.DisplaySuggestion = PyNameSuggestions.Calculate([.. CollectNameCandidates()], name);
+        return result;
+    }
+
+    private List<string> CollectNameCandidates()
+    {
+        var candidates = new List<string>();
+        if (_localsTable is not null)
+        {
+            candidates.AddRange(_localsTable.Keys);
+        }
+        else if (_locals is not null)
+        {
+            foreach (var pair in _locals)
+                candidates.Add(pair.Key);
+        }
+
+        foreach (var pair in _globals.EnumeratePairsLive())
+        {
+            if (pair.Key is PyStrObject globalName)
+                candidates.Add(globalName.Value);
+        }
+
+        if (_globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
+        {
+            switch (builtins)
+            {
+                case PyModuleObject module:
+                    foreach (var member in module.PyAttributes)
+                        candidates.Add(member.Key);
+                    break;
+                case PyDictObject dict:
+                    foreach (var pair in dict.EnumeratePairsLive())
+                    {
+                        if (pair.Key is PyStrObject builtinName)
+                            candidates.Add(builtinName.Value);
+                    }
+                    break;
+            }
+        }
+
+        return candidates;
     }
 
     public PyResult LoadName(PyCallContext context, string name)

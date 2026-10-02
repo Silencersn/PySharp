@@ -433,7 +433,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 
             var pairList = PyUtils.IterableToList(context, item.Value);
             if (pairList.IsError)
-                return pairList;
+                return PyUtils.NotIterablePairResult(pairList, i);
 
             int count = pairList.Value.Count;
             if (count is not 2)

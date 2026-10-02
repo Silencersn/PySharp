@@ -238,7 +238,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             if (count < 0)
                 return PyResult.ValueError(PySR.Runtime_Bytes_NegativeCount);
             if (count > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Bytes_IndexOverflow, source.PyType.Name);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, source.PyType.TpName);
             if (count > int.MaxValue)
                 return PyResult.MemoryError(null);
 
@@ -296,13 +296,21 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return self.Slice(start, step, length);
         }
 
+        // bytearray_subscript branches on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "bytearray", item.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, item.PyType.TpName);
 
         var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
-            return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_ByteArray_IndexOutOfRange);
 
         return PyIntObject.FromInteger(self[index]);
     }
@@ -340,9 +348,16 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return PyNoneObject.None;
         }
 
+        // same PyIndex_Check-first shape as reading: the container names
+        // the rejected operand type before any conversion runs
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "bytearray", key.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         var mappedIndex = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         var byteResult = TryGetByteValue(context, value, out var b);
@@ -350,7 +365,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return byteResult;
 
         if (!self.TrySetItem(mappedIndex, b))
-            return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_ByteArray_IndexOutOfRange);
 
         return PyNoneObject.None;
     }
@@ -394,6 +409,9 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
     protected override PyResult Repeat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
             return indexResult;
@@ -404,6 +422,9 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
         if (n == 1)
             return self.Copy();
+
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
 
         var intN = (int)n;
         var result = new byte[self.Length * intN];
@@ -422,6 +443,9 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
     protected override PyResult InplaceRepeat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
             return indexResult;
@@ -431,6 +455,8 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         // CPython bytearray_inplace_repeat only resizes when the result
         // differs from the current size: *1 is a no-op and *0/ *n on an
         // empty bytearray short-circuit in resize before the export check
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         if (self.Length is not 0 && n != 1)
         {
             var resizeErr = self.CheckNotExported();

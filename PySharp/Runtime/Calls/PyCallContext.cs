@@ -153,9 +153,9 @@ public sealed partial class PyCallContext : IDisposable
         return context;
     }
 
-    internal static PyCallContext FromCreatingThread(PyCallContext context)
+    internal static PyCallContext FromCreatingThread(PyCallContext context, string? threadName = null)
     {
-        var frame = context.CurrentInternalFrame.CreateThreadRootFrame();
+        var frame = context.CurrentInternalFrame.CreateThreadRootFrame(threadName);
         var threadContext = new PyCallContext("[From Creating Thread]", context._environment);
         threadContext.InitState(ref frame);
         // Thread boundary: the parent ambient flowed in through ExecutionContext

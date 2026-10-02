@@ -121,7 +121,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             if (count < 0)
                 return PyResult.ValueError(PySR.Runtime_Bytes_NegativeCount);
             if (count > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Bytes_IndexOverflow, source.PyType.Name);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, source.PyType.TpName);
             if (count > int.MaxValue)
                 return PyResult.MemoryError(null);
 
@@ -274,9 +274,16 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             return PyBytesObject.MoveBytes(result);
         }
 
+        // bytes_subscript branches on PyIndex_Check before any conversion;
+        // the message names the singular "byte", unlike the type name
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "byte", item.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, item.PyType.TpName);
 
         var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
@@ -311,6 +318,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
     protected override PyResult Repeat(PyCallContext context, PyBytesObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
             return indexResult;
@@ -321,6 +331,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
         if (n == 1)
             return self;
+
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
 
         var intN = (int)n;
         var result = new byte[self.Length * intN];
@@ -454,19 +467,13 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     [PyFunctionParameters("encoding='utf-8'", "errors='strict'")]
     private static PyResult Decode(PyCallContext context, PyBytesObject self, PyArguments arguments)
     {
-        string encoding = "utf-8";
-        if (arguments[0] is PyStrObject encStr)
-            encoding = encStr.Value;
-        else if (arguments[0] is not PyNoneObject)
-            return PyResult.TypeError("decoding must be str");
+        // CPython 3.14's strict converters: neither parameter accepts None
+        if (arguments[0] is not PyStrObject encodingArg)
+            return PyResult.TypeError(PySR.Runtime_StrDecode_ArgMustBeStr, "encoding", PyUtils.ArgumentTypeName(arguments[0]));
+        if (arguments[1] is not PyStrObject errorsArg)
+            return PyResult.TypeError(PySR.Runtime_StrDecode_ArgMustBeStr, "errors", PyUtils.ArgumentTypeName(arguments[1]));
 
-        string errors = "strict";
-        if (arguments[1] is PyStrObject errStr)
-            errors = errStr.Value;
-        else if (arguments[1] is not PyNoneObject)
-            return PyResult.TypeError("errors must be str");
-
-        return DecodeCore(context, self.AsSpan(), encoding, errors, self);
+        return DecodeCore(context, self.AsSpan(), encodingArg.Value, errorsArg.Value, self);
     }
 
     // The bytes.decode core shared with the str(bytes, encoding) constructor

@@ -142,9 +142,20 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
     /// meth_get__qualname__).
     /// </summary>
     [PyClassMethod(PySpecialNames.InitSubclass)]
-    [PyFunctionParameters("**kwargs")]
+    [PyFunctionParameters("*args", "**kwargs")]
     private static PyResult InitSubclassImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
+        // the two rejections reproduce methodobject.c's vectorcall families,
+        // spelled over the bound class so the message names the class being
+        // created rather than a static owner
+        if (arguments.ExtraArgs.Count is not 0)
+        {
+            return PyResult.TypeError(
+                PySR.Runtime_Exception_TakesNoArgumentsGiven,
+                $"{cls.QualName}.{PySpecialNames.InitSubclass}",
+                arguments.ExtraArgs.Count);
+        }
+
         if (arguments.ExtraKwargs.Count is not 0)
         {
             return PyResult.TypeError(

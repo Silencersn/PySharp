@@ -99,7 +99,31 @@ partial class PyTypeObject
             return attr;
         }
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+        // the sentence stays clean: CPython appends the hint at display
+        // time (_Py_Offer_Suggestions), so str(exc) matches too
+        return AttributeNotFound(self, name);
+    }
+
+    // calculate_attribute_suggestions: the candidates are the names on
+    // the type's MRO dicts, and a module suggests nothing (math.sqtr
+    // stays bare)
+    internal static PyResult AttributeNotFound(PyObject self, string name)
+    {
+        var result = PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+        if (self is not PyModuleObject && result.Exception is { } error)
+            error.DisplaySuggestion = PyNameSuggestions.Calculate(AttributeCandidatesOf(self.PyType), name);
+        return result;
+    }
+
+    internal static string[] AttributeCandidatesOf(PyTypeObject type)
+    {
+        List<string> candidates = [];
+        foreach (var baseType in type.MRO)
+        {
+            foreach (var member in baseType.PyAttributes)
+                candidates.Add(member.Key);
+        }
+        return [.. candidates];
     }
 
     internal static PyResult DefaultSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
@@ -493,7 +517,12 @@ partial class PyTypeObject
             return metaAttr;
         }
 
-        return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.TpName, name);
+        // the class-level miss suggests from the class's own MRO dicts
+        // (A.methd still points at 'method')
+        var typeResult = PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.TpName, name);
+        if (typeResult.Exception is { } typeError)
+            typeError.DisplaySuggestion = PyNameSuggestions.Calculate(AttributeCandidatesOf(self), name);
+        return typeResult;
     }
 
     internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)

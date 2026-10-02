@@ -68,7 +68,7 @@ internal static partial class PyMathFunctions
     [PyExport("log1p", nameof(Log1pImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Log1p { get; }
 
-    private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg, PyObject? reprSource = null)
+    private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg)
     {
         var xResult = PySpecialMethods.Float(context, arg);
         if (xResult.IsError)
@@ -80,7 +80,7 @@ internal static partial class PyMathFunctions
         if (double.IsNaN(r) && !double.IsNaN(x))
         {
             if (errMsg is not null)
-                return ValueErrorMessageArg(context, errMsg, reprSource ?? arg);
+                return ValueErrorMessageArg(errMsg, x);
             return PyResult.ValueError("math domain error");
         }
 
@@ -90,21 +90,18 @@ internal static partial class PyMathFunctions
                 return PyResult.OverflowError("math range error");
 
             if (errMsg is not null)
-                return ValueErrorMessageArg(context, errMsg, reprSource ?? arg);
+                return ValueErrorMessageArg(errMsg, x);
             return PyResult.ValueError("math domain error");
         }
 
         return PyFloatObject.FromDouble(r);
     }
 
-    // CPython math_1 formats the domain error with the repr of the original
-    // argument, not the converted double
-    private static PyResult.PyExceptionResult ValueErrorMessageArg(PyCallContext context, string errMsg, PyObject arg)
+    // math_1 formats the domain error with the converted double rendered
+    // as a repr (Py_DTSF_ADD_DOT_0), so an int argument still reads -1.0
+    private static PyResult.PyExceptionResult ValueErrorMessageArg(string errMsg, double x)
     {
-        var repr = PySpecialMethods.Repr(context, arg);
-        if (repr.IsError)
-            return repr.ExceptionResult;
-        return PyResult.ValueError(errMsg, repr.Value.Value);
+        return PyResult.ValueError(errMsg, PyFloatObjectType.FormatShortestRepr(x));
     }
 
     private static PyResult<PyFloatObject> Math2Impl(PyCallContext context, PyObject arg0, PyObject arg1, Func<double, double, double> func)
@@ -421,7 +418,7 @@ internal static partial class PyMathFunctions
             if (!index.Value.Value.TryToDoubleRounded(out var indexValue))
                 return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
             return Math1Impl(context, PyFloatObject.FromDouble(indexValue), doubleFunc,
-                canOverflow: false, errMsg: "expected a positive input, got {0}", reprSource: arg);
+                canOverflow: false, errMsg: "expected a positive input, got {0}");
         }
     }
 

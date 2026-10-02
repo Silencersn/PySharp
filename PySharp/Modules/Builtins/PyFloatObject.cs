@@ -186,6 +186,14 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     // back to the lower neighbor, one digit short of CPython's.
     internal static string FormatShortestRepr(double val)
     {
+        // PyOS_double_to_string renders the non-finite values by name even
+        // with Py_DTSF_ADD_DOT_0; math's domain errors format doubles that
+        // can be infinite or nan without passing through Repr first
+        if (double.IsNaN(val))
+            return "nan";
+        if (double.IsInfinity(val))
+            return double.IsPositiveInfinity(val) ? "inf" : "-inf";
+
         if (val is 0.0)
             return double.IsNegative(val) ? "-0.0" : "0.0";
 

@@ -211,12 +211,14 @@ public sealed class TestPyFiles
         # repr names the same location.
         import mod_r
         assert mod_r.__file__.endswith("mod_r.py"), mod_r.__file__
-        assert repr(mod_r) == f"<module 'mod_r' from '{mod_r.__file__}'>", repr(mod_r)
+        # the location renders repr'd, so a Windows path shows escaped
+        # backslashes
+        assert repr(mod_r) == f"<module 'mod_r' from {repr(mod_r.__file__)}>", repr(mod_r)
 
         # Regular package: the location is the __init__.py.
         import pkg_r
         assert pkg_r.__file__.endswith("__init__.py"), pkg_r.__file__
-        assert repr(pkg_r) == f"<module 'pkg_r' from '{pkg_r.__file__}'>", repr(pkg_r)
+        assert repr(pkg_r) == f"<module 'pkg_r' from {repr(pkg_r.__file__)}>", repr(pkg_r)
 
         # Namespace package: parenthesized form listing __path__, no location.
         import ns_r
