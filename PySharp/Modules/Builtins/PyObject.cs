@@ -206,12 +206,28 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
         if (cls.LayoutType == typeof(PyObjectManagedDict))
             return new PyObjectManagedDict { _pyType = cls };
+        if (cls.LayoutType == typeof(PySlotsObject))
+            return new PySlotsObject { _pyType = cls };
 
         return new PyObject { _pyType = cls };
     }
 }
 
-public partial class PyObjectManagedDict : PyObject
+// layout sentinel for __slots__ classes that excluded the instance dict:
+// never instantiated except for its own instances, it exists so the layout
+// algebra (__class__ assignment compatibility, best_base conflicts) can
+// tell a dict-less heap class from the managed-dict shape
+public class PySlotsObject : PyObject
+{
+    // a dict-excluding __slots__ instance has no attribute dict at all:
+    // undeclared writes hit the "no __dict__" error and __dict__ reads miss
+    internal override bool IsImmutable => true;
+}
+
+// derived from the dict-less slots sentinel so the layout algebra can
+// merge a __slots__ base with a plain dict-carrying base (CPython: managed
+// dict is a flag, slots add payload space — the two compose)
+public partial class PyObjectManagedDict : PySlotsObject
 {
     private protected IPyAttributesObject? _pyAttributes;
 

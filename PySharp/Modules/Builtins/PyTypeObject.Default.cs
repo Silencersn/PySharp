@@ -269,6 +269,47 @@ partial class PyTypeObject
         return PyNoneObject.None;
     }
 
+    // PyMemberDef slots from __slots__ (type_add_members): storage rides the
+    // same attached-properties channel that backs every instance dict — the
+    // dict-less IsImmutable face only hides it from __dict__/setattr, and
+    // these member descriptors are the sole access path
+    internal static PyMemberDescriptorObject CreateSlotDescriptor(PyTypeObject declaringType, string name)
+    {
+        return new PyMemberDescriptorObject(
+            PyMemberDescriptorObjectType.Shared,
+            declaringType,
+            name,
+            (context, instance) => Get_Slot(context, instance, name),
+            (context, instance, value) => Set_Slot(instance, name, value),
+            (context, instance) => Delete_Slot(instance, name));
+    }
+
+    private static PyResult Get_Slot(PyCallContext context, PyObject instance, string name)
+    {
+        var dict = PyAttachedPropertiesManager.Shared.GetDict(instance);
+        if (dict.TryGetValue(name, out var value))
+            return value;
+
+        // PyMember_GetOne (Py_T_OBJECT_EX): an unset slot reads as a plain
+        // missing attribute
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, instance.PyType.TpName, name);
+    }
+
+    private static PyResult Set_Slot(PyObject instance, string name, PyObject value)
+    {
+        PyAttachedPropertiesManager.Shared.GetDict(instance)[name] = value;
+        return PyNoneObject.None;
+    }
+
+    // deleting an unset slot reports the bare name (3.14 member face)
+    private static PyResult Delete_Slot(PyObject instance, string name)
+    {
+        if (!PyAttachedPropertiesManager.Shared.GetDict(instance).Remove(name))
+            return PyResult.AttributeError(name);
+
+        return PyNoneObject.None;
+    }
+
     // CPython type_update_dict: identity against object's dict entry detects
     // that a __new__/__init__ value IS object's default, letting callers keep
     // creation-time FillNullWith wiring instead of converting a closure — a

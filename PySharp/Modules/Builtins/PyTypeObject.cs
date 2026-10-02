@@ -137,6 +137,11 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     /// </summary>
     internal virtual bool InstancesAreImmutable => true;
 
+    // CPython tp_dictoffset != 0: whether instances carry a real per-instance
+    // dict — the __slots__/__dict__ plumbing keys off this rather than the
+    // type-attribute guard that InstancesAreImmutable also models
+    internal virtual bool InstancesCarryInstanceDict => !InstancesAreImmutable;
+
     // CPython Py_TPFLAGS_HEAPTYPE: only runtime-created classes accept
     // attribute writes on the type object itself
     internal virtual bool IsRuntimeCreated => false;
@@ -218,7 +223,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         return false;
     }
 
-    internal abstract PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases);
+    internal abstract PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases, bool excludesInstanceDict);
 
     internal static PyResult<PyTypeObject> ValidateBasesAndResolveLayoutTypeOwner(IEnumerable<PyTypeObject> bases)
     {
@@ -265,7 +270,8 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     }
 
     // a type whose layout type is the shared managed-dict wrapper carries
-    // object's payload and leaves the anchoring to a base
+    // object's payload and leaves the anchoring to a base; the dict-less
+    // slots sibling grows the payload (like any slotted layout) and anchors
     private static bool AnchorsLayout(PyTypeObject type)
         => type.LayoutType != typeof(PyObjectManagedDict);
 
