@@ -1,3 +1,4 @@
+using PySharp.Runtime.Unicode;
 using PySharp.Utility;
 using System.Buffers;
 using System.Diagnostics;

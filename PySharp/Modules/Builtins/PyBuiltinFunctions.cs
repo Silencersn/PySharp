@@ -4,6 +4,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Runtime.Unicode;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Globalization;

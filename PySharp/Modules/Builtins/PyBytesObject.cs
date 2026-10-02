@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Runtime.Unicode;
 using System.Globalization;
 using System.Text;
 

@@ -4,7 +4,7 @@
 // of 3-byte little-endian code points, 0xFFFFFF marking an unmapped
 // pair, indexed (lead - 0xA1) * 94 + (trail - 0xA1).
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 internal static partial class PyGb2312Codec
 {

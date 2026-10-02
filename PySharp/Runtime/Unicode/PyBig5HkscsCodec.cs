@@ -1,8 +1,9 @@
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.IO.Compression;
 using System.Text;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 /// <summary>
 /// The big5hkscs codec, backed by the generated table in

@@ -1,9 +1,9 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Text;
-using CodecKind = PySharp.Modules.Builtins.PyCodecInfo.CodecKind;
+using CodecKind = PySharp.Runtime.Unicode.PyCodecInfo.CodecKind;
 
-namespace PySharp.Modules.IO;
+namespace PySharp.Runtime.Unicode;
 
 internal enum PyDecodeStatus
 {

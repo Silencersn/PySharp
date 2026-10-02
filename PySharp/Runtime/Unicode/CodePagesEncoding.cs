@@ -1,7 +1,8 @@
+using PySharp.Modules.Builtins;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace PySharp.Utility;
+namespace PySharp.Runtime.Unicode;
 
 // .NET exposes the Windows code pages (gbk/cp1252/big5/...) only after the
 // provider is registered; source decoding (PEP 263) and the str/bytes
