@@ -7,5 +7,7 @@ internal enum IntrinsicFunctionType
     Print,
     ImportStar,
     TypeVar,
+    ParamSpec,
+    TypeVarTuple,
     MakeAnnotateFunc,
 }

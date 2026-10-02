@@ -1,3 +1,4 @@
+using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
@@ -83,6 +84,12 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
 [PyType("tuple")]
 public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
 {
+    // CPython Py_GenericAlias (descrobject.c): containers register
+    // __class_getitem__ so tuple[int] and friends build a types.GenericAlias
+    [PyClassMethod(PySpecialNames.ClassGetItem)]
+    [PyFunctionParameters("*args")]
+    private static PyResult ClassGetItem(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+        => PyGenericAliasObject.ClassGetItem(cls, arguments);
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

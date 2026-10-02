@@ -1,3 +1,4 @@
+using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
@@ -127,6 +128,13 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
+    // CPython Py_GenericAlias (descrobject.c): containers register
+    // __class_getitem__ so list[int] and friends build a types.GenericAlias
+    [PyClassMethod(PySpecialNames.ClassGetItem)]
+    [PyFunctionParameters("*args")]
+    private static PyResult ClassGetItem(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+        => PyGenericAliasObject.ClassGetItem(cls, arguments);
+
     // CPython add_operators: unhashable types carry __hash__ = None in
     // the type dict (read face) while tp_hash raises the TypeError
     protected override void PostConstruct()

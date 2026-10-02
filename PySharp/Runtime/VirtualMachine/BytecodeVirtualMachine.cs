@@ -659,6 +659,12 @@ internal static partial class BytecodeVirtualMachine
                                 IntrinsicFunctionType.TypeVar
                                     => new PyTypeVarObject(((PyStrObject)value).Value),
 
+                                IntrinsicFunctionType.ParamSpec
+                                    => new PyParamSpecObject(((PyStrObject)value).Value, inferVariance: true),
+
+                                IntrinsicFunctionType.TypeVarTuple
+                                    => new PyTypeVarTupleObject(((PyStrObject)value).Value),
+
                                 IntrinsicFunctionType.MakeAnnotateFunc
                                     => PyCore.MakeAnnotateFunc(ref frame, (PyTupleObject)value),
 

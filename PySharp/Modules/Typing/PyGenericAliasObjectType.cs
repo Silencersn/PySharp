@@ -26,6 +26,11 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
             {
                 argsReprs.Add(argType.ReprName);
             }
+            else if (arg is PyEllipsisObject)
+            {
+                // _Py_typing_type_repr renders the Ellipsis singleton bare
+                argsReprs.Add("...");
+            }
             else
             {
                 var argRepr = PySpecialMethods.Repr(context, arg);
@@ -70,6 +75,30 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
     private static PyResult Get_Parameters(PyCallContext context, PyGenericAliasObject self)
     {
         return PyTupleObject.Empty;
+    }
+
+    /// <summary>
+    /// <c>__instancecheck__</c> hook — CPython's ga_instancecheck
+    /// (genericaliasobject.c): a parameterized generic is never a valid
+    /// isinstance classinfo, always a TypeError.
+    /// </summary>
+    [PyMethod(PySpecialNames.InstanceCheck)]
+    [PyFunctionParameters("obj")]
+    private static PyResult InstanceCheck(PyCallContext context, PyGenericAliasObject self, PyArguments arguments)
+    {
+        return PyResult.TypeError(PySR.Runtime_Builtin_IsInstance_ParameterizedGeneric);
+    }
+
+    /// <summary>
+    /// <c>__subclasscheck__</c> hook — CPython's ga_subclasscheck
+    /// (genericaliasobject.c): a parameterized generic is never a valid
+    /// issubclass classinfo, always a TypeError.
+    /// </summary>
+    [PyMethod(PySpecialNames.SubclassCheck)]
+    [PyFunctionParameters("cls")]
+    private static PyResult SubclassCheck(PyCallContext context, PyGenericAliasObject self, PyArguments arguments)
+    {
+        return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_ParameterizedGeneric);
     }
 
     /// <summary>
