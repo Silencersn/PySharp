@@ -45,6 +45,9 @@ try:
 except ImportError as e:
     print("halted:", e)
 print("modules_none_kept:", sys.modules["math"] is None)
+del sys.modules["math"]
+import math
+print("modules_revived:", "math" in sys.modules)
 
 
 # --- sys.exit ---------------------------------------------------------------
@@ -138,3 +141,56 @@ print("ns_ctor:", NS(a=1, b="x"))
 print("ns_repr:", NS(p=9))
 print("ns_too_many:", expect(TypeError, NS, 1, 2))
 print("ns_nonstr_key:", expect(TypeError, NS, {5: 1}))
+
+
+# --- import via the sys.modules registry ------------------------------------
+
+# a second dotted import must rebind the root name (CPython returns the root
+# module for a fromlist-less import even on a registry hit)
+import sys_attributes_pkg.sub
+import sys_attributes_pkg.sub
+print("dotted_root:", sys_attributes_pkg.__name__)
+print("dotted_leaf:", sys_attributes_pkg.sub.LEAF)
+import sys_attributes_pkg.sub as alias
+print("as_leaf:", alias.LEAF)
+
+# a from-import on an already-cached package still triggers the submodule
+# load (CPython's _handle_fromlist runs after the registry hit)
+from sys_attributes_pkg import tool
+print("from_cached_pkg:", tool.TOOL)
+
+# registry hit for a plain name returns the entry as-is
+import math
+print("plain_type:", type(sys.modules["math"]))
+
+
+# --- flags extended fields ---------------------------------------------------
+
+# CPython 3.14 appends three free-threading/config fields past the sequence
+# face: attribute-readable, invisible to len/slice/repr
+print("flags_gil:", sys.flags.gil)
+print("flags_tic:", sys.flags.thread_inherit_context)
+print("flags_caw:", sys.flags.context_aware_warnings)
+print("flags_len:", len(sys.flags))
+
+
+# --- SimpleNamespace subclassing ---------------------------------------------
+
+class MyNS(NS):
+    def __init__(self, x):
+        self.from_init = x
+
+
+n = MyNS(5)
+print("ns_sub_init:", n.from_init)
+print("ns_sub_no_kwargs:", not hasattr(n, "a"))
+print("ns_sub_repr:", repr(n))
+
+class MarkNS(NS):
+    def __init__(self, **kw):
+        self.marked = True
+
+
+m = MarkNS(a=2)
+print("ns_override_marked:", m.marked)
+print("ns_override_no_a:", not hasattr(m, "a"))
