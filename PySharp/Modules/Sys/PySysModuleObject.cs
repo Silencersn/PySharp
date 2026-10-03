@@ -51,8 +51,8 @@ public partial class PySysModuleObject : PyModuleObject
         // The largest code point: 0x10FFFF
         AppendAttribute("maxunicode", PyIntObject.FromInteger(0x10FFFF));
 
-        // PySharp never writes bytecode caches, matching a -B interpreter
-        AppendAttribute("dont_write_bytecode", PyBoolObject.False);
+        // PySharp never writes bytecode caches — the permanent -B behavior
+        AppendAttribute("dont_write_bytecode", PyBoolObject.True);
 
         // The interpreter's statically-linked module set — PyStandardLibrary's
         // switch keys, kept sorted like CPython's list_builtin_module_names

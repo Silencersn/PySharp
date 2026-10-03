@@ -19,7 +19,7 @@ public sealed class PyFlagsObject : PyTupleObject, IPyObjectRecursiveRepr
         PyIntObject.Zero,                                  // inspect
         PyIntObject.Zero,                                  // interactive
         PyIntObject.Zero,                                  // optimize
-        PyIntObject.Zero,                                  // dont_write_bytecode
+        PyIntObject.One,                                   // dont_write_bytecode — PySharp never writes bytecode
         PyIntObject.Zero,                                  // no_user_site
         PyIntObject.Zero,                                  // no_site
         PyIntObject.Zero,                                  // ignore_environment
