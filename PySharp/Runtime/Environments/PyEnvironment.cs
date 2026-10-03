@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Modules.IO;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.IO;
 using PySharp.Utility;
 using System.Collections.Concurrent;
@@ -106,6 +107,10 @@ public sealed partial class PyEnvironment : IDisposable
     internal int ExitCode { get; set; }
     internal bool IsInteractive => _isInteractive;
     internal IVirtualFileSystem FileSystem => Host.FileSystem;
+
+    // The recursion depth bound checked on every frame entry; sys.get/
+    // setrecursionlimit read and write it for the whole interpreter
+    internal int RecursionLimit { get; set; } = PyCallContextFrameState.DefaultRecursionLimit;
 
     public PyStrObject.InternPool InternPool { get; } = new();
 

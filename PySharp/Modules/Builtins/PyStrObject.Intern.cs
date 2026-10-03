@@ -95,6 +95,18 @@ partial class PyStrObject
             return _internedStrings[value] = new PyStrObject(value);
         }
 
+        // sysmodule.c sys_intern registers the very object that was passed
+        // in on the first intern, so later interns of the same value return
+        // that instance — sys.intern(s) is s stays true for it
+        internal PyStrObject Intern(PyStrObject str)
+        {
+            if (TryGetInternedString(str.Value) is { } existing)
+                return existing;
+
+            _internedStrings[str.Value] = str;
+            return str;
+        }
+
         public PyStrObject GetInternedOrNew(string value)
         {
             ArgumentNullException.ThrowIfNull(value);

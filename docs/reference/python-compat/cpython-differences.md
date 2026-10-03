@@ -8,9 +8,14 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 
 - 标准库覆盖面有限：内嵌模块共 13 个，见[标准库模块覆盖](./stdlib-modules.md)。CPython 的大量
   模块（`os`、`re`、`json`、`collections`、`itertools`、`functools`、`pathlib` 等）尚不可用。
-- `sys` 成员较少：可靠提供 `argv`、`stdin`、`stdout`、`stderr` 与
-  `get_int_max_str_digits()`、`set_int_max_str_digits()`。`sys.modules`、`sys.path` 等在运行时
-  内部维护，Python 侧不可访问。
+- `sys` 的常用面（`path`、`modules`、`exit`、`version_info`、`flags`、`implementation`、
+  `excepthook` 等）已可用，成员清单见[标准库模块覆盖](./stdlib-modules.md)。仍存的差异：
+  `sys.implementation.name` 报 `"cpython"`（与 `version_info` 自洽）；`sys.prefix` 取宿主
+  `AppContext.BaseDirectory`；`flags.utf8_mode` 恒为 0（不读 `PYTHONUTF8`），
+  `dont_write_bytecode` 恒为 1；`intern` 仅收精确 `str` 的语义与 CPython 一致，但驻留池为
+  每环境一份。
+- `types` 模块整体不可用；`sys.implementation` 背后的 `SimpleNamespace` 类型可经
+  `type(sys.implementation)` 间接取得，名字本身暂无处挂载。
 - 内建函数为高频子集，共 44 个。`classmethod` 等少数 CPython 内建未暴露；`__import__`
   已提供，但 `import` 语句本身仍由编译器与虚拟机处理，不依赖该函数。
 - 无字节码缓存：不产生也不读取 `.pyc`，每次 import 都重新编译。

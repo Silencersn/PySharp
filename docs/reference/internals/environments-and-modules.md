@@ -20,13 +20,14 @@ PyEnvironmentHost（abstract）
 PyEnvironment
     ├─ Host                : PyEnvironmentHost
     ├─ InternPool          : 字符串驻留池
-    ├─ Modules             : Dictionary<string, PyModuleObject?>
-    ├─ Paths / Args        : 搜索路径与 sys.argv
+    ├─ Modules             : Dictionary<string, PyModuleObject?>（sys.modules 出现前的内部注册表）
+    ├─ Paths / Args        : 构建期搜索路径回退值与 sys.argv
     ├─ Threads             : ConcurrentSet
     ├─ ModuleProviders     : List<PyModuleProvider>（Builtin 然后 Path）
     ├─ EnvData             : ConcurrentDictionary（宿主注入数据，对 Python 不可见）
     ├─ Options             : PyEnvironmentOptions
     ├─ Warnings            : WarningState
+    ├─ RecursionLimit      : int（sys.get/setrecursionlimit 读写）
     └─ ExitCode            : int（internal）
 ```
 
@@ -53,15 +54,21 @@ PyEnvironment
 
 入口是 `InternalTryLoadModule(context, qualifiedName, ...)`（`PyEnvironment.Import.cs`）：
 
-1. 缓存：`Modules` 字典命中就直接返回。值为 `null` 表示曾被显式置为 `None`，会强制后续 import
-   报 `ModuleNotFoundError`，对应 CPython 的失败缓存语义。
+1. 缓存：sys 模块已加载时以 `sys.modules` 字典为权威缓存（对应 CPython 机制读 `interp->modules`）：
+   命中即返回原条目——赋值的任意对象都会在 import 时原样拿到（不校验类型），值为 `None` 则抛
+   `ImportError: import of X halted; None in sys.modules`，删除即强制走重新加载。sys 模块自身
+   加载完成前回退内部 `Modules` 字典（引导期没有 Python 代码能碰 `sys.modules`）。
 2. 点分名拆解：`a.b.c` 先加载根 `a`，再沿每段的 `__path__`（包搜索路径列表）逐级加载子模块，
    并把子模块绑定到父模块属性。
-3. 根模块：进入提供器链逐个尝试。非根模块使用父包的 `__path__`，而不是全局的 `Paths`。
+3. 根模块：搜索路径取 `sys.path` 属性本身（`GetRootSearchPaths`，对应 CPython 的
+   `PySys_GetObject("path")`），Python 侧对 `sys.path` 的 `append`/`insert`/`remove` 即时影响
+   下一次查找；sys 未加载时回退构建期 `Paths`。进入提供器链逐个尝试。非根模块使用父包的
+   `__path__`，而不是 `sys.path`。
 4. 加载分两个阶段（对齐 CPython PEP 451 与 `_load_unlocked`）：提供器先 `TryCreateModule`
-   定位并构造模块，机制层随即把模块登记进 `Modules`，再调用提供器的 `ExecModule` 执行模块体，
-   最后调用模块的 `OnImport`。初始化期间模块已在缓存里，循环导入看到的是半初始化对象而不会重入
-   提供器；初始化抛异常时机制层回滚登记，下一次 import 从头重试。整个流程都在
+   定位并构造模块，机制层随即把模块登记进 `sys.modules` 与内部 `Modules`（`RegisterLoadedModule`
+   同步写两处），再调用提供器的 `ExecModule` 执行模块体，最后调用模块的 `OnImport`。初始化期间
+   模块已在缓存里，循环导入看到的是半初始化对象而不会重入提供器；初始化抛异常时机制层回滚登记
+   （两处同删），下一次 import 从头重试。整个流程都在
    `CreateModuleFrame(isRoot: false)` 的新模块帧中执行。
 
 两个内建提供器（`PyModuleProvider.cs`）：
@@ -85,13 +92,14 @@ PyEnvironment
 - `Mapping` 与 `Builtin`：工厂或注册表产出即完整模块，`OnImport` 是唯一的导入后钩子。
 - `Path`：普通模块与常规包先执行模块体（`ExecModule`），再触发 `OnImport`；namespace 包没有
   模块体，只触发 `OnImport`。基类的 `OnImport` 是空实现，所以文件模块默认无可观察钩子。真实的
-  覆写点只有 `site` 的 `exit` 与 `help` 注入、`sys` 的 `argv` 与三条流包装，以及冻结模块的编译执行。
+  覆写点只有 `site` 的 `exit` 与 `help` 注入、`sys` 的 `argv`、`path`、`modules` 与三条流包装，
+  以及冻结模块的编译执行。
 - 冻结模块（`PyFrozenModuleObject.OnImport`）：`CodeObject ??=` 只缓存编译产物，
   `InternalExecuteToModule` 每次导入都会重新执行冻结源码。每环境首次导入各执行一遍，跨环境不共享
   执行状态，共享的只是编译后的指令。
-- 与 CPython 的对齐点：机制层在初始化前登记模块（对应 `sys.modules` 先注册再 `exec_module`）、
-  失败回滚（对应 `del sys.modules[name]`）。`site` 等经 `LoadBuiltinModule` 直取注册表的路径
-  遵循同一时序（先登记再 `OnImport`）。
+- 与 CPython 的对齐点：机制层在初始化前登记模块（字面写入 `sys.modules`，即 CPython 的先注册再
+  `exec_module`）、失败回滚（对应 `del sys.modules[name]`）。`site` 等经 `LoadBuiltinModule`
+  直取注册表的路径遵循同一时序（先登记再 `OnImport`）。
 
 相对导入由 `ResolveRelativeModuleName` 实现（PEP 328 的 `resolve_name`）：以调用帧 globals 的
 `__package__`（回退到 `__name__` 加 `__path__` 判定）为基准，按 `level` 上溯包层级再拼接。

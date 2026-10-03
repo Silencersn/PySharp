@@ -8,7 +8,9 @@ namespace PySharp.Runtime.Calls;
 
 internal sealed partial class PyCallContextFrameState : IDisposable
 {
-    internal const int MaxRecursionDepth = 1000;
+    // getrecursionlimit/setrecursionlimit operate on this default; the live
+    // value lives on the environment so setrecursionlimit reaches every frame
+    internal const int DefaultRecursionLimit = 1000;
     internal const int MaxFramesStatesDiff = 100;
     private const int FrameBlockSize = 64;
 
@@ -44,9 +46,9 @@ internal sealed partial class PyCallContextFrameState : IDisposable
         return ref _blocks[index / FrameBlockSize][index % FrameBlockSize];
     }
 
-    public void EnterFrame(ref PyInternalFrame frame)
+    public void EnterFrame(ref PyInternalFrame frame, int recursionLimit)
     {
-        if (_frameCount is MaxRecursionDepth || (_frameCount - _statesCount > MaxFramesStatesDiff))
+        if (_frameCount >= recursionLimit || (_frameCount - _statesCount > MaxFramesStatesDiff))
             throw new PyRuntimeException(PyRecursionErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Runtime_Recursion_MaxRecursionDepthExceeded)));
 
         _currentSlotIndex++;

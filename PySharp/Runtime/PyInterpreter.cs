@@ -5,6 +5,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.Runtime;
@@ -199,7 +200,48 @@ public sealed class PyInterpreter : IDisposable
         }
     }
 
-    private static void WriteTopLevelExceptionMessage(PyCallContext context, PyExceptionObject exc)
+    // CPython's PyErr_PrintEx reports an uncaught exception through
+    // sys.excepthook(type, value, tb): a hook that Python code replaced
+    // reports through Python, the built-in default keeps the native path.
+    // PySharp has no traceback object, so tb travels as None.
+    internal static void WriteTopLevelExceptionMessage(PyCallContext context, PyExceptionObject exc)
+    {
+        if (TryGetReplacedExcepthook(context, out var hook))
+        {
+            var report = hook.Call(context, [exc.PyType, exc, PyNoneObject.None]);
+            if (!report.IsError)
+                return;
+
+            // A failing hook mirrors CPython's second stage: report the
+            // hook's own exception under the "Error in sys.excepthook:"
+            // heading, then the original one under "Original exception was:"
+            if (report.Exception is { } hookException)
+            {
+                context.PyEnvironment.Error.Write("Error in sys.excepthook:\n");
+                WriteNativeExceptionMessage(context, hookException);
+                context.PyEnvironment.Error.Write("\nOriginal exception was:\n");
+            }
+        }
+
+        WriteNativeExceptionMessage(context, exc);
+    }
+
+    private static bool TryGetReplacedExcepthook(PyCallContext context, [NotNullWhen(true)] out PyObject? hook)
+    {
+        if (context.PyEnvironment.Modules.TryGetValue("sys", out var sys) &&
+            sys is not null &&
+            sys.PyAttributes.TryGetValue("excepthook", out var current) &&
+            !ReferenceEquals(current, PySharp.Modules.Sys.PySysFunctions.Excepthook))
+        {
+            hook = current;
+            return true;
+        }
+
+        hook = null;
+        return false;
+    }
+
+    private static void WriteNativeExceptionMessage(PyCallContext context, PyExceptionObject exc)
     {
         const string ANSIColorRed = "\e[31m";
         const string ANSIClearColor = "\e[0m";

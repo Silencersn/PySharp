@@ -989,6 +989,12 @@ public static partial class PyBuiltinFunctions
             }
         }
 
+        // See IsBareNameCacheHit: only a bare single-name import without a
+        // fromlist returns the sys.modules entry as-is
+        if (PyEnvironment.IsBareNameCacheHit(name, arguments[3]) &&
+            context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
+            return cachedEntry;
+
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))
         {
             return failure is not null

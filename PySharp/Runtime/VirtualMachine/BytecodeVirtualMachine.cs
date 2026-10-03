@@ -440,7 +440,7 @@ internal static partial class BytecodeVirtualMachine
 
                             var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
                             newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
-                            context.FrameState.EnterFrame(ref newFrame);
+                            context.FrameState.EnterFrame(ref newFrame, context.PyEnvironment.RecursionLimit);
                             callDepth++;
                             frame = ref context.CurrentInternalFrame;
                             states.OperandStackSize = Stack.Count;
@@ -600,7 +600,7 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode._EnterInlineFrame:
                         {
                             var inlineFrame = frame.CreateInlineFrame();
-                            context.FrameState.EnterFrame(ref inlineFrame);
+                            context.FrameState.EnterFrame(ref inlineFrame, context.PyEnvironment.RecursionLimit);
                             frame = ref context.CurrentInternalFrame;
                             currentIndex = ref frame.InstructionIndex;
                         }

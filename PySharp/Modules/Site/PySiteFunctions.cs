@@ -16,17 +16,10 @@ public static partial class PySiteFunctions
     [PyFunctionParameters("code=None")]
     private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)
     {
-        int? exitCode = arguments[0] switch
-        {
-            PyIntObject intObj => intObj.Int32Value,
-            PyNoneObject => 0,
-            _ => null
-        };
-
-        if (!exitCode.HasValue)
-            return PyResult.TypeError(null);
-
-        context.Exit(exitCode.Value);
+        // CPython's Quitter.__call__ forwards to sys.exit: raise
+        // SystemExit(code) whatever the code is, the exit-status decoding
+        // happens when the exception reaches the top level
+        context.ExitWith(arguments[0]);
         return PyNoneObject.None;
     }
 

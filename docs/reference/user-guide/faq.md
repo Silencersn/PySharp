@@ -116,12 +116,12 @@
 
 问：`sys.version`、`sys.flags`、`sys.modules`、`sys.path` 能用吗？
 
-当前不可用。这些成员尚未暴露到 Python 侧，`sys.path` 与 `sys.modules` 在运行时内部维护，import
-解析不经由它们。脚本里用到即报 `AttributeError`。需要版本信息时可从 C# 侧取程序集版本传入。
-`sys` 已有的成员是 `argv`、`stdin`、`stdout`、`stderr`，以及
-`get_int_max_str_digits` 与 `set_int_max_str_digits`，见
-[标准库覆盖](../python-compat/stdlib-modules.md)。缺口跟踪见
-[路线图](../contributing/roadmap.md)。
+能用。`sys.path` 是活动列表，导入机器实时读取它，`sys.path.append` 注入的目录对下一个 import
+立即生效；`sys.modules` 是权威导入注册表，删除条目会强制重载、赋值条目会在 import 时原样返回。
+`sys.version`、`sys.version_info`、`sys.flags`、`sys.implementation`、`sys.platform`、
+`sys.exit()`、`getrecursionlimit()` / `setrecursionlimit()`、`intern()`、`excepthook` 等也都已
+接入，完整清单见[标准库覆盖](../python-compat/stdlib-modules.md)。仍需注意的差异见
+[与 CPython 的差异](../python-compat/cpython-differences.md)。
 
 问：有 `.pyc` 字节码缓存吗？
 

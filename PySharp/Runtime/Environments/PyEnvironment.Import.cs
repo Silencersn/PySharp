@@ -80,20 +80,118 @@ partial class PyEnvironment
     }
     internal PyModuleObject LoadBuiltinModule(PyCallContext context, string name)
     {
-        if (Modules.TryGetValue(name, out var module))
+        if (TryGetRegisteredModule(context, name, out var cached))
         {
-            Debug.Assert(module is not null);
-            return module;
+            Debug.Assert(cached is not null);
+            return cached;
         }
 
-        module = PyStandardLibrary.TryCreateModule(context, name);
+        var module = PyStandardLibrary.TryCreateModule(context, name);
         Debug.Assert(module is not null);
         // Register before OnImport so a reentrant load during initialization
         // finds the module instead of recursing, same bargain as the
         // provider chain below.
-        Modules[name] = module;
+        RegisterLoadedModule(name, module);
         module.OnImport(context, this);
         return module;
+    }
+
+    // sys.modules is the authoritative import cache once the sys module
+    // exists — CPython's import machinery reads it before the finder chain,
+    // so a Python-level deletion forces a reload and an assignment
+    // substitutes the module; a None entry halts the import with ImportError.
+    // Until then the internal dictionary stands in: bootstrap loads modules
+    // before any Python code can touch sys.modules. CPython's machinery
+    // reads interp->modules and does NOT follow a replaced sys.modules
+    // attribute; the fallback mirrors that — a deleted or non-dict
+    // sys.modules attribute silently reverts to the internal registry.
+    // _gcd_import's cache hit: a single name with an empty fromlist
+    // returns the sys.modules entry as-is, whatever its type — an
+    // assignment substitutes the module wholesale. Dotted names and
+    // non-empty fromlists must fall through: CPython still resolves
+    // the root binding and runs _handle_fromlist after the cache hit.
+    internal static bool IsBareNameCacheHit(string name, PyObject? fromList)
+    {
+        bool hasFromListEntry = fromList switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+        return !name.Contains('.') && !hasFromListEntry;
+    }
+
+    internal bool TryGetImportEntry(PyCallContext context, string name, [NotNullWhen(true)] out PyObject? entry)
+    {
+        if (TryGetModulesDict(out var modulesDict))
+        {
+            if (modulesDict.TryGetValue(name, out var cached))
+            {
+                // import.c raises ModuleNotFoundError (an ImportError
+                // subclass) for the None-in-sys.modules halt
+                if (cached is PyNoneObject)
+                    throw context.ModuleNotFoundError(PySR.Runtime_Import_Halted, name);
+                entry = cached;
+                return true;
+            }
+
+            entry = null;
+            return false;
+        }
+
+        entry = null;
+        return false;
+    }
+
+    internal bool TryGetRegisteredModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
+    {
+        // A replaced non-module entry is not a usable cache hit for the
+        // module-typed readers; CPython assumes the mapping holds modules
+        if (TryGetImportEntry(context, name, out var entry) && entry is PyModuleObject entryModule)
+        {
+            module = entryModule;
+            return true;
+        }
+
+        if (!TryGetModulesDict(out _) && Modules.TryGetValue(name, out module))
+            return module is not null;
+        module = null;
+        return false;
+    }
+
+    private bool TryGetModulesDict([NotNullWhen(true)] out PyDictObject? modulesDict)
+    {
+        if (Modules.TryGetValue("sys", out var sys) &&
+            sys is not null &&
+            sys.PyAttributes.TryGetValue("modules", out var modulesObj) &&
+            modulesObj is PyDictObject dict)
+        {
+            modulesDict = dict;
+            return true;
+        }
+
+        modulesDict = null;
+        return false;
+    }
+
+    // The module enters both caches before its body runs (CPython
+    // _load_unlocked writes sys.modules and the internal registry in one
+    // step), so a reentrant import sees the partially initialized object.
+    // Rolling the registration back when initialization raises keeps a
+    // failed import importable again on the next attempt.
+    internal void RegisterLoadedModule(string name, PyModuleObject module)
+    {
+        Modules[name] = module;
+        if (TryGetModulesDict(out var modulesDict))
+            modulesDict.SetItem(name, module);
+    }
+
+    internal void UnregisterLoadedModule(string name)
+    {
+        Modules.Remove(name);
+        if (TryGetModulesDict(out var modulesDict))
+            modulesDict.DelItem(name);
     }
 
     internal bool TryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? rootModule, [NotNullWhen(true)] out PyModuleObject? module)
@@ -161,17 +259,42 @@ partial class PyEnvironment
 
     internal bool InternalTryLoadRootModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, Paths, name, out module);
+        return InternalTryLoadModule(context, GetRootSearchPaths(context), name, out module);
+    }
+
+    // The import machinery reads sys.path itself (CPython's PySys_GetObject
+    // "path" in import.c), so sys.path.append/insert from Python affects the
+    // next lookup. Until the sys module exists — or when its path entry was
+    // replaced by something non-iterable — the builder-configured fallback
+    // list stands in.
+    internal IReadOnlyList<string> GetRootSearchPaths(PyCallContext context)
+    {
+        if (Modules.TryGetValue("sys", out var sys) &&
+            sys is not null &&
+            sys.PyAttributes.TryGetValue("path", out var pathObj))
+        {
+            var list = PyUtils.IterableToList(context, pathObj);
+            if (!list.IsError)
+            {
+                var paths = new List<string>(list.Value.Count);
+                foreach (var item in list.Value)
+                {
+                    if (item is PyStrObject str)
+                        paths.Add(str.Value);
+                }
+                return paths;
+            }
+        }
+
+        return Paths;
     }
 
     internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
         Debug.Assert(!qualifiedName.StartsWith('.'));
 
-        if (Modules.TryGetValue(qualifiedName, out module))
-            // the key may be assigned to None,
-            // forcing the next import of the module to result in a ModuleNotFoundError
-            return module is not null;
+        if (TryGetRegisteredModule(context, qualifiedName, out module))
+            return true;
 
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: false, qualifiedName);
         using var withFrame = context.WithFrame(ref frame);
@@ -181,13 +304,13 @@ partial class PyEnvironment
             if (!provider.TryCreateModule(context, qualifiedName, paths, out module))
                 continue;
 
-            // Mirrors CPython's _load_unlocked: the module enters the cache
+            // Mirrors CPython's _load_unlocked: the module enters the caches
             // before its body runs, so a reentrant import (a package imported
             // from its own __init__, a circular import) finds the partially
             // initialized object instead of reentering the provider. Rolling
             // the registration back when initialization raises keeps a failed
             // import importable again on the next attempt.
-            Modules[qualifiedName] = module;
+            RegisterLoadedModule(qualifiedName, module);
             try
             {
                 provider.ExecModule(context, module);
@@ -195,7 +318,7 @@ partial class PyEnvironment
             }
             catch
             {
-                Modules.Remove(qualifiedName);
+                UnregisterLoadedModule(qualifiedName);
                 throw;
             }
             return true;

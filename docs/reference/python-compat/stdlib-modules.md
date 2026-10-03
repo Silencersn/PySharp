@@ -7,7 +7,7 @@ PySharp 的标准库以 C# 内嵌模块为主，注册于 `PyStandardLibrary`，
 | 模块 | 提供内容 |
 | --- | --- |
 | `builtins` | 44 个内建函数（见下）、全部内建类型与 68 个异常类型（含警告族 12 个，即 `Warning` 基类加 11 个子类） |
-| `sys` | `argv`、`stdin`、`stdout`、`stderr`（`OnImport` 时以 `PyTextIOWrapperObject` 流包装注入，与文本模式 `open()` 同类型，条目见[内建类型速查表](../api/builtin-types.md)）、`get_int_max_str_digits()` 与 `set_int_max_str_digits(n)`（见下文）。`version`、`flags`、`modules`、`path` 等对 Python 侧不可见，见[常见问题](../user-guide/faq.md) |
+| `sys` | `argv`、`stdin`、`stdout`、`stderr`（`OnImport` 时以 `PyTextIOWrapperObject` 流包装注入，与文本模式 `open()` 同类型，条目见[内建类型速查表](../api/builtin-types.md)）；`path`（活动列表，导入机器实时读取，`append`/`insert`/`remove` 即时影响后续 import）、`modules`（权威导入注册表：删除条目强制重载、赋值条目在 import 时原样返回、`None` 条目令 import 抛 `ImportError: import of X halted; None in sys.modules`）；`exit()` 与 `getrecursionlimit()` / `setrecursionlimit(n)`；信息量成员 `version`、`version_info`、`flags`、`implementation`、`platform`、`byteorder`、`executable`、`prefix`、`maxsize`、`maxunicode`、`dont_write_bytecode`、`builtin_module_names`；`getdefaultencoding()`、`intern()`、`excepthook`（可替换，未捕获异常经其报告）；`get_int_max_str_digits()` 与 `set_int_max_str_digits(n)`（见下文）。`version_info` 与 `flags` 是 CPython structseq 形态的 tuple 子类（字段名可读、不可实例化、structseq repr），`implementation` 以 `SimpleNamespace` 形态承载（见下文） |
 | `site` | `exit`、`help` |
 | `operator` | 19 个运算函数：`add`、`sub`、`mul`、`truediv`、`floordiv`、`mod`、`pow`、`lshift`、`rshift`、`and_`、`or_`、`xor`、`lt`、`le`、`eq`、`ne`、`gt`、`ge`、`length_hint` |
 | `math` | 常量 `pi`、`e`、`tau`；29 个函数：`sqrt`、`acos`、`asin`、`atan`、`atan2`、`cos`、`sin`、`tan`、`acosh`、`asinh`、`atanh`、`cosh`、`sinh`、`tanh`、`exp`、`fabs`、`ceil`、`floor`、`trunc`、`remainder`、`copysign`、`fmod`、`pow`、`gcd`、`lcm`、`log`、`log2`、`log10`、`log1p` |
@@ -68,6 +68,27 @@ PySharp 的标准库以 C# 内嵌模块为主，注册于 `PyStandardLibrary`，
 - 未覆盖：`asdict`、`astuple`、`replace`，访问时报 `AttributeError`。
 
 用法篇见[警告与数据类](../user-guide/warnings-and-dataclasses.md)。
+
+## sys 的信息量成员
+
+- `version_info` 与 `flags` 按 CPython structseq 形态实现：tuple 子类，字段名（`major`/`minor`/
+  `micro`/`releaselevel`/`serial`，`flags` 的 18 个开关字段）经 getset 描述符可读，直接实例化报
+  `TypeError: cannot create ... instances`，repr 为 `sys.version_info(major=3, ...)` 形态。
+  序列协议（索引、切片、比较、迭代）继承自 tuple。
+- `flags` 中 `dont_write_bytecode` 恒为 1（PySharp 从不写字节码缓存，等价常开 `-B`），
+  `int_max_str_digits` 动态读取当前限制，`set_int_max_str_digits` 的调用会反映到该字段。
+  `utf8_mode` 恒为 0，不读取 `PYTHONUTF8` 环境变量。
+- `implementation` 是 attribute bag（CPython 3.14 起同为 `SimpleNamespace` 形态），字段有
+  `name`（`"cpython"`，与 `version_info`/`cache_tag`（`cpython-314`）/`hexversion` 自洽）、
+  `version`（与 `sys.version_info` 同对象）、`supports_isolated_interpreters`。类型对象的
+  Python 可见名属 `types` 模块，但 `types` 模块本身尚不可用，名字暂不可直接访问。
+- `sys.exit(code)` 对任意 `code` 抛 `SystemExit`，退出码由顶层在异常冒泡时解析：整数透传
+  （含截断语义），字符串与多参元组打印到 stderr 并以状态 1 退出，`None` 为 0。`site` 的
+  `exit` / `quit` 转发同一实现。
+- `sys.excepthook` 默认与内建报告一致，可整体替换（CPython 的 `PyErr_PrintEx` 通道）：
+  未捕获异常以 `(type, value, None)` 调用钩子（PySharp 无 traceback 对象，第三参为 `None`），
+  替换后的钩子自身抛错时按 CPython 的两段式报告（`Error in sys.excepthook:` 加
+  `Original exception was:`）。原始内建钩子保留在 `sys.__excepthook__`。
 
 ## 整数字符串转换位数限制
 

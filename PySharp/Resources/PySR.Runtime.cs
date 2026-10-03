@@ -43,6 +43,9 @@ partial class PySR
     // parent the same way (_find_and_load_unlocked)
     public const string Runtime_Import_ModuleNotFound = "No module named {0}";
     public const string Runtime_Import_ModuleNotPackage = "No module named {0}; {1} is not a package";
+    // _find_and_load's None-in-sys.modules check (import.c), message from
+    // import.c's "halted" clause
+    public const string Runtime_Import_Halted = "import of {0} halted; None in sys.modules";
     public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
     public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";
@@ -439,6 +442,14 @@ partial class PySR
     public const string Runtime_Arguments_ValueStarNotIterable = "Value after * must be an iterable, not {0}";
 
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
+    // sysmodule.c setrecursionlimit's two rejections
+    public const string Runtime_Sys_RecursionLimitTooLow = "recursion limit must be greater or equal than 1";
+    public const string Runtime_Sys_RecursionLimitTooLowAtDepth = "cannot set the recursion limit to {0} at the recursion depth {1}: the limit is too low";
+    // sysmodule.c sys_intern's two rejections
+    public const string Runtime_Sys_InternMustBeStr = "intern() argument must be str, not {0}";
+    public const string Runtime_Sys_InternCantIntern = "can't intern {0}";
+    // namespaceobject.c namespace_init's rejections
+    public const string Runtime_SimpleNamespace_TooManyArguments = "SimpleNamespace expected at most 1 argument, got {0}";
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
