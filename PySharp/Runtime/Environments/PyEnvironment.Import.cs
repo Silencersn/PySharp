@@ -161,7 +161,34 @@ partial class PyEnvironment
 
     internal bool InternalTryLoadRootModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, Paths, name, out module);
+        return InternalTryLoadModule(context, GetRootSearchPaths(context), name, out module);
+    }
+
+    // The import machinery reads sys.path itself (CPython's PySys_GetObject
+    // "path" in import.c), so sys.path.append/insert from Python affects the
+    // next lookup. Until the sys module exists — or when its path entry was
+    // replaced by something non-iterable — the builder-configured fallback
+    // list stands in.
+    internal IReadOnlyList<string> GetRootSearchPaths(PyCallContext context)
+    {
+        if (Modules.TryGetValue("sys", out var sys) &&
+            sys is not null &&
+            sys.PyAttributes.TryGetValue("path", out var pathObj))
+        {
+            var list = PyUtils.IterableToList(context, pathObj);
+            if (!list.IsError)
+            {
+                var paths = new List<string>(list.Value.Count);
+                foreach (var item in list.Value)
+                {
+                    if (item is PyStrObject str)
+                        paths.Add(str.Value);
+                }
+                return paths;
+            }
+        }
+
+        return Paths;
     }
 
     internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)

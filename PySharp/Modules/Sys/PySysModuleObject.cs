@@ -21,6 +21,11 @@ public partial class PySysModuleObject : PyModuleObject
             : PyListObject.CreateList(PyStrObject.Empty);
         AppendAttribute("argv", args);
 
+        // sys.path is the live module search path: the import machinery reads
+        // this list object on every lookup, so sys.path.append/insert from
+        // Python affects the next import (CPython's path list in sysmodule.c)
+        AppendAttribute("path", PyListObject.CreateList(environment.Paths.Select(PyStrObject.FromString)));
+
         // int.to_bytes/from_bytes document passing sys.byteorder as the order
         AppendAttribute("byteorder", PyStrObject.FromString(BitConverter.IsLittleEndian ? "little" : "big"));
 
