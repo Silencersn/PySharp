@@ -43,6 +43,9 @@ partial class PySR
     // parent the same way (_find_and_load_unlocked)
     public const string Runtime_Import_ModuleNotFound = "No module named {0}";
     public const string Runtime_Import_ModuleNotPackage = "No module named {0}; {1} is not a package";
+    // _find_and_load's None-in-sys.modules check (import.c), message from
+    // import.c's "halted" clause
+    public const string Runtime_Import_Halted = "import of {0} halted; None in sys.modules";
     public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
     public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";

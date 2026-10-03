@@ -26,6 +26,14 @@ public partial class PySysModuleObject : PyModuleObject
         // Python affects the next import (CPython's path list in sysmodule.c)
         AppendAttribute("path", PyListObject.CreateList(environment.Paths.Select(PyStrObject.FromString)));
 
+        // sys.modules is the import registry itself (CPython interp->modules):
+        // the machinery reads it before the finder chain and registers every
+        // loaded module in it, so deletions force a reload and assignments
+        // substitute the cached module
+        AppendAttribute("modules", PyDictObject.CreateDict(
+            environment.Modules.Where(pair => pair.Value is not null)
+                .Select(pair => KeyValuePair.Create(pair.Key, (PyObject)pair.Value!))));
+
         // int.to_bytes/from_bytes document passing sys.byteorder as the order
         AppendAttribute("byteorder", PyStrObject.FromString(BitConverter.IsLittleEndian ? "little" : "big"));
 

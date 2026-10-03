@@ -685,6 +685,14 @@ internal static partial class BytecodeVirtualMachine
             name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 
+        // _find_and_load: a sys.modules hit returns the entry as-is, whatever
+        // its type — an assignment substitutes the module wholesale
+        if (context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
+        {
+            stack.Push(cachedEntry);
+            return;
+        }
+
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))
         {
             throw failure is not null
@@ -756,8 +764,7 @@ internal static partial class BytecodeVirtualMachine
             moduleName = !nameResult.IsError && nameResult.Value is PyStrObject nameStr ? nameStr.Value : "<unknown>";
         }
 
-        if (context.PyEnvironment.Modules.TryGetValue($"{moduleName}.{name}", out var submodule)
-            && submodule is not null)
+        if (context.PyEnvironment.TryGetRegisteredModule(context, $"{moduleName}.{name}", out var submodule))
             return submodule;
 
         string location = "unknown location";

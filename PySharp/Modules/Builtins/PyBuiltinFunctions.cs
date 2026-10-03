@@ -989,6 +989,11 @@ public static partial class PyBuiltinFunctions
             }
         }
 
+        // _find_and_load: a sys.modules hit returns the entry as-is, whatever
+        // its type — an assignment substitutes the module wholesale
+        if (context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
+            return cachedEntry;
+
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))
         {
             return failure is not null
