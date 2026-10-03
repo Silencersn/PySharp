@@ -989,9 +989,19 @@ public static partial class PyBuiltinFunctions
             }
         }
 
-        // _find_and_load: a sys.modules hit returns the entry as-is, whatever
-        // its type — an assignment substitutes the module wholesale
-        if (context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
+        // _gcd_import's cache hit: a single name with an empty fromlist
+        // returns the sys.modules entry as-is, whatever its type. Dotted
+        // names and non-empty fromlists fall through — CPython still
+        // resolves the root binding and runs _handle_fromlist after the hit
+        bool hasFromListEntry = arguments[3] switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+        if (!name.Contains('.') && !hasFromListEntry &&
+            context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
             return cachedEntry;
 
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))

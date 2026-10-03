@@ -101,15 +101,23 @@ partial class PyEnvironment
     // so a Python-level deletion forces a reload and an assignment
     // substitutes the module; a None entry halts the import with ImportError.
     // Until then the internal dictionary stands in: bootstrap loads modules
-    // before any Python code can touch sys.modules.
+    // before any Python code can touch sys.modules. CPython's machinery
+    // reads interp->modules and does NOT follow a replaced sys.modules
+    // attribute; the fallback mirrors that — a deleted or non-dict
+    // sys.modules attribute silently reverts to the internal registry.
     internal bool TryGetImportEntry(PyCallContext context, string name, [NotNullWhen(true)] out PyObject? entry)
     {
         if (TryGetModulesDict(out var modulesDict))
         {
             if (modulesDict.TryGetValue(name, out var cached))
             {
+                // import.c raises ModuleNotFoundError (an ImportError
+                // subclass) for the None-in-sys.modules halt
                 if (cached is PyNoneObject)
-                    throw context.ImportError(PySR.Runtime_Import_Halted, name);
+                {
+                    throw new PyRuntimeException(context,
+                        PyModuleNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(PySR.Runtime_Import_Halted, name))));
+                }
                 entry = cached;
                 return true;
             }

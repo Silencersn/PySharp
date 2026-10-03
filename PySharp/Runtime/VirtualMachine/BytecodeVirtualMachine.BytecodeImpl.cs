@@ -685,9 +685,20 @@ internal static partial class BytecodeVirtualMachine
             name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 
-        // _find_and_load: a sys.modules hit returns the entry as-is, whatever
-        // its type — an assignment substitutes the module wholesale
-        if (context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
+        // _gcd_import's cache hit: a single name with an empty fromlist
+        // returns the sys.modules entry as-is, whatever its type — an
+        // assignment substitutes the module wholesale. Dotted names and
+        // non-empty fromlists must fall through: CPython still resolves the
+        // root binding and runs _handle_fromlist after the cache hit.
+        bool hasFromListEntry = fromList switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+        if (!name.Contains('.') && !hasFromListEntry &&
+            context.PyEnvironment.TryGetImportEntry(context, name, out var cachedEntry))
         {
             stack.Push(cachedEntry);
             return;
