@@ -184,6 +184,9 @@ partial class PySR
     public const string Runtime_Number_Int_ExceedsMaxStrDigits = "Exceeds the limit ({0} digits) for integer string conversion: value has {1} digits; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_ExceedsMaxStrDigitsResult = "Exceeds the limit ({0} digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_MaxDigitsNotInt32 = "Python int too large to convert to C int";
+    // CPython's "i"/"l" argument converters report the same sentence for any
+    // C-int overflow (setrecursionlimit, set_int_max_str_digits, ...)
+    public const string Runtime_Number_Int_TooLargeForCInt = "Python int too large to convert to C int";
     public const string Runtime_Number_Int_MaxDigitsInvalid = "maxdigits must be >= {0} or 0 for unlimited";
     public const string Runtime_Number_Int_TooBigToConvert = "int too big to convert";
     public const string Runtime_Number_Int_NegativeToUnsigned = "can't convert negative int to unsigned";

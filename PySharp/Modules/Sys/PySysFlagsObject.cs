@@ -66,6 +66,8 @@ public sealed partial class PyFlagsObjectType : PyTypeObject<PyFlagsObject>
         "int_max_str_digits",
     ];
 
+    private const int FieldIntMaxStrDigits = 17;
+
     // A tuple subclass: the MRO fallback supplies every tuple slot
     public sealed override IReadOnlyList<PyTypeObject> Bases => [PyTupleObjectType.Shared];
 
@@ -79,6 +81,23 @@ public sealed partial class PyFlagsObjectType : PyTypeObject<PyFlagsObject>
     {
         for (var index = 0; index < FieldNames.Length; index++)
             InstallField(FieldNames[index], index);
+        InstallConstantField("gil", 1);
+        InstallConstantField("thread_inherit_context", 0);
+        InstallConstantField("context_aware_warnings", 0);
+    }
+
+    // CPython 3.14 appends the free-threading/config fields past
+    // int_max_str_digits: readable as attributes, outside the sequence face
+    // (n_sequence_fields stays 18, so len/slice/repr ignore them)
+    private void InstallConstantField(string name, int value)
+    {
+        PyAttributes[name] = new PyMemberDescriptorObject(
+            PyGetSetDescriptorObjectType.Shared,
+            this,
+            name,
+            (context, instance) => PyIntObject.FromInteger(value),
+            setter: null,
+            deleter: null);
     }
 
     private void InstallField(string name, int index)
@@ -97,7 +116,7 @@ public sealed partial class PyFlagsObjectType : PyTypeObject<PyFlagsObject>
     // CPython's _PySys_SetFlagInt write-back
     private static PyResult Get_Field(PyCallContext context, int index)
     {
-        if (index is 17)
+        if (index is FieldIntMaxStrDigits)
             return PyIntObject.FromInteger(context.PyEnvironment.IntStrDigits.MaxStrDigits);
         return PyFlagsObject.DefaultItems[index];
     }
@@ -106,7 +125,7 @@ public sealed partial class PyFlagsObjectType : PyTypeObject<PyFlagsObject>
     protected override PyResult Repr(PyCallContext context, PyFlagsObject self)
     {
         return StructSeqRepr(context, "sys.flags", FieldNames,
-            index => index is 17
+            index => index is FieldIntMaxStrDigits
                 ? PyIntObject.FromInteger(context.PyEnvironment.IntStrDigits.MaxStrDigits)
                 : self.InternalArray[index]);
     }
