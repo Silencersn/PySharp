@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Modules.IO;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
@@ -33,6 +34,30 @@ public partial class PySysModuleObject : PyModuleObject
         AppendAttribute("modules", PyDictObject.CreateDict(
             environment.Modules.Where(pair => pair.Value is not null)
                 .Select(pair => KeyValuePair.Create(pair.Key, (PyObject)pair.Value!))));
+
+        // CPython Py_GetPlatform: "win32" on Windows, "darwin" on macOS,
+        // "linux" elsewhere
+        AppendAttribute("platform", PyStrObject.FromString(
+            OperatingSystem.IsWindows() ? "win32" : OperatingSystem.IsMacOS() ? "darwin" : "linux"));
+
+        // The interpreter binary and its installation root; an embedded
+        // host without a process path reports the empty string
+        AppendAttribute("executable", PyStrObject.FromString(Environment.ProcessPath ?? string.Empty));
+        AppendAttribute("prefix", PyStrObject.FromString(AppContext.BaseDirectory));
+
+        // Py_ssize_t's upper bound — the largest sequence length a 64-bit
+        // build can address (sysmodule.c PY_SSIZE_T_MAX)
+        AppendAttribute("maxsize", PyIntObject.FromInteger(long.MaxValue));
+        // The largest code point: 0x10FFFF
+        AppendAttribute("maxunicode", PyIntObject.FromInteger(0x10FFFF));
+
+        // PySharp never writes bytecode caches, matching a -B interpreter
+        AppendAttribute("dont_write_bytecode", PyBoolObject.False);
+
+        // The interpreter's statically-linked module set — PyStandardLibrary's
+        // switch keys, kept sorted like CPython's list_builtin_module_names
+        AppendAttribute("builtin_module_names", PyTupleObject.CreateTuple(
+            PyStandardLibrary.BuiltinModuleNames.Select(PyStrObject.FromString)));
 
         // int.to_bytes/from_bytes document passing sys.byteorder as the order
         AppendAttribute("byteorder", PyStrObject.FromString(BitConverter.IsLittleEndian ? "little" : "big"));

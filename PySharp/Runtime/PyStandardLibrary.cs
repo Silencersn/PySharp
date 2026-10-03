@@ -18,6 +18,14 @@ namespace PySharp.Runtime;
 
 internal static class PyStandardLibrary
 {
+    // The interpreter's statically-linked module set — the switch keys below,
+    // kept sorted and in sync (CPython's list_builtin_module_names)
+    public static readonly string[] BuiltinModuleNames =
+    [
+        "builtins", "dataclasses", "math", "operator", "queue", "random",
+        "site", "sys", "this", "threading", "time", "typing", "warnings",
+    ];
+
     public static PyModuleObject? TryCreateModule(PyCallContext context, string name)
     {
         PyModuleObject? module = name switch

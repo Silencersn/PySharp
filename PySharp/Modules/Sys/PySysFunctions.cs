@@ -11,6 +11,12 @@ internal static partial class PySysFunctions
     [PyExport("exit", nameof(ExitImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Exit { get; }
 
+    [PyExport("getdefaultencoding", nameof(GetDefaultEncodingImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject GetDefaultEncoding { get; }
+
+    [PyExport("intern", nameof(InternImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Intern { get; }
+
     [PyExport("getrecursionlimit", nameof(GetRecursionLimitImpl))]
     public static partial PyBuiltinFunctionOrMethodObject GetRecursionLimit { get; }
 
@@ -28,6 +34,27 @@ internal static partial class PySysFunctions
     {
         context.ExitWith(arguments[0]);
         return PyNoneObject.None;
+    }
+
+    [PyFunctionParameters()]
+    private static PyResult GetDefaultEncodingImpl(PyCallContext context, PyArguments arguments)
+    {
+        // CPython's default text encoding is UTF-8 (_PySys_InitCore's
+        // SET_SYS_FROM_STRING "utf-8")
+        return PyStrObject.FromString("utf-8");
+    }
+
+    [PyFunctionParameters("s", "/")]
+    private static PyResult InternImpl(PyCallContext context, PyArguments arguments)
+    {
+        // sysmodule.c sys_intern: an exact str is required — a non-str is
+        // rejected with its type name, a str subclass with "can't intern"
+        var argument = arguments[0];
+        if (argument is not PyStrObject str)
+            return PyResult.TypeError(PySR.Runtime_Sys_InternMustBeStr, argument.PyType.Name);
+        if (str.PyType != PyStrObjectType.Shared)
+            return PyResult.TypeError(PySR.Runtime_Sys_InternCantIntern, str.PyType.Name);
+        return context.PyEnvironment.InternPool.Intern(str);
     }
 
     [PyFunctionParameters()]
