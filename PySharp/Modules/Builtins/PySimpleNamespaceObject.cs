@@ -16,7 +16,12 @@ public sealed class PySimpleNamespaceObject : PyObjectManagedDict
     public override PyTypeObject DefaultPyType => PySimpleNamespaceObjectType.Shared;
 }
 
-[PyType("SimpleNamespace")]
+// types.SimpleNamespace: a plain attribute bag whose keyword arguments seed
+// the instance dict; sys.implementation is built on it (CPython 3.14 ships
+// its implementation info as a SimpleNamespace). The Python-visible name
+// lives in the types module — the Module metadata keeps the repr face at
+// "types.SimpleNamespace" even before a types module exposes the name
+[PyType("SimpleNamespace", Module = "types")]
 public sealed partial class PySimpleNamespaceObjectType : PyTypeObject<PySimpleNamespaceObject>
 {
     // CPython namespace_init: at most one positional — an exact dict or
