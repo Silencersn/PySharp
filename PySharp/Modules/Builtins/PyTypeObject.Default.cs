@@ -58,24 +58,9 @@ partial class PyTypeObject
         var type = self.PyType;
         var name = str.Value;
 
-        if (name is PySpecialNames.Class)
-            return type;
-
-        if (name is PySpecialNames.Dict)
-        {
-            // Objects without a genuine instance dict (built-in values, builtin
-            // functions, methods, code, ...) have no __dict__ (CPython).
-            if (self.IsImmutable)
-                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
-
-            // CPython type.__dict__ is a getset wrapping the namespace in a
-            // fresh mappingproxy on every read (typeobject.c type_dict); the
-            // mutable face stays on setattr/delattr
-            if (self is PyTypeObject)
-                return new PyMappingProxyObject(self.PyAttributes.Self);
-
-            return self.PyAttributes.Self;
-        }
+        // __class__ reaches the getset on object's dict through the MRO, so a
+        // class body, base or property shadowing the name wins first — the
+        // same lookup path a plain attribute takes
 
         if (TryLookupAttrInMro(type, name, out var attr))
         {
@@ -97,6 +82,27 @@ partial class PyTypeObject
                 return getFunc(context, attr, self, type);
 
             return attr;
+        }
+
+        // CPython has no __dict__ entry on object: heap classes answer through
+        // their own subtype_dict getset installed in their dict, everything
+        // else — built-in values, builtin functions, methods, code, ... —
+        // falls through to here. type.__dict__ resolves on the metatype before
+        // this path ever runs
+        if (name is PySpecialNames.Dict)
+        {
+            // Objects without a genuine instance dict (built-in values, builtin
+            // functions, methods, code, ...) have no __dict__ (CPython).
+            if (self.IsImmutable)
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+
+            // CPython type.__dict__ is a getset wrapping the namespace in a
+            // fresh mappingproxy on every read (typeobject.c type_dict); the
+            // mutable face stays on setattr/delattr
+            if (self is PyTypeObject)
+                return new PyMappingProxyObject(self.PyAttributes.Self);
+
+            return self.PyAttributes.Self;
         }
 
         // the sentence stays clean: CPython appends the hint at display
@@ -146,11 +152,9 @@ partial class PyTypeObject
                 return func(context, attr, self, value);
         }
 
-        // CPython reaches __class__ through the getset descriptor on object,
-        // which the MRO lookup above would have found first when a class body
-        // shadows the name: only an unshadowed __class__ is the type pointer
-        if (name is PySpecialNames.Class && attr is null)
-            return SetClassAttribute(self, value);
+        // __class__ writes reach the object getset through the MRO lookup
+        // above; a class body shadowing the name installs its own descriptor
+        // and answers before object's ever does
 
         // CPython _PyObject_GenericSetAttrWithDict: dict-less instances
         // (IsImmutable) reject the write before any instance-dict handling
@@ -159,8 +163,11 @@ partial class PyTypeObject
 
         // CPython subtype_setdict -> _PyObject_SetDict: the value replaces the
         // whole instance dict (PyDict_Check accepts a subclass), and a type
-        // object reads __dict__ through a getset with no setter
-        if (name is PySpecialNames.Dict)
+        // object reads __dict__ through a getset with no setter. The whole
+        // replacement belongs to the getset on the MRO; a class body entry
+        // shadowing __dict__ has no setter and falls through to the plain
+        // instance-dict write, so only an unshadowed name lands here
+        if (name is PySpecialNames.Dict && attr is null)
         {
             if (self is PyTypeObject)
                 return PyResult.AttributeError(PySR.Runtime_Type_DictNotWritable);
@@ -197,10 +204,12 @@ partial class PyTypeObject
         return PyResult.AttributeError(PySR.Runtime_Object_AttributeNoDict, type.TpName, name);
     }
 
-    // CPython object_set_class: the value must be a class, both sides must be
-    // mutable (ModuleType subclasses qualify) and share a layout, and only the
-    // type pointer moves — __init__ never runs and the instance dict stays
-    private static PyResult SetClassAttribute(PyObject self, PyObject value)
+    // CPython object_set_class (Objects/typeobject.c), the setter of the
+    // __class__ getset on object's dict: the value must be a class, both
+    // sides must be mutable (ModuleType subclasses qualify) and share a
+    // layout, and only the type pointer moves — __init__ never runs and the
+    // instance dict stays
+    internal static PyResult SetClassAttribute(PyObject self, PyObject value)
     {
         if (value is not PyTypeObject newType)
             return PyResult.TypeError(PySR.Runtime_Object_ClassMustBeClass, value.PyType.Name);
@@ -221,6 +230,85 @@ partial class PyTypeObject
     }
 
     private static bool IsModuleSubclass(PyTypeObject type) => type.IsSubclassOf(PyModuleObjectType.Shared);
+
+    // subtype_getsets_dict_only (Objects/typeobject.c): the __dict__ getset
+    // every heap type installs in its own dict — get hands out the live
+    // instance dict, set replaces it whole, delete empties it. Because the
+    // descriptor sits on the MRO, a class body or property shadowing
+    // __dict__ wins first, exactly like any other name
+    internal static PyMemberDescriptorObject CreateInstanceDictDescriptor(PyTypeObject declaringType)
+    {
+        return new PyMemberDescriptorObject(
+            PyGetSetDescriptorObjectType.Shared,
+            declaringType,
+            PySpecialNames.Dict,
+            Get_InstanceDict,
+            Set_InstanceDict,
+            Delete_InstanceDict);
+    }
+
+    private static PyResult Get_InstanceDict(PyCallContext context, PyObject self)
+        => self.PyAttributes.Self;
+
+    // CPython subtype_setdict -> _PyObject_SetDict: the value replaces the
+    // whole instance dict (PyDict_Check accepts a subclass)
+    private static PyResult Set_InstanceDict(PyCallContext context, PyObject self, PyObject value)
+    {
+        if (value is not PyDictObject assigned)
+            return PyResult.TypeError(PySR.Runtime_Object_DictMustBeDictionary, value.PyType.Name);
+
+        self.PyAttributes = assigned;
+        return PyNoneObject.None;
+    }
+
+    // CPython subtype_setdict with a NULL value drops the dict: the next
+    // read materializes an empty one, the dropped dict keeps its items
+    private static PyResult Delete_InstanceDict(PyCallContext context, PyObject self)
+    {
+        self.PyAttributes = new PyDictObject();
+        return PyNoneObject.None;
+    }
+
+    // PyMemberDef slots from __slots__ (type_add_members): storage rides the
+    // same attached-properties channel that backs every instance dict — the
+    // dict-less IsImmutable face only hides it from __dict__/setattr, and
+    // these member descriptors are the sole access path
+    internal static PyMemberDescriptorObject CreateSlotDescriptor(PyTypeObject declaringType, string name)
+    {
+        return new PyMemberDescriptorObject(
+            PyMemberDescriptorObjectType.Shared,
+            declaringType,
+            name,
+            (context, instance) => Get_Slot(context, instance, name),
+            (context, instance, value) => Set_Slot(instance, name, value),
+            (context, instance) => Delete_Slot(instance, name));
+    }
+
+    private static PyResult Get_Slot(PyCallContext context, PyObject instance, string name)
+    {
+        var dict = PyAttachedPropertiesManager.Shared.GetDict(instance);
+        if (dict.TryGetValue(name, out var value))
+            return value;
+
+        // PyMember_GetOne (Py_T_OBJECT_EX): an unset slot reads as a plain
+        // missing attribute
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, instance.PyType.TpName, name);
+    }
+
+    private static PyResult Set_Slot(PyObject instance, string name, PyObject value)
+    {
+        PyAttachedPropertiesManager.Shared.GetDict(instance)[name] = value;
+        return PyNoneObject.None;
+    }
+
+    // deleting an unset slot reports the bare name (3.14 member face)
+    private static PyResult Delete_Slot(PyObject instance, string name)
+    {
+        if (!PyAttachedPropertiesManager.Shared.GetDict(instance).Remove(name))
+            return PyResult.AttributeError(name);
+
+        return PyNoneObject.None;
+    }
 
     // CPython type_update_dict: identity against object's dict entry detects
     // that a __new__/__init__ value IS object's default, letting callers keep
@@ -433,10 +521,8 @@ partial class PyTypeObject
                 return PyResult.AttributeError(PySR.Runtime_Attribute_NoDelete);
         }
 
-        // CPython object_set_class rejects the NULL value up front, so an
-        // unshadowed __class__ is never deletable
-        if (name is PySpecialNames.Class && attr is null)
-            return PyResult.TypeError(PySR.Runtime_Object_ClassCannotDelete);
+        // __class__ deletes reach the object getset through the MRO lookup
+        // above, whose deleter refuses before any instance-dict handling
 
         // same dict-less gate as the set path; CPython reports the same two
         // AttributeError shapes for deletion too
@@ -444,8 +530,10 @@ partial class PyTypeObject
             return FrozenAttrWriteError(type, name, attr);
 
         // CPython subtype_setdict with a NULL value drops the dict: the next
-        // read materializes an empty one, the dropped dict keeps its items
-        if (name is PySpecialNames.Dict)
+        // read materializes an empty one, the dropped dict keeps its items.
+        // A class body entry shadowing __dict__ falls through to the plain
+        // instance-dict delete instead
+        if (name is PySpecialNames.Dict && attr is null)
         {
             if (self is PyTypeObject)
                 return PyResult.AttributeError(PySR.Runtime_Type_DictNotWritable);
@@ -481,6 +569,10 @@ partial class PyTypeObject
         var metaType = self.PyType;
         var name = str.Value;
 
+        // CPython _Py_type_getattro_impl: a data descriptor on the metatype
+        // MRO answers first, ahead of the class's own entries — object's
+        // __class__ getset and type's __dict__ getset both resolve here, so
+        // a class body cannot shadow the class object's own faces
         if (name is PySpecialNames.Class)
             return metaType;
 

@@ -112,7 +112,7 @@ public sealed class PyDeprecatedObject : PyObject
 
             if (callArgs.Count is 0)
                 return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, PySpecialNames.InitSubclass, cls.Name);
-            var superObj = PySuperObject.CreateSuper(cls, callArgs[0]);
+            var superObj = PySuperObject.CreateSuper(ctx, cls, callArgs[0]);
             if (superObj.IsError)
                 return superObj;
             var hook = PyOperators.GetAttr(ctx, superObj.Value, PySpecialNames.Interned.InitSubclass);

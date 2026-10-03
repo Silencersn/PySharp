@@ -709,20 +709,8 @@ internal static class PyCore
 
         var type = self.PyType;
 
-        if (name is PySpecialNames.Class)
-            return type;
-
-        if (name is PySpecialNames.Dict)
-        {
-            if (self.IsImmutable)
-                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
-
-            // same mappingproxy face as DefaultGetAttribute's __dict__ branch
-            if (self is PyTypeObject)
-                return new PyMappingProxyObject(self.PyAttributes.Self);
-
-            return self.PyAttributes.Self;
-        }
+        // __class__ reaches the getset on object's dict through the MRO, so a
+        // class body, base or property shadowing the name wins first
 
         if (PyObject.TryLookupAttrInMro(type, name, out var attr))
         {
@@ -750,6 +738,20 @@ internal static class PyCore
                 return getFunc(context, attr, self, type);
 
             return attr;
+        }
+
+        // same __dict__ face as DefaultGetAttribute: heap classes answer
+        // through their own subtype_dict getset, everything else falls back
+        // here
+        if (name is PySpecialNames.Dict)
+        {
+            if (self.IsImmutable)
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+
+            if (self is PyTypeObject)
+                return new PyMappingProxyObject(self.PyAttributes.Self);
+
+            return self.PyAttributes.Self;
         }
 
         var getAttrFunc = self.PyType.Slots.GetAttr;

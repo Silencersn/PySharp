@@ -119,7 +119,27 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)HackCheckedSetAttr);
         PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)HackCheckedDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
+
+        // CPython object_getsets (Objects/typeobject.c): __class__ is a
+        // getset on object's dict, so every object and class resolves it
+        // through the MRO and a class body or property can shadow it. The
+        // deferred constructor keeps the type initializer cycle free: the
+        // getset_descriptor type's own MRO ends at this very object
+        PyAttributes[PySpecialNames.Class] = new PyMemberDescriptorObject(
+            this, PySpecialNames.Class, Get_Class, Set_Class, Delete_Class);
     }
+
+    // object_get_class: the instance's type pointer
+    private static PyResult Get_Class(PyCallContext context, PyObject self)
+        => self.PyType;
+
+    private static PyResult Set_Class(PyCallContext context, PyObject self, PyObject value)
+        => SetClassAttribute(self, value);
+
+    // object_set_class rejects the NULL value up front, so __class__ is
+    // never deletable
+    private static PyResult Delete_Class(PyCallContext context, PyObject self)
+        => PyResult.TypeError(PySR.Runtime_Object_ClassCannotDelete);
 
     private static PyResult HackCheckedSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
     {
@@ -186,12 +206,28 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
         if (cls.LayoutType == typeof(PyObjectManagedDict))
             return new PyObjectManagedDict { _pyType = cls };
+        if (cls.LayoutType == typeof(PySlotsObject))
+            return new PySlotsObject { _pyType = cls };
 
         return new PyObject { _pyType = cls };
     }
 }
 
-public partial class PyObjectManagedDict : PyObject
+// layout sentinel for __slots__ classes that excluded the instance dict:
+// never instantiated except for its own instances, it exists so the layout
+// algebra (__class__ assignment compatibility, best_base conflicts) can
+// tell a dict-less heap class from the managed-dict shape
+public class PySlotsObject : PyObject
+{
+    // a dict-excluding __slots__ instance has no attribute dict at all:
+    // undeclared writes hit the "no __dict__" error and __dict__ reads miss
+    internal override bool IsImmutable => true;
+}
+
+// derived from the dict-less slots sentinel so the layout algebra can
+// merge a __slots__ base with a plain dict-carrying base (CPython: managed
+// dict is a flag, slots add payload space — the two compose)
+public partial class PyObjectManagedDict : PySlotsObject
 {
     private protected IPyAttributesObject? _pyAttributes;
 

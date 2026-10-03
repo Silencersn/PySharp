@@ -1049,7 +1049,38 @@ public static partial class PyBuiltinFunctions
 
         if (classInfo is PyTypeObject exactType &&
             ReferenceEquals(exactType.PyType, PyTypeObjectType.Shared))
-            return PyBoolObject.FromBoolean(exactType.IsInstance(obj));
+        {
+            if (exactType.IsInstance(obj))
+                return PyBoolObject.True;
+
+            // CPython object_isinstance slow path (Objects/abstract.c): a
+            // __class__ override participates when it resolves through the
+            // type MRO to a type different from the real one — a property
+            // proxy binds here, a plain class attribute reports itself, and
+            // the instance dict and __getattr__ stay out of the lookup
+            if (PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.Class, out var classEntry))
+            {
+                PyObject reported;
+                var getFunc = classEntry.PyType.Slots.Get;
+                if (getFunc is not null)
+                {
+                    var classAttr = getFunc(context, classEntry, obj, obj.PyType);
+                    if (classAttr.IsError)
+                        return classAttr.ExceptionResult;
+                    reported = classAttr.Value;
+                }
+                else
+                {
+                    reported = classEntry;
+                }
+
+                if (reported is PyTypeObject overrideType
+                    && !ReferenceEquals(overrideType, obj.PyType))
+                    return PyBoolObject.FromBoolean(overrideType.IsSubclassOf(exactType));
+            }
+
+            return PyBoolObject.False;
+        }
 
         if (classInfo is PyTupleObject types)
         {

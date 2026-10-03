@@ -3,6 +3,7 @@ using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
@@ -43,8 +44,13 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         }
     }
 
-    internal sealed override PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases)
+    internal sealed override PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases, bool excludesInstanceDict)
     {
+        // a dict-excluding __slots__ class carries the sentinel layout: the
+        // layout algebra (__class__ assignment compatibility, best_base
+        // conflicts) must tell it apart from the managed-dict heap shape
+        if (excludesInstanceDict)
+            return new UserDefinedType<PySlotsObject>(name, qualName, bases, excludesInstanceDict);
         if (typeof(TObject) == typeof(PyObject))
             return new UserDefinedType<PyObjectManagedDict>(name, qualName, bases);
         return new UserDefinedType<TObject>(name, qualName, bases);
@@ -170,6 +176,15 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         if (layoutTypeOwnerResult.IsError)
             return layoutTypeOwnerResult;
 
+        // CPython type_new_get_slots/type_new_slots: the __slots__ declaration
+        // is validated, mangled and conflict-checked against the namespace
+        // before the type exists, because an excluded instance dict changes
+        // the layout the new type is allocated with
+        var slotsPlan = new SlotsPlan();
+        var slotsResult = TryResolveSlots(context, typeName, dict, bases, layoutTypeOwnerResult.Value, slotsPlan);
+        if (slotsResult.IsError)
+            return slotsResult;
+
         // CPython type_new_set_ht_name: __qualname__ moves to ht_qualname
         // (read by the accessor), is not kept as a dict entry, and must be
         // a str when present. Only the class dict carries it — a __qualname__
@@ -185,7 +200,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             typeQualName = qualNameStr;
         }
 
-        var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);
+        var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases, slotsPlan.ExcludesInstanceDict);
         type._pyType = cls;
 
         // the class namespace's __module__ wins; compiled class bodies store
@@ -250,6 +265,25 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             type.Slots.Hash = PyTypeObject.HashNotImplemented;
         }
 
+        // CPython type_add_members: one member descriptor per mangled slot
+        // name, installed by default so the descriptor never clobbers a
+        // namespace entry that survived the conflict check
+        foreach (var slotName in slotsPlan.Names)
+        {
+            if (!type.PyAttributes.ContainsKey(slotName))
+                type.PyAttributes[slotName] = PyTypeObject.CreateSlotDescriptor(type, slotName);
+        }
+
+        // CPython type_new_set_slots (subtype_getsets_dict_only): a heap type
+        // whose instances carry an instance dict installs the __dict__ getset
+        // in its own dict, so the dict participates in the MRO and a class
+        // body can shadow it. type_add_getset sets the entry by default only:
+        // a class body or property claiming __dict__ first keeps its entry
+        // and answers instead of the getset. A __slots__ class that excluded
+        // the dict installs none
+        if (!slotsPlan.ExcludesInstanceDict && !type.PyAttributes.ContainsKey(PySpecialNames.Dict))
+            type.PyAttributes[PySpecialNames.Dict] = PyTypeObject.CreateInstanceDictDescriptor(type);
+
         // CPython type_new fixup_slot_dispatchers: every special-method slot
         // re-resolves through the first MRO entry defining the dunder in its
         // own dict, so an inherited default copy from an earlier base cannot
@@ -305,7 +339,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         // Follow CPython's type_new_init_subclass pattern:
         // super(type, type).__init_subclass__(**kwargs)
-        var superObj = PySuperObject.CreateSuper(type, type);
+        var superObj = PySuperObject.CreateSuper(context, type, type);
         if (superObj.IsError)
             return superObj;
 
@@ -326,6 +360,153 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         return type;
     }
+
+    // CPython type_new's __slots__ pipeline: type_new_get_slots extracts the
+    // declaration, type_new_slots seeds the add_dict/add_weak flags from the
+    // best base, type_new_slots_impl validates the names (visit + copy with
+    // mangling), and type_new_slots_bases lets a secondary base hand the dict
+    // back. The out plan carries the mangled member names and whether the
+    // instances end up dict-less
+    private sealed class SlotsPlan
+    {
+        public List<string> Names { get; } = [];
+        public bool ExcludesInstanceDict { get; set; }
+    }
+
+    private static PyResult TryResolveSlots(PyCallContext context, string typeName, PyDictObject dict, IReadOnlyList<PyTypeObject> bases, PyTypeObject layoutOwner, SlotsPlan plan)
+    {
+        if (!dict.TryGetValue(PySpecialNames.Slots, out var slotsObj))
+            return PyNoneObject.None;
+
+        // a bare string declares one slot, anything else must be iterable of
+        // strings (PySequence_Tuple reports the standard not-iterable error)
+        List<PyObject> declared;
+        if (slotsObj is PyStrObject single)
+        {
+            declared = [single];
+        }
+        else
+        {
+            var listed = PyUtils.IterableToList(context, slotsObj);
+            if (listed.IsError)
+                return listed;
+            declared = [.. listed.Value];
+        }
+
+        // CPython may_add_dict: only a dict-less best base leaves room for
+        // the declaration to decide about the instance dict
+        bool mayAddDict = !layoutOwner.InstancesCarryInstanceDict;
+        bool addDict = false;
+        var names = plan.Names;
+
+        // nonempty __slots__ on a variable-length base (str/tuple carry
+        // CPython's tp_itemsize) is rejected before any name is examined
+        if (declared.Count > 0 && IsVariableLengthLayout(layoutOwner))
+            return PyResult.TypeError(PySR.Runtime_Slots_NonemptyNotSupported, layoutOwner.TpName);
+
+        foreach (var item in declared)
+        {
+            if (item is not PyStrObject { Value: var slotName })
+                return PyResult.TypeError(PySR.Runtime_Slots_ItemsMustBeStrings, item.PyType.TpName);
+
+            if (!IsIdentifier(slotName))
+                return PyResult.TypeError(PySR.Runtime_Slots_MustBeIdentifiers);
+
+            // __dict__ in __slots__ claims the dict the class is about to
+            // add; the getset covers it, no member is installed
+            if (slotName is PySpecialNames.Dict)
+            {
+                if (!mayAddDict || addDict)
+                    return PyResult.TypeError(PySR.Runtime_Slots_DictDisallowed);
+                addDict = true;
+                continue;
+            }
+
+            // PySharp has no weakref face yet: accepting the declaration and
+            // skipping the slot matches the observable "no weakref support"
+            // state every object already has
+            if (slotName is PySpecialNames.Weakref)
+                continue;
+
+            names.Add(slotName);
+        }
+
+        // _Py_Mangle per name, then the namespace conflict check against the
+        // mangled spelling (the compiler already stored class-body privates
+        // under it); the class cell lives under __class__ here, so a cell
+        // value is exempt along with __qualname__
+        for (int i = 0; i < names.Count; i++)
+        {
+            names[i] = Mangle(typeName, names[i]);
+            if (dict.TryGetValue(names[i], out var conflict)
+                && names[i] is not PySpecialNames.QualName
+                && !(names[i] is PySpecialNames.Class && conflict is PyCellObject))
+                return PyResult.ValueError(PySR.Runtime_Slots_ConflictsWithClassVariable, names[i]);
+        }
+
+        // sorted names keep every type with the same declaration layout-
+        // comparable (CPython sorts for __class__ assignment)
+        names.Sort(StringComparer.Ordinal);
+
+        // type_new_slots_bases: a secondary base carrying a dict hands it
+        // back — the instances keep a dict even under a slots declaration
+        if (bases.Count > 1 && mayAddDict && !addDict)
+        {
+            foreach (var baseType in bases)
+            {
+                if (ReferenceEquals(baseType, layoutOwner))
+                    continue;
+                if (baseType.InstancesCarryInstanceDict)
+                {
+                    addDict = true;
+                    break;
+                }
+            }
+        }
+
+        plan.ExcludesInstanceDict = mayAddDict && !addDict;
+        return PyNoneObject.None;
+    }
+
+    // _Py_Mangle (pycore_symtable.h): __x becomes _classname__x when the name
+    // starts with two underscores and does not end with them; the class name
+    // loses its leading underscores first
+    private static string Mangle(string className, string name)
+    {
+        if (!(name.StartsWith("__", StringComparison.Ordinal) && !name.EndsWith("__", StringComparison.Ordinal)))
+            return name;
+
+        return $"_{className.TrimStart('_')}{name}";
+    }
+
+    // str.isidentifier's rule: first rune a letter or underscore, the rest
+    // letters, digits or underscores (same walk PyStrObject.isidentifier runs)
+    private static bool IsIdentifier(string name)
+    {
+        if (name.Length is 0)
+            return false;
+
+        bool first = true;
+        foreach (var rune in name.EnumerateRunes())
+        {
+            if (first)
+            {
+                if (rune.Value is not '_' && !Rune.IsLetter(rune))
+                    return false;
+                first = false;
+            }
+            else if (rune.Value is not '_' && !Rune.IsLetterOrDigit(rune))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // CPython tp_itemsize != 0: tuple is the only variable-length layout
+    // left in the modeled type table (3.14's managed unicode freed str)
+    private static bool IsVariableLengthLayout(PyTypeObject type)
+        => type.LayoutType == typeof(PyTupleObject);
 
     protected override PyResult Repr(PyCallContext context, PyTypeObject self)
     {

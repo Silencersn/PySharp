@@ -23,6 +23,8 @@ public static partial class PySpecialNames
     public const string All = "__all__";
     public const string Class = "__class__";
     public const string MRO = "__mro__";
+    public const string Slots = "__slots__";
+    public const string Weakref = "__weakref__";
     public const string Closure = "__closure__";
     public const string Globals = "__globals__";
     public const string Module = "__module__";

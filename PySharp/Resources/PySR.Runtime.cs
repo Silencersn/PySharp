@@ -131,6 +131,12 @@ partial class PySR
     public const string Runtime_Object_ClassAssignmentNotMutable = "__class__ assignment only supported for mutable types or ModuleType subclasses";
     public const string Runtime_Object_ClassLayoutDiffers = "__class__ assignment: '{0}' object layout differs from '{1}'";
     public const string Runtime_Object_ClassCannotDelete = "can't delete __class__ attribute";
+    public const string Runtime_Slots_ItemsMustBeStrings = "__slots__ items must be strings, not '{0}'";
+    public const string Runtime_Slots_MustBeIdentifiers = "__slots__ must be identifiers";
+    public const string Runtime_Slots_DictDisallowed = "__dict__ slot disallowed: we already got one";
+    public const string Runtime_Slots_NonemptyNotSupported = "nonempty __slots__ not supported for subtype of '{0}'";
+    // CPython formats the name with %R: repr quotes a plain identifier
+    public const string Runtime_Slots_ConflictsWithClassVariable = "'{0}' in __slots__ conflicts with class variable";
     public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";
     public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
     public const string Runtime_Object_TakesNoArguments = "{0}() takes no arguments";

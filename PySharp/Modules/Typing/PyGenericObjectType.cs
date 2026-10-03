@@ -57,7 +57,7 @@ internal sealed partial class PyGenericObjectType : PyTypeObject<PyGenericObject
         // Minimal: no TypeVar objects exist yet, so __parameters__ is not set.
         // typing.Generic forwards class keywords up the chain (Lib/typing.py),
         // which leaves the default hook to reject what nobody consumed.
-        var superObj = PySuperObject.CreateSuper(Shared, cls);
+        var superObj = PySuperObject.CreateSuper(context, Shared, cls);
         if (superObj.IsError)
             return superObj;
 

@@ -39,22 +39,30 @@ public class PySuperObject : PyObject
     internal readonly PyTypeObject _type;
     internal readonly PyObject _object;
 
+    // supercheck's third branch: the __class__ a proxy reports becomes the
+    // cached search start (CPython's obj_type)
+    private readonly PyTypeObject? _classOverride;
+
     public override PyTypeObject DefaultPyType => PySuperObjectType.Shared;
 
-    internal PySuperObject(PyTypeObject type, PyObject obj)
+    internal PySuperObject(PyTypeObject type, PyObject obj, PyTypeObject? classOverride = null)
     {
         _type = type;
         _object = obj;
+        _classOverride = classOverride;
     }
 
     // supercheck's return value, which CPython caches as obj_type: the obj
-    // itself when it is a class, its type otherwise
+    // itself when it is a class, its type otherwise, or the __class__ a
+    // proxy reports
     internal static PyTypeObject SelfClassOf(PySuperObject self)
     {
+        if (self._classOverride is { } overrideType)
+            return overrideType;
         return self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
     }
 
-    public static PyResult CreateSuper(PyTypeObject type, PyObject objectOrType)
+    public static PyResult CreateSuper(PyCallContext context, PyTypeObject type, PyObject objectOrType)
     {
         // super_init_impl folds obj is None into an unbound super before
         // supercheck would reject it (Objects/typeobject.c:12182)
@@ -66,6 +74,32 @@ public class PySuperObject : PyObject
 
         if (type.IsInstance(objectOrType))
             return new PySuperObject(type, objectOrType);
+
+        // supercheck's third branch (typeobject.c:11973, "This will allow
+        // using super() with a proxy for obj"): the __class__ a proxy reports
+        // through the type MRO — a property binds here, a plain class
+        // attribute reports itself, the instance dict stays out — becomes the
+        // search start when it is a type different from the real one and a
+        // subclass of cls
+        if (PyObject.TryLookupAttrInMro(objectOrType.PyType, PySpecialNames.Class, out var classEntry))
+        {
+            PyObject reported;
+            var getFunc = classEntry.PyType.Slots.Get;
+            if (getFunc is not null)
+            {
+                var classAttr = getFunc(context, classEntry, objectOrType, objectOrType.PyType);
+                reported = classAttr.IsError ? null! : classAttr.Value;
+            }
+            else
+            {
+                reported = classEntry;
+            }
+
+            if (reported is PyTypeObject overrideType
+                && !ReferenceEquals(overrideType, objectOrType.PyType)
+                && overrideType.IsSubclassOf(type))
+                return new PySuperObject(type, objectOrType, overrideType);
+        }
 
         // CPython supercheck names both sides of the check and picks the
         // wording by whether obj is itself a type (Objects/typeobject.c:11993),
@@ -120,7 +154,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         if (cell.Value is not PyTypeObject type)
             return PyResult.RuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.TpName));
 
-        return PySuperObject.CreateSuper(type, objectOrType);
+        return PySuperObject.CreateSuper(context, type, objectOrType);
     }
 
     [PyFunctionParameters("type", "object_or_type=None", "/")]
@@ -129,7 +163,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         if (arguments[0] is not PyTypeObject type)
             return PyResult.TypeError(PySR.Runtime_Super_Arg1MustBeType, arguments[0].PyType.Name);
 
-        return PySuperObject.CreateSuper(type, arguments[1]);
+        return PySuperObject.CreateSuper(context, type, arguments[1]);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
