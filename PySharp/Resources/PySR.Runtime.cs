@@ -448,6 +448,11 @@ partial class PySR
     // sysmodule.c sys_intern's two rejections
     public const string Runtime_Sys_InternMustBeStr = "intern() argument must be str, not {0}";
     public const string Runtime_Sys_InternCantIntern = "can't intern {0}";
+    // CPython structseq_new's rejection of direct instantiation
+    public const string Runtime_Sys_CannotCreateInstances = "cannot create '{0}' instances";
+    // namespaceobject.c namespace_init's rejections
+    public const string Runtime_SimpleNamespace_TooManyArguments = "SimpleNamespace expected at most 1 argument, got {0}";
+    public const string Runtime_SimpleNamespace_KeyMustBeStr = "keywords must be strings";
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";

@@ -59,6 +59,28 @@ public partial class PySysModuleObject : PyModuleObject
         AppendAttribute("builtin_module_names", PyTupleObject.CreateTuple(
             PyStandardLibrary.BuiltinModuleNames.Select(PyStrObject.FromString)));
 
+        // The language version this interpreter implements (CPython
+        // Py_GetVersion starts the line with it)
+        AppendAttribute("version", PyStrObject.FromString("3.14.4 (PySharp) [64-bit]"));
+        AppendAttribute("version_info", PyVersionInfoObject.Shared);
+
+        // sys.implementation rides a SimpleNamespace, the way CPython 3.14
+        // ships it (make_impl_info)
+        var implementation = new PySimpleNamespaceObject();
+        implementation.PyAttributes["name"] = PyStrObject.FromString("cpython");
+        implementation.PyAttributes["cache_tag"] = PyStrObject.FromString("cpython-314");
+        implementation.PyAttributes["version"] = PyVersionInfoObject.Shared;
+        // (3 << 24) | (14 << 16) | (4 << 8) | 0xF0 — 3.14.4 final
+        implementation.PyAttributes["hexversion"] = PyIntObject.FromInteger(0x30E04F0);
+        implementation.PyAttributes["supports_isolated_interpreters"] = PyBoolObject.True;
+        AppendAttribute("implementation", implementation);
+
+        AppendAttribute("flags", PyFlagsObject.Create());
+
+        // CPython copies the built-in hook into sys.__excepthook__ so a
+        // replaced sys.excepthook keeps the default reachable
+        AppendAttribute("__excepthook__", PySysFunctions.Excepthook);
+
         // int.to_bytes/from_bytes document passing sys.byteorder as the order
         AppendAttribute("byteorder", PyStrObject.FromString(BitConverter.IsLittleEndian ? "little" : "big"));
 

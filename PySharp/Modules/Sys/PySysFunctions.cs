@@ -17,6 +17,19 @@ internal static partial class PySysFunctions
     [PyExport("intern", nameof(InternImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Intern { get; }
 
+    [PyExport("excepthook", nameof(ExcepthookImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Excepthook { get; }
+
+    // The built-in default hook (sys.__excepthook__ in CPython): render the
+    // exception the way the interpreter's native reporting does
+    [PyFunctionParameters("type", "value", "traceback", "/")]
+    private static PyResult ExcepthookImpl(PyCallContext context, PyArguments arguments)
+    {
+        if (arguments[1] is PyExceptionObject exc)
+            PyInterpreter.WriteTopLevelExceptionMessage(context, exc);
+        return PyNoneObject.None;
+    }
+
     [PyExport("getrecursionlimit", nameof(GetRecursionLimitImpl))]
     public static partial PyBuiltinFunctionOrMethodObject GetRecursionLimit { get; }
 
