@@ -12,7 +12,7 @@ public sealed class PyVersionInfoObject : PyTupleObject, IPyObjectRecursiveRepr
 {
     // (3, 14, 4, 'final', 0) — the CPython 3.14.4 release this interpreter
     // implements; sys.version and sys.implementation share it
-    public static PyVersionInfoObject Shared { get; } = new(
+    internal static PyVersionInfoObject Shared { get; } = new(
     [
         PyIntObject.FromInteger(3),
         PyIntObject.FromInteger(14),

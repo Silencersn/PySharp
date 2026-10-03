@@ -9,6 +9,10 @@ namespace PySharp.Modules.Builtins;
 // its implementation info as a SimpleNamespace)
 public sealed class PySimpleNamespaceObject : PyObjectManagedDict
 {
+    internal PySimpleNamespaceObject()
+    {
+    }
+
     public override PyTypeObject DefaultPyType => PySimpleNamespaceObjectType.Shared;
 }
 

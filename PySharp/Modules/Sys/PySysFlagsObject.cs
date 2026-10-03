@@ -35,7 +35,7 @@ public sealed class PyFlagsObject : PyTupleObject, IPyObjectRecursiveRepr
         PyIntObject.FromInteger(PyIntStrDigitsLimit.DefaultMaxStrDigits), // int_max_str_digits snapshot
     ];
 
-    public static PyFlagsObject Create()
+    internal static PyFlagsObject Create()
     {
         return new PyFlagsObject();
     }

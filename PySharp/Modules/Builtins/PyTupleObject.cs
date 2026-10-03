@@ -20,7 +20,7 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
 
     public PyObject this[int index] => _array[index];
 
-    protected PyTupleObject(PyObject[] array)
+    private protected PyTupleObject(PyObject[] array)
     {
         _array = array;
     }
