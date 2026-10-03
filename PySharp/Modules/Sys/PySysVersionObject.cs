@@ -47,7 +47,7 @@ public sealed partial class PyVersionInfoObjectType : PyTypeObject<PyVersionInfo
     // CPython structseq_new rejects direct instantiation
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyResult.TypeError(PySR.Runtime_Sys_CannotCreateInstances, "sys.version_info");
+        return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, "sys.version_info");
     }
 
     protected override void PostConstruct()

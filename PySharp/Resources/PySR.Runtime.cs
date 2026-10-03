@@ -184,9 +184,6 @@ partial class PySR
     public const string Runtime_Number_Int_ExceedsMaxStrDigits = "Exceeds the limit ({0} digits) for integer string conversion: value has {1} digits; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_ExceedsMaxStrDigitsResult = "Exceeds the limit ({0} digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_MaxDigitsNotInt32 = "Python int too large to convert to C int";
-    // CPython's "i"/"l" argument converters report the same sentence for any
-    // C-int overflow (setrecursionlimit, set_int_max_str_digits, ...)
-    public const string Runtime_Number_Int_TooLargeForCInt = "Python int too large to convert to C int";
     public const string Runtime_Number_Int_MaxDigitsInvalid = "maxdigits must be >= {0} or 0 for unlimited";
     public const string Runtime_Number_Int_TooBigToConvert = "int too big to convert";
     public const string Runtime_Number_Int_NegativeToUnsigned = "can't convert negative int to unsigned";
@@ -451,11 +448,8 @@ partial class PySR
     // sysmodule.c sys_intern's two rejections
     public const string Runtime_Sys_InternMustBeStr = "intern() argument must be str, not {0}";
     public const string Runtime_Sys_InternCantIntern = "can't intern {0}";
-    // CPython structseq_new's rejection of direct instantiation
-    public const string Runtime_Sys_CannotCreateInstances = "cannot create '{0}' instances";
     // namespaceobject.c namespace_init's rejections
     public const string Runtime_SimpleNamespace_TooManyArguments = "SimpleNamespace expected at most 1 argument, got {0}";
-    public const string Runtime_SimpleNamespace_KeyMustBeStr = "keywords must be strings";
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";

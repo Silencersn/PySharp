@@ -86,7 +86,7 @@ internal static partial class PySysFunctions
         var limit = limitResult.Value;
 
         if (!limit.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForCInt);
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);
 
         // sysmodule.c setrecursionlimit: a limit below 1 is a ValueError,
         // and a limit the current depth already reaches would break the

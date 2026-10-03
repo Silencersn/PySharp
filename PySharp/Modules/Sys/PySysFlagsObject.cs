@@ -74,7 +74,7 @@ public sealed partial class PyFlagsObjectType : PyTypeObject<PyFlagsObject>
     // CPython structseq_new rejects direct instantiation
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyResult.TypeError(PySR.Runtime_Sys_CannotCreateInstances, "sys.flags");
+        return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, "sys.flags");
     }
 
     protected override void PostConstruct()

@@ -69,7 +69,7 @@ public sealed partial class PySimpleNamespaceObjectType : PyTypeObject<PySimpleN
         foreach (var pair in dict)
         {
             if (pair.Key is not PyStrObject key)
-                return PyResult.TypeError(PySR.Runtime_SimpleNamespace_KeyMustBeStr);
+                return PyResult.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
             ns.PyAttributes[key.Value] = pair.Value;
         }
         return PyNoneObject.None;

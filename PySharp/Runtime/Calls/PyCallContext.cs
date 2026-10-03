@@ -130,11 +130,6 @@ public sealed partial class PyCallContext : IDisposable
         return new FrameSetter(this, ref frame, dispose);
     }
 
-    internal void Exit(int exitCode)
-    {
-        throw ThrowableException(PySystemExitObjectType.Shared, PyIntObject.FromInteger(exitCode));
-    }
-
     // CPython sys_exit raises SystemExit(code) whatever the code is: the
     // exit-status decoding happens when the exception reaches the top level
     // (ParseSystemExitCode), so a str code prints and exits with status 1
