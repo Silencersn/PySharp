@@ -442,6 +442,9 @@ partial class PySR
     public const string Runtime_Arguments_ValueStarNotIterable = "Value after * must be an iterable, not {0}";
 
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
+    // sysmodule.c setrecursionlimit's two rejections
+    public const string Runtime_Sys_RecursionLimitTooLow = "recursion limit must be greater or equal than 1";
+    public const string Runtime_Sys_RecursionLimitTooLowAtDepth = "cannot set the recursion limit to {0} at the recursion depth {1}: the limit is too low";
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
