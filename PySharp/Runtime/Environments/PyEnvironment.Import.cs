@@ -105,6 +105,23 @@ partial class PyEnvironment
     // reads interp->modules and does NOT follow a replaced sys.modules
     // attribute; the fallback mirrors that — a deleted or non-dict
     // sys.modules attribute silently reverts to the internal registry.
+    // _gcd_import's cache hit: a single name with an empty fromlist
+    // returns the sys.modules entry as-is, whatever its type — an
+    // assignment substitutes the module wholesale. Dotted names and
+    // non-empty fromlists must fall through: CPython still resolves
+    // the root binding and runs _handle_fromlist after the cache hit.
+    internal static bool IsBareNameCacheHit(string name, PyObject? fromList)
+    {
+        bool hasFromListEntry = fromList switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+        return !name.Contains('.') && !hasFromListEntry;
+    }
+
     internal bool TryGetImportEntry(PyCallContext context, string name, [NotNullWhen(true)] out PyObject? entry)
     {
         if (TryGetModulesDict(out var modulesDict))
