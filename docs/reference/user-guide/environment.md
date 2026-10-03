@@ -122,9 +122,11 @@ private static PyResult CountImpl(PyCallContext context, PyArguments arguments)
 2. 路径模块：依次扫描 `sys.path` 中的目录，寻找 `<name>.py` 文件或含 `__init__.py` 的 `<name>/`
    包目录，内容读取自环境的虚拟文件系统。
 
-搜索路径指向的目录由宿主的文件系统解释（内存 FS 或物理 FS），见
-[虚拟文件系统](./virtual-file-system.md)。相对导入（`from . import x`）遵循 PEP 328 的
-`resolve_name` 算法。
+`sys.path` 是 Python 侧的活动列表：脚本里的 `sys.path.append` / `insert` / `remove` 对下一次
+import 立即生效，构建器 `AddPath` 预置的目录就是它的初始内容。`sys.modules` 同样是 Python 侧的
+权威导入注册表，删除条目强制重载、赋值条目在 import 时原样返回。搜索路径指向的目录由宿主的
+文件系统解释（内存 FS 或物理 FS），见[虚拟文件系统](./virtual-file-system.md)。相对导入
+（`from . import x`）遵循 PEP 328 的 `resolve_name` 算法。
 
 ## API 参考
 
