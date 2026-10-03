@@ -114,10 +114,7 @@ partial class PyEnvironment
                 // import.c raises ModuleNotFoundError (an ImportError
                 // subclass) for the None-in-sys.modules halt
                 if (cached is PyNoneObject)
-                {
-                    throw new PyRuntimeException(context,
-                        PyModuleNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(PySR.Runtime_Import_Halted, name))));
-                }
+                    throw context.ModuleNotFoundError(PySR.Runtime_Import_Halted, name);
                 entry = cached;
                 return true;
             }
