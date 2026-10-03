@@ -24,20 +24,26 @@ public sealed class PySimpleNamespaceObject : PyObjectManagedDict
 [PyType("SimpleNamespace", Module = "types")]
 public sealed partial class PySimpleNamespaceObjectType : PyTypeObject<PySimpleNamespaceObject>
 {
+    // CPython namespace_new only allocates; the argument consumption lives
+    // in namespace_init so a subclass overriding __init__ replaces it
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return new PySimpleNamespaceObject { _pyType = cls };
+    }
+
     // CPython namespace_init: at most one positional — an exact dict or
     // anything dict() accepts — updated into the bag, then the keywords
-    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Init(PyCallContext context, PySimpleNamespaceObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count > 1)
             return PyResult.TypeError(PySR.Runtime_SimpleNamespace_TooManyArguments, args.Count);
 
-        var ns = new PySimpleNamespaceObject { _pyType = cls };
         if (args.Count is 1)
         {
             var arg = args[0];
             if (arg is PyDictObject exactDict)
             {
-                var fill = FillFromDict(context, ns, exactDict);
+                var fill = FillFromDict(self, exactDict);
                 if (fill.IsError)
                     return fill;
             }
@@ -46,33 +52,37 @@ public sealed partial class PySimpleNamespaceObjectType : PyTypeObject<PySimpleN
                 var converted = PyUtils.IterableToDict(context, arg);
                 if (converted.IsError)
                     return converted;
-                var fill = FillFromDict(context, ns, converted.Value);
+                var fill = FillFromDict(self, converted.Value);
                 if (fill.IsError)
                     return fill;
             }
         }
 
         foreach (var pair in kwargs)
-            ns.PyAttributes[pair.Key] = pair.Value;
-        return ns;
+            self.PyAttributes[pair.Key] = pair.Value;
+        return PyNoneObject.None;
     }
 
-    private static PyResult FillFromDict(PyCallContext context, PySimpleNamespaceObject ns, PyDictObject dict)
+    private static PyResult FillFromDict(PySimpleNamespaceObject ns, PyDictObject dict)
     {
         // PyArg_ValidateKeywordArguments: every key must be a string
         foreach (var pair in dict)
         {
             if (pair.Key is not PyStrObject key)
-                return PyResult.TypeError(PySR.Runtime_SimpleNamespace_KeyMustBeStr, pair.Key.PyType.Name);
+                return PyResult.TypeError(PySR.Runtime_SimpleNamespace_KeyMustBeStr);
             ns.PyAttributes[key.Value] = pair.Value;
         }
         return PyNoneObject.None;
     }
 
-    // CPython SimpleNamespace_repr: "namespace(a=1, b=2)" in insertion order
+    // CPython namespace_repr names the exact type "namespace" and any
+    // subclass by its own type name
     protected override PyResult Repr(PyCallContext context, PySimpleNamespaceObject self)
     {
-        var builder = new System.Text.StringBuilder("namespace(");
+        var typeName = ReferenceEquals(self.PyType, PySimpleNamespaceObjectType.Shared)
+            ? "namespace"
+            : self.PyType.Name;
+        var builder = new System.Text.StringBuilder(typeName).Append('(');
         var first = true;
         foreach (var pair in self.PyAttributes)
         {
