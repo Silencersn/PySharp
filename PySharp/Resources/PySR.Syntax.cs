@@ -48,6 +48,9 @@ partial class PySR
     public const string InvalidSyntax_Warning_IsWithLiteral = @"""is"" with '{0}' literal. Did you mean ""==""?";
     public const string InvalidSyntax_Warning_IsNotWithLiteral = @"""is not"" with '{0}' literal. Did you mean ""!=""?";
     public const string InvalidSyntax_Warning_AssertionAlwaysTrue = "assertion is always true, perhaps remove parentheses?";
+    public const string InvalidSyntax_Warning_ObjectNotCallable = "'{0}' object is not callable; perhaps you missed a comma?";
+    public const string InvalidSyntax_Warning_ObjectNotSubscriptable = "'{0}' object is not subscriptable; perhaps you missed a comma?";
+    public const string InvalidSyntax_Warning_IndicesMustBeIntegers = "{0} indices must be integers or slices, not {1}; perhaps you missed a comma?";
     public const string InvalidSyntax_FString_ReplacementField_BeforeEqual = "f-string: valid expression required before '='";
     public const string InvalidSyntax_FString_ReplacementField_BeforeExclamation = "f-string: valid expression required before '!'";
     public const string InvalidSyntax_FString_ReplacementField_BeforeColon = "f-string: valid expression required before ':'";
