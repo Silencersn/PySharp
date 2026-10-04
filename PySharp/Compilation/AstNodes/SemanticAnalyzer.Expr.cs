@@ -347,6 +347,10 @@ partial class SemanticAnalyzer
 
     private void VisitYield(YieldNode node)
     {
+        // symtable_raise_if_annotation_block runs before any yield placement
+        // rule, so a restricted block wins over the comprehension check below
+        CheckRestrictedExpr(node);
+
         if (_currentNestedComprehensionStats.IsWithinComprehension)
         {
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
@@ -370,6 +374,8 @@ partial class SemanticAnalyzer
 
     private void VisitYieldFrom(YieldFromNode node)
     {
+        CheckRestrictedExpr(node);
+
         if (_currentNestedComprehensionStats.IsWithinComprehension)
         {
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension,
@@ -390,6 +396,8 @@ partial class SemanticAnalyzer
 
     private void VisitNamedExpr(NamedExprNode node)
     {
+        CheckRestrictedExpr(node);
+
         if ((_currentScopeStats.Scope is ClassVariableScope && _currentNestedComprehensionStats.IsWithinComprehension)
             || _currentScopeStats.Scope is ComprehensionVariableScope { Parent: ClassVariableScope })
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
@@ -629,6 +637,10 @@ partial class SemanticAnalyzer
 
     private void VisitAwait(AwaitNode node)
     {
+        // a restricted block reports before the async-placement rules
+        // (symtable_raise_if_annotation_block precedes the function-like check)
+        CheckRestrictedExpr(node);
+
         // inlined comprehension scopes are transparent: an await inside a
         // comprehension belongs to the enclosing async function
         var scope = _currentScopeStats.Scope;

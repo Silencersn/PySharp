@@ -38,8 +38,8 @@
 
 ### `_MakeTypeAlias` — 创建类型别名
 
-- **Arg**：`name[i]`；**栈效应**`(func → typealias)`（原地替换）。
-- `type X = …` 语句：把栈顶的别名主体函数包装为 `PyTypeAliasTypeObject(名字, func)`。
+- **Arg**：`name[i]`；**栈效应**`(func, type_params → typealias)`（弹出参数元组，原地替换函数）。
+- `type X = …` 语句：把栈上的别名主体函数与类型参数元组包装为 `PyTypeAliasTypeObject(名字, func, type_params)`。泛型别名（`type X[T] = …`）在外层泛型参数代码对象里发射——先 `_LoadDerefFast` 逐个取出 TypeVar 组成参数元组，再走到本指令；非泛型别名的参数元组是空元组。
 
 ### `_SetFunctionTypeParams` — 记录函数类型参数
 

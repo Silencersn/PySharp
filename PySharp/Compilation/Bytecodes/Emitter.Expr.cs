@@ -107,6 +107,15 @@ partial class Emitter
             else
                 AsName();
         }
+        else if (VariableScope is TypeAliasVariableScope aliasValueScope)
+        {
+            // like a class body: every name is a global unless it is a type
+            // param captured as a cell from the generic param scope
+            if (aliasValueScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Closure)
+                AsDeref();
+            else
+                AsGlobal();
+        }
         else if (VariableScope is ComprehensionVariableScope comprehensionScope)
         {
             // inlined comprehension body inside a class body: the class scope is

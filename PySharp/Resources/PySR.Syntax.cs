@@ -230,6 +230,11 @@ partial class PySR
 
     public const string InvalidSyntax_Semantic_DuplicateTypeParam = "duplicate type parameter '{0}'";
 
+    // CPython symtable.c collapses its four EXPR_NOT_ALLOWED_* macros into
+    // this one shape: "{0} cannot be used within an annotation / a type
+    // alias / the definition of a generic / a TypeVar bound ..."
+    public const string InvalidSyntax_Semantic_ExprNotAllowedInRestricted = "{0} cannot be used within {1}";
+
     public const string InvalidSyntax_Semantic_NonLastDefaultExcept = "default 'except:' must be last";
 
     #endregion SemanticAnalyzer

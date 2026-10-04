@@ -341,6 +341,12 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 return;
             }
 
+            if (scope is TypeAliasVariableScope aliasValueScope)
+            {
+                aliasValueScope.FreeVars = [.. aliasValueScope.TempFrees.Distinct()];
+                return;
+            }
+
             if (scope is ComprehensionVariableScope comprehensionScope)
             {
                 comprehensionScope.CellVars = [.. comprehensionScope.Variables
@@ -555,6 +561,129 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         {
             if (keyword.Arg is not null)
                 CheckReservedName(keyword.Arg, ExprContextType.Store, keyword);
+        }
+    }
+
+    // CPython's restricted-expression blocks (symtable.c ste_type): while one
+    // is current, a yield, named expression or await raises through
+    // symtable_raise_if_annotation_block. Each entry is the block's own
+    // phrase in the message — "an annotation", "a type alias", "the
+    // definition of a generic" or a type-variable position — plus the scope
+    // it belongs to: entering a nested scope (a lambda body, a comprehension)
+    // pushes a different block type the way CPython's block stack does, so
+    // the restriction only fires while the owning scope is current.
+    private readonly Stack<(string Block, VariableScope Scope)> _restrictedExprBlocks = [];
+
+    private void CheckRestrictedExpr(AstExprNode node)
+    {
+        if (_restrictedExprBlocks.TryPeek(out var top) && ReferenceEquals(top.Scope, _currentScopeStats.Scope))
+            throw SyntaxErrorAt(node, PySR.InvalidSyntax_Semantic_ExprNotAllowedInRestricted, AstUtils.GetExprNodeName(node), top.Block);
+    }
+
+    // The restricted-expression check for lazily-evaluated positions that
+    // never enter the normal semantic walk (type-param bounds/defaults and
+    // annotations outside a class body): the expression is visited for its
+    // static errors only, without binding any names. Nested scopes behave
+    // like CPython's block stack — a lambda's defaults evaluate in the
+    // current block while its body gets a function block of its own, and a
+    // comprehension (its outermost iterable included) is a block of its own.
+    private void CheckRestrictedExprIn(AstExprNode expr, string block)
+    {
+        switch (expr)
+        {
+            case YieldNode or YieldFromNode or AwaitNode or NamedExprNode:
+                throw SyntaxErrorAt(expr, PySR.InvalidSyntax_Semantic_ExprNotAllowedInRestricted, AstUtils.GetExprNodeName(expr), block);
+
+            case LambdaNode lambda:
+                foreach (var node in ((IScopedSubNodesProvider)lambda).EnumerateSubNodesOuterScope().Cast<AstExprNode>())
+                    CheckRestrictedExprIn(node, block);
+                break;
+
+            case ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode:
+                break;
+
+            case AttributeNode n: CheckRestrictedExprIn(n.Value, block); break;
+            case BinOpNode n: CheckRestrictedExprIn(n.Left, block); CheckRestrictedExprIn(n.Right, block); break;
+            case BoolOpNode n: CheckExprs(n.Values); break;
+            case CallNode n: CheckRestrictedExprIn(n.Func, block); CheckExprs(n.Args); CheckKeywords(n.Keywords); break;
+            case CompareNode n: CheckRestrictedExprIn(n.Left, block); CheckExprs(n.Comparators); break;
+            case DictNode n:
+                foreach (var key in n.Keys)
+                {
+                    if (key is not null)
+                        CheckRestrictedExprIn(key, block);
+                }
+                CheckExprs(n.Values);
+                break;
+            case FormattedValueNode n: CheckRestrictedExprIn(n.Value, block); CheckNullable(n.FormatSpec); break;
+            case IfExpNode n: CheckRestrictedExprIn(n.Test, block); CheckRestrictedExprIn(n.Body, block); CheckRestrictedExprIn(n.OrElse, block); break;
+            case InterpolationNode n: CheckRestrictedExprIn(n.Value, block); CheckNullable(n.FormatSpec); break;
+            case JoinedStrNode n: CheckExprs(n.Values); break;
+            case ListNode n: CheckExprs(n.Elts); break;
+            case TupleNode n: CheckExprs(n.Elts); break;
+            case SetNode n: CheckExprs(n.Elts); break;
+            case SliceNode n: CheckNullable(n.Lower); CheckNullable(n.Upper); CheckNullable(n.Step); break;
+            case StarredNode n: CheckRestrictedExprIn(n.Value, block); break;
+            case SubscriptNode n: CheckRestrictedExprIn(n.Value, block); CheckRestrictedExprIn(n.Slice, block); break;
+            case TemplateStrNode n: CheckExprs(n.Values); break;
+            case UnaryOpNode n: CheckRestrictedExprIn(n.Operand, block); break;
+
+            // ConstantNode and NameNode carry no sub-expressions
+        }
+
+        void CheckExprs(ImmutableArray<AstExprNode> nodes)
+        {
+            foreach (var node in nodes)
+                CheckRestrictedExprIn(node, block);
+        }
+
+        void CheckKeywords(ImmutableArray<AstKeywordNode> nodes)
+        {
+            foreach (var node in nodes)
+                CheckRestrictedExprIn(node.Value, block);
+        }
+
+        void CheckNullable(AstExprNode? node)
+        {
+            if (node is not null)
+                CheckRestrictedExprIn(node, block);
+        }
+    }
+
+    // symtable.c ste_scope_info: a TypeVar's bound reads as a constraint when
+    // it is a tuple, and every default names its own parameter kind
+    private static string TypeVariableBlockOf(AstTypeParamNode tp, AstExprNode value) => tp switch
+    {
+        TypeVarNode tv when ReferenceEquals(value, tv.Bound) =>
+            value is TupleNode ? "a TypeVar constraint" : "a TypeVar bound",
+        TypeVarNode => "a TypeVar default",
+        TypeVarTupleNode => "a TypeVarTuple default",
+        ParamSpecNode => "a ParamSpec default",
+        _ => throw new UnreachableException(),
+    };
+
+    // symtable_visit_type_param: the bound and default of each parameter
+    // kind are visited inside their own TypeVariableBlock
+    private void CheckRestrictedTypeParam(AstTypeParamNode tp)
+    {
+        switch (tp)
+        {
+            case TypeVarNode n:
+                if (n.Bound is not null)
+                    CheckRestrictedExprIn(n.Bound, TypeVariableBlockOf(tp, n.Bound));
+                if (n.DefaultValue is not null)
+                    CheckRestrictedExprIn(n.DefaultValue, TypeVariableBlockOf(tp, n.DefaultValue));
+                break;
+
+            case TypeVarTupleNode n:
+                if (n.DefaultValue is not null)
+                    CheckRestrictedExprIn(n.DefaultValue, TypeVariableBlockOf(tp, n.DefaultValue));
+                break;
+
+            case ParamSpecNode n:
+                if (n.DefaultValue is not null)
+                    CheckRestrictedExprIn(n.DefaultValue, TypeVariableBlockOf(tp, n.DefaultValue));
+                break;
         }
     }
 
@@ -888,5 +1017,21 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             var poppedNode = _analyzer._nodesToRoot.Pop();
             Debug.Assert(ReferenceEquals(poppedNode, _node));
         }
+    }
+
+    // Marks a normally-visited position as a restricted-expression block,
+    // the symtable equivalent of symtable_enter_block(..., AnnotationBlock/
+    // TypeAliasBlock/...) paired with its exit
+    private readonly ref struct RestrictedExprBlockGuard : IDisposable
+    {
+        private readonly SemanticAnalyzer _analyzer;
+
+        internal RestrictedExprBlockGuard(SemanticAnalyzer analyzer, string block)
+        {
+            _analyzer = analyzer;
+            _analyzer._restrictedExprBlocks.Push((block, analyzer._currentScopeStats.Scope));
+        }
+
+        void IDisposable.Dispose() => _analyzer._restrictedExprBlocks.Pop();
     }
 }

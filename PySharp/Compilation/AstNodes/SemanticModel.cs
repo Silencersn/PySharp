@@ -202,12 +202,38 @@ internal sealed class GenericParamVariableScope : VariableScope, IScopeWithFreeV
         Name = string.Format(CultureInfo.InvariantCulture, NameTemplate, owner.Name);
     }
 
+    public GenericParamVariableScope(TypeAliasNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
+        Name = string.Format(CultureInfo.InvariantCulture, NameTemplate, owner.Name);
+    }
+
     public override void Bind(SemanticModel model)
     {
         // GenericParamVariableScope shares its Owner with the inner scope (class or function).
         // Skip self-registration to avoid duplicate key conflict in SemanticModel.
         foreach (var childScope in Children)
             childScope.Bind(model);
+    }
+}
+
+/// <summary>
+/// Scope for the lazily-evaluated value of a type alias (the right side of
+/// <c>type X[T] = ...</c>). Corresponds to CPython's TypeAliasBlock: each type
+/// param arrives as a free-variable cell from the parent
+/// <see cref="GenericParamVariableScope"/> (loaded via <c>LoadDeref</c>), while
+/// every other name resolves as a global or an enclosing-function cell.
+/// </summary>
+internal sealed class TypeAliasVariableScope : VariableScope, IScopeWithFreeVars
+{
+    public override TypeAliasNode Owner { get; }
+    public override string Name => Owner.Name;
+    public ImmutableArray<string> FreeVars { get; internal set; } = [];
+    public List<string> TempFrees { get; } = [];
+
+    public TypeAliasVariableScope(TypeAliasNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
     }
 }
 
