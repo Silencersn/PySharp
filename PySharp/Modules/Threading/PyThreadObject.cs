@@ -54,6 +54,20 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
     // construction time (threading.py _newname), not with the OS thread id
     private static int _nameCounter;
 
+    // the Thread-<n> default name, suffixed with the target's __name__
+    // when it has one (threading.py __init__ / _newname); shared with Timer
+    internal static string NextDefaultName(PyCallContext context, PyObject target)
+    {
+        var name = $"Thread-{Interlocked.Increment(ref _nameCounter)}";
+        if (target is not PyNoneObject)
+        {
+            var targetName = PyTypeObject.DefaultGetAttribute(context, target, PyStrObject.FromString("__name__"));
+            if (!targetName.IsError && targetName.Value is PyStrObject targetNameString)
+                name += $" ({targetNameString.Value})";
+        }
+        return name;
+    }
+
     // _PyOS_MIN_STACK_SIZE + SYSTEM_PAGE_SIZE on Windows: the smallest
     // nonzero size stack_size accepts
     internal const long MinimumStackSize = 53248;
@@ -223,14 +237,7 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
         }
         else
         {
-            name = $"Thread-{Interlocked.Increment(ref _nameCounter)}";
-            var target = arguments[1];
-            if (target is not PyNoneObject)
-            {
-                var targetName = PyTypeObject.DefaultGetAttribute(context, target, PyStrObject.FromString("__name__"));
-                if (!targetName.IsError && targetName.Value is PyStrObject targetNameString)
-                    name += $" ({targetNameString.Value})";
-            }
+            name = NextDefaultName(context, arguments[1]);
         }
 
         // daemon: explicit values are stored as-is; the default inherits

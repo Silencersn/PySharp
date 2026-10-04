@@ -33,4 +33,5 @@ partial class PySR
     public const string Runtime_Threading_JoinDummyThread = "cannot join a dummy thread";
     public const string Runtime_Threading_TimeoutTooLarge = "timeout value is too large";
     public const string Runtime_Threading_TimeStampOutOfRange = "timestamp out of range for platform time_t";
+    public const string Runtime_Threading_LocalInitArguments = "Initialization arguments are not supported";
 }

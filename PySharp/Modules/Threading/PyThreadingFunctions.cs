@@ -27,6 +27,33 @@ public static partial class PyThreadingFunctions
         return new PyRLockObject();
     }
 
+    // the default threading.excepthook: reports an uncaught thread
+    // exception as "Exception in thread <name>:" plus the traceback; the
+    // worker channel detects replacement by comparing against this object.
+    // CPython binds the C function _thread._excepthook, so the function's
+    // own name is "_excepthook" while threading exposes it as "excepthook"
+    [PyExport("_excepthook", nameof(ExceptHookImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject ExceptHook { get; }
+
+    [PyFunctionParameters("args")]
+    private static PyResult ExceptHookImpl(PyCallContext context, PyArguments arguments)
+    {
+        // threading.py reads the fields off whatever structseq-like object
+        // arrives, so the lookups go through generic attribute access
+        var thread = PyTypeObject.DefaultGetAttribute(context, arguments[0], PyStrObject.FromString("thread"));
+        if (thread.IsError)
+            return thread;
+
+        var excValue = PyTypeObject.DefaultGetAttribute(context, arguments[0], PyStrObject.FromString("exc_value"));
+        if (excValue.IsError)
+            return excValue;
+        // the "Exception in thread <name>:" heading rides on the exception's
+        // traceback rendering, so the message body is all that is written
+        if (excValue.Value is PyExceptionObject exc)
+            PyInterpreter.WriteNativeExceptionMessage(context, exc);
+        return PyNoneObject.None;
+    }
+
     // _thread.get_ident: PySharp reports the managed thread id, the same
     // value Thread.ident carries
     [PyExport("get_ident", nameof(GetIdentImpl))]

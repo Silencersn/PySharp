@@ -30,6 +30,45 @@ public sealed partial class PyEventObject : PyObject, IDisposable
     {
         _lock.Dispose();
     }
+
+    // object-side cores shared with the Timer machinery
+    internal PyResult SetFlag(PyCallContext context)
+    {
+        _lock.TryAcquire(-1, true);
+        _flag = true;
+        var notified = PyConditionObjectType.PyNotify(context, _cond, int.MaxValue);
+        _lock.PyRelease();
+        return notified;
+    }
+
+    internal PyResult WaitCore(PyCallContext context, double? timeout)
+    {
+        _lock.TryAcquire(-1, true);
+        var signaled = _flag;
+        if (!signaled)
+        {
+            // the timeout range check only runs on the waiting path: a set
+            // event returns immediately no matter how large the timeout
+            if (timeout is not null && PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
+            {
+                _lock.PyRelease();
+                return rangeError;
+            }
+
+            // the wait runs through the Condition protocol: it releases
+            // the lock while parked and re-acquires before returning, so
+            // the outer hold stays balanced
+            var waited = PyConditionObjectType.PyWait(context, _cond, timeout);
+            if (waited.IsError)
+            {
+                _lock.PyRelease();
+                return waited;
+            }
+            signaled = ((PyBoolObject)waited.Value).BoolValue;
+        }
+        _lock.PyRelease();
+        return PyBoolObject.FromBoolean(signaled);
+    }
 }
 
 [PyType("Event", Module = "threading")]
@@ -81,11 +120,7 @@ public sealed partial class PyEventObjectType : PyTypeObject<PyEventObject>
     [PyFunctionParameters()]
     private static PyResult Set(PyCallContext context, PyEventObject self, PyArguments arguments)
     {
-        self._lock.TryAcquire(-1, true);
-        self._flag = true;
-        var notified = PyConditionObjectType.PyNotify(context, self._cond, int.MaxValue);
-        self._lock.PyRelease();
-        return notified;
+        return self.SetFlag(context);
     }
 
     [PyMethod("clear")]
@@ -111,30 +146,6 @@ public sealed partial class PyEventObjectType : PyTypeObject<PyEventObject>
             timeout = converted.Value.Value;
         }
 
-        self._lock.TryAcquire(-1, true);
-        var signaled = self._flag;
-        if (!signaled)
-        {
-            // the timeout range check only runs on the waiting path: a set
-            // event returns immediately no matter how large the timeout
-            if (timeout is not null && PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
-            {
-                self._lock.PyRelease();
-                return rangeError;
-            }
-
-            // the wait runs through the Condition protocol: it releases
-            // the lock while parked and re-acquires before returning, so
-            // the outer hold stays balanced
-            var waited = PyConditionObjectType.PyWait(context, self._cond, timeout);
-            if (waited.IsError)
-            {
-                self._lock.PyRelease();
-                return waited;
-            }
-            signaled = ((PyBoolObject)waited.Value).BoolValue;
-        }
-        self._lock.PyRelease();
-        return PyBoolObject.FromBoolean(signaled);
+        return self.WaitCore(context, timeout);
     }
 }
