@@ -50,6 +50,11 @@ public partial class PySemaphoreObject : PyObject, IDisposable
                 break;
             if (timeout is not null)
             {
+                // the timeout range check only runs on the waiting path: an
+                // available counter is taken immediately no matter how
+                // large the timeout
+                if (PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
+                    return ExitLock(context, rangeError);
                 if (!deadlineSet)
                 {
                     deadline = MonotonicSeconds + timeout.Value;

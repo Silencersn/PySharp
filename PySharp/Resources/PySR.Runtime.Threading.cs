@@ -27,4 +27,10 @@ partial class PySR
     public const string Runtime_Threading_DeprecatedIsSet = "isSet() is deprecated, use is_set() instead";
     public const string Runtime_Threading_DeprecatedNotifyAll = "notifyAll() is deprecated, use notify_all() instead";
     public const string Runtime_Threading_DeprecatedRLockArguments = "Passing arguments to RLock is deprecated and will be removed in 3.15";
+    public const string Runtime_Threading_DeprecatedCurrentThread = "currentThread() is deprecated, use current_thread() instead";
+    public const string Runtime_Threading_DeprecatedActiveCount = "activeCount() is deprecated, use active_count() instead";
+    public const string Runtime_Threading_StackSizeMin = "size must be at least 53248 bytes";
+    public const string Runtime_Threading_JoinDummyThread = "cannot join a dummy thread";
+    public const string Runtime_Threading_TimeoutTooLarge = "timeout value is too large";
+    public const string Runtime_Threading_TimeStampOutOfRange = "timestamp out of range for platform time_t";
 }

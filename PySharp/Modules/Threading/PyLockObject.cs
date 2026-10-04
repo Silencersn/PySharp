@@ -115,6 +115,21 @@ public sealed partial class PyLockObjectType : PyTypeObject<PyLockObject>
         if (timeoutSeconds < 0 && timeoutSeconds is not -1)
             return PyResult.RaiseException(PyValueErrorObjectType.Shared, PySR.Runtime_Threading_TimeoutNonNegative);
 
+        return ValidateTimeoutRange(context, timeoutSeconds);
+    }
+
+    // CPython converts a timeout to a nanosecond PyTime_t and then, on
+    // Windows, to the WaitForSingleObject millisecond range: a value past
+    // the 64-bit nanosecond range (~292 years) or past 0xFFFFFFFE
+    // milliseconds (~49.7 days, the source of _thread.TIMEOUT_MAX) fails
+    // with OverflowError before any waiting starts. Returns null on
+    // success, the error result otherwise.
+    internal static PyResult? ValidateTimeoutRange(PyCallContext context, double timeoutSeconds)
+    {
+        if (timeoutSeconds > 9_223_372_036.854)
+            return PyResult.RaiseException(PyOverflowErrorObjectType.Shared, PySR.Runtime_Threading_TimeStampOutOfRange);
+        if (Math.Ceiling(timeoutSeconds * 1e6) > 4_294_967_294_000.0)
+            return PyResult.RaiseException(PyOverflowErrorObjectType.Shared, PySR.Runtime_Threading_TimeoutTooLarge);
         return null;
     }
 

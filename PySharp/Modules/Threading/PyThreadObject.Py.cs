@@ -7,6 +7,31 @@ namespace PySharp.Modules.Threading;
 
 partial class PyThreadObject : PyObject
 {
+    // threading.py Thread.__repr__ — shared by the Thread, _MainThread and
+    // _DummyThread types, so the status text carries the actual PyType name
+    internal PyResult FormatRepr(PyCallContext context)
+    {
+        // initial/started/stopped, then the daemon suffix, then the ident
+        // once the thread has one
+        string status;
+        if (!_started)
+            status = "initial";
+        else if (_thread is not null && _thread.Join(0))
+            status = "stopped";
+        else
+            status = "started";
+
+        var truthy = PySpecialMethods.Bool(context, _daemonic);
+        if (truthy.IsError)
+            return truthy;
+        if (truthy.Value.BoolValue)
+            status += " daemon";
+        if (_ident is { } ident)
+            status += $" {ident}";
+
+        return PyStrObject.FromString($"<{PyType.Name}({_name}, {status})>");
+    }
+
     public void PyStart(PyCallContext context)
     {
         if (_thread is not null)
@@ -19,6 +44,12 @@ partial class PyThreadObject : PyObject
         var daemon = PySpecialMethods.Bool(context, _daemonic);
         if (daemon.IsError)
             throw new PyRuntimeException(context, daemon.Exception);
+
+        // stack_size() maps onto the CLR per-thread stack reservation; the
+        // OS rounds values below the default reservation back up, so small
+        // configured sizes stay harmless
+        var configuredSize = PyThreadObjectType.ConfiguredStackSize(context.PyEnvironment);
+        var maxStackSize = configuredSize > 0 ? (int)Math.Min(configuredSize, int.MaxValue) : 0;
 
         _thread = new Thread(() =>
         {
@@ -33,7 +64,7 @@ partial class PyThreadObject : PyObject
                 // _bootstrap_inner sets them before _started.set())
                 _ident = Environment.CurrentManagedThreadId;
                 _nativeId = _ident;
-                PyThreadObjectType.RegisterActive(this);
+                PyThreadObjectType.RegisterActive(threadContext.PyEnvironment, this);
                 lock (_startedGate)
                 {
                     _started = true;
@@ -48,7 +79,7 @@ partial class PyThreadObject : PyObject
                 }
                 finally
                 {
-                    PyThreadObjectType.UnregisterActive(_ident.Value, this);
+                    PyThreadObjectType.UnregisterActive(threadContext.PyEnvironment, _ident.Value, this);
                 }
             }
             catch (ThreadInterruptedException)
@@ -65,7 +96,7 @@ partial class PyThreadObject : PyObject
             // no need to context.ExitFrame()
             Debug.Assert(_thread is not null);
             context.PyEnvironment.Threads.Remove(_thread);
-        })
+        }, maxStackSize)
         {
             IsBackground = daemon.Value.BoolValue,
         };
@@ -104,13 +135,22 @@ partial class PyThreadObject : PyObject
     {
         if (!_started)
             throw context.RuntimeError(PySR.Runtime_Threading_JoinBeforeStart);
-        if (ReferenceEquals(PyThreadObjectType.TryGetActiveThread(), this))
+        if (ReferenceEquals(PyThreadObjectType.TryGetActiveThread(context.PyEnvironment), this))
             throw context.RuntimeError(PySR.Runtime_Threading_JoinCurrentThread);
 
+        // the timeout range check only runs on the waiting path: a
+        // finished thread reports join success immediately no matter how
+        // large the timeout (threading.py joins a set Event)
         if (timeout < 0)
+        {
             _thread!.Join();
-        else
-            _thread!.Join(TimeSpan.FromSeconds(timeout));
+            return;
+        }
+        if (_thread!.Join(0))
+            return;
+        if (PyLockObjectType.ValidateTimeoutRange(context, timeout) is { } rangeError)
+            throw new PyRuntimeException(context, rangeError.Exception!);
+        _thread.Join(TimeSpan.FromSeconds(timeout));
     }
 
     public bool PyIsAlive()

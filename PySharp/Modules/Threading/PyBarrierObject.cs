@@ -65,6 +65,8 @@ public sealed partial class PyBarrierObjectType : PyTypeObject<PyBarrierObject>
             if (converted.IsError)
                 return converted;
             timeout = converted.Value.Value;
+            if (PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
+                return rangeError;
         }
 
         return new PyBarrierObject(parties, arguments[1], timeout);
@@ -101,6 +103,8 @@ public sealed partial class PyBarrierObjectType : PyTypeObject<PyBarrierObject>
             if (converted.IsError)
                 return converted;
             timeout = converted.Value.Value;
+            if (PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
+                return rangeError;
         }
 
         return WaitCore(context, self, timeout);

@@ -115,6 +115,14 @@ public sealed partial class PyEventObjectType : PyTypeObject<PyEventObject>
         var signaled = self._flag;
         if (!signaled)
         {
+            // the timeout range check only runs on the waiting path: a set
+            // event returns immediately no matter how large the timeout
+            if (timeout is not null && PyLockObjectType.ValidateTimeoutRange(context, timeout.Value) is { } rangeError)
+            {
+                self._lock.PyRelease();
+                return rangeError;
+            }
+
             // the wait runs through the Condition protocol: it releases
             // the lock while parked and re-acquires before returning, so
             // the outer hold stays balanced

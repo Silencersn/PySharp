@@ -1,8 +1,8 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace PySharp.Modules.Threading;
@@ -54,28 +54,116 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
     // construction time (threading.py _newname), not with the OS thread id
     private static int _nameCounter;
 
-    // threading.py's _active registry: started threads keyed by ident,
-    // unregistering as the worker exits. Like _nameCounter this state is
-    // process-wide across PyEnvironment instances, matching CPython's
-    // module-level dict.
-    private static readonly ConcurrentDictionary<long, PyThreadObject> ActiveThreads = [];
+    // _PyOS_MIN_STACK_SIZE + SYSTEM_PAGE_SIZE on Windows: the smallest
+    // nonzero size stack_size accepts
+    internal const long MinimumStackSize = 53248;
 
-    internal static void RegisterActive(PyThreadObject thread)
+    internal static void RegisterActive(PyEnvironment environment, PyThreadObject thread)
     {
         Debug.Assert(thread._ident is not null);
-        ActiveThreads[thread._ident.Value] = thread;
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            state.Active[thread._ident.Value] = thread;
+        }
     }
 
     // conditional removal: idents are recycled once a thread exits, so the
     // dying worker must not unregister a successor that reused its ident
-    internal static void UnregisterActive(long ident, PyThreadObject thread)
+    internal static void UnregisterActive(PyEnvironment environment, long ident, PyThreadObject thread)
     {
-        ActiveThreads.TryRemove(new KeyValuePair<long, PyThreadObject>(ident, thread));
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            if (state.Active.TryGetValue(ident, out var registered) && ReferenceEquals(registered, thread))
+                state.Active.Remove(ident);
+        }
     }
 
-    internal static PyThreadObject? TryGetActiveThread()
+    internal static PyThreadObject? TryGetActiveThread(PyEnvironment environment)
     {
-        return ActiveThreads.TryGetValue(Environment.CurrentManagedThreadId, out var thread) ? thread : null;
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            return state.Active.GetValueOrDefault(Environment.CurrentManagedThreadId);
+        }
+    }
+
+    // active_count() over _active alone: a worker registers itself before
+    // the started flag flips and start() blocks on that flip, so there is
+    // no observable threading.py _limbo window
+    internal static int ActiveThreadCount(PyEnvironment environment)
+    {
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            return state.Active.Count;
+        }
+    }
+
+    // enumerate(): the _active values in insertion order
+    internal static List<PyThreadObject> SnapshotActiveThreads(PyEnvironment environment)
+    {
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            return [.. state.Active.Values];
+        }
+    }
+
+    internal static PyThreadObject GetMainThread(PyEnvironment environment)
+    {
+        var state = environment.ThreadingState;
+        lock (state.Gate)
+        {
+            if (state.MainThread is null)
+            {
+                var main = CreateSpecialThread(PyMainThreadObjectType.Shared, "MainThread", PyBoolObject.False);
+                state.Active[main._ident!.Value] = main;
+                state.MainThread = main;
+            }
+            return state.MainThread;
+        }
+    }
+
+    // current_thread() on a thread that never went through this module
+    // (threading.py _DummyThread): alive, daemonic, registered so repeated
+    // calls agree, and joinable never
+    internal static PyThreadObject CreateDummyThread(PyEnvironment environment)
+    {
+        var dummy = CreateSpecialThread(PyDummyThreadObjectType.Shared,
+            $"Dummy-{Interlocked.Increment(ref _nameCounter)}", PyBoolObject.True);
+        RegisterActive(environment, dummy);
+        return dummy;
+    }
+
+    // the shared shape of _MainThread and _DummyThread instances: alive
+    // from birth, identity fields settled to the running thread, backed by
+    // the live OS thread so the Join(0) probes in repr/is_alive hold — the
+    // only threads that never travel through PyStart
+    private static PyThreadObject CreateSpecialThread(PyTypeObject pyType, string name, PyObject daemonic)
+    {
+        return new PyThreadObject(PyNoneObject.None, [], new Dictionary<string, PyObject>(), name)
+        {
+            _pyType = pyType,
+            _daemonic = daemonic,
+            _ident = Environment.CurrentManagedThreadId,
+            _nativeId = Environment.CurrentManagedThreadId,
+            _started = true,
+            _thread = Thread.CurrentThread,
+        };
+    }
+
+    // stack_size() always returns the value configured before the call and
+    // then installs the new one; size 0 resets to the platform default
+    internal static long ExchangeStackSize(PyEnvironment environment, long size)
+    {
+        return Interlocked.Exchange(ref environment.ThreadingState.StackSize, size);
+    }
+
+    internal static long ConfiguredStackSize(PyEnvironment environment)
+    {
+        return Interlocked.Read(ref environment.ThreadingState.StackSize);
     }
 
     [PyExport(PySpecialNames.New, nameof(NewImpl))]
@@ -152,7 +240,7 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
         if (explicitDaemon is not PyNoneObject)
             daemon = explicitDaemon;
         else
-            daemon = TryGetActiveThread()?._daemonic ?? PyBoolObject.False;
+            daemon = TryGetActiveThread(context.PyEnvironment)?._daemonic ?? PyBoolObject.False;
 
         return new PyThreadObject(arguments[1], args, dict, name)
         {
@@ -171,25 +259,7 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
 
     protected override PyResult Repr(PyCallContext context, PyThreadObject self)
     {
-        // threading.py __repr__: initial/started/stopped, then the daemon
-        // suffix, then the ident once the thread has one
-        string status;
-        if (!self._started)
-            status = "initial";
-        else if (self._thread is not null && self._thread.Join(0))
-            status = "stopped";
-        else
-            status = "started";
-
-        var truthy = PySpecialMethods.Bool(context, self._daemonic);
-        if (truthy.IsError)
-            return truthy;
-        if (truthy.Value.BoolValue)
-            status += " daemon";
-        if (self._ident is { } ident)
-            status += $" {ident}";
-
-        return PyStrObject.FromString($"<{self.PyType.Name}({self._name}, {status})>");
+        return self.FormatRepr(context);
     }
 
     [PyMethod("start")]
