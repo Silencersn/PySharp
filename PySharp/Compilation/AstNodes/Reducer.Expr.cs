@@ -5,6 +5,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -118,8 +119,7 @@ partial class Reducer
         {
             if (left is ConstantNode constantLeft && right is ConstantNode constantRight)
             {
-                // CPython never folds 'str % x' (str.__mod__ may raise / is not folded); keep it for runtime
-                if (op is OperatorType.Mod && constantLeft.Value is PyStrObject)
+                if (!SafeToFold(op, constantLeft.Value, constantRight.Value))
                     return null;
 
                 var result = PyCore.EvalOperator(PyCallContext.NonContextDependency, op, constantLeft.Value, constantRight.Value);
@@ -129,6 +129,117 @@ partial class Reducer
 
             return null;
         }
+    }
+
+    // CPython's constant folder (flowgraph.c) refuses folds that would
+    // eagerly allocate a huge string, sequence or int during compilation,
+    // leaving them to runtime instead.
+    private const int MaxIntSize = 128;         // bits
+    private const int MaxCollectionSize = 256;  // items
+    private const int MaxStrSize = 4096;        // characters
+    private const int MaxTotalItems = 1024;     // including nested collections
+
+    // eval_const_binop: which binary folds are attempted at all. A false
+    // result keeps the operation at runtime, exactly like the
+    // const_folding_safe_* guards returning NULL in CPython.
+    private static bool SafeToFold(OperatorType op, PyObject left, PyObject right) => op switch
+    {
+        OperatorType.Mult => SafeMultiply(left, right),
+        OperatorType.Pow => SafePower(left, right),
+        OperatorType.LShift => SafeLShift(left, right),
+        // %-formatting may raise (str.__mod__ / bytes.__mod__), so
+        // 'str % x' and 'bytes % x' never fold (const_folding_safe_mod)
+        OperatorType.Mod => left is not (PyStrObject or PyBytesObject),
+        _ => true,
+    };
+
+    // const_folding_safe_multiply
+    private static bool SafeMultiply(PyObject left, PyObject right)
+    {
+        if (left is PyIntObject leftInt && right is PyIntObject rightInt)
+        {
+            // int * int: refuse when the product would exceed MaxIntSize bits
+            return leftInt.Value.IsZero || rightInt.Value.IsZero
+                || BigInteger.Abs(leftInt.Value).GetBitLength() + BigInteger.Abs(rightInt.Value).GetBitLength() <= MaxIntSize;
+        }
+
+        if (left is PyIntObject count && right is PyTupleObject tuple)
+        {
+            if (tuple.Count is 0)
+                return true;
+            if (!RepeatCountWithin(count, MaxCollectionSize / tuple.Count, out long n))
+                return false;
+            return n is 0 || TupleComplexity(tuple, MaxTotalItems / n) >= 0;
+        }
+
+        if (left is PyIntObject seqCount && right is PyStrObject or PyBytesObject)
+        {
+            int size = right is PyStrObject str ? str.PyLength : ((PyBytesObject)right).Length;
+            return size is 0 || RepeatCountWithin(seqCount, MaxStrSize / size, out _);
+        }
+
+        if (right is PyIntObject && left is PyTupleObject or PyStrObject or PyBytesObject)
+            return SafeMultiply(right, left);
+
+        return true;
+    }
+
+    // PyLong_AsLong followed by the "n < 0 || n > limit" refusal: a count
+    // outside long range (CPython's overflow reads as -1) never folds.
+    private static bool RepeatCountWithin(PyIntObject count, long limit, out long n)
+    {
+        var value = count.Value;
+        if (value.Sign < 0 || value > long.MaxValue)
+        {
+            n = 0;
+            return false;
+        }
+        n = (long)value;
+        return n <= limit;
+    }
+
+    // const_folding_check_complexity: the budget left after the (possibly
+    // nested) tuple's total item count; negative means over budget.
+    private static long TupleComplexity(PyObject obj, long limit)
+    {
+        if (obj is PyTupleObject tuple)
+        {
+            limit -= tuple.Count;
+            for (int i = 0; limit >= 0 && i < tuple.Count; i++)
+            {
+                limit = TupleComplexity(tuple[i], limit);
+                if (limit < 0)
+                    return limit;
+            }
+        }
+        return limit;
+    }
+
+    // const_folding_safe_power
+    private static bool SafePower(PyObject left, PyObject right)
+    {
+        // int ** int with a positive exponent: refuse when the power
+        // would exceed MaxIntSize bits (bits(v) * exponent > MaxIntSize)
+        if (left is PyIntObject leftInt && right is PyIntObject rightInt
+            && !leftInt.Value.IsZero && rightInt.Value.Sign > 0)
+            return BigInteger.Abs(leftInt.Value).GetBitLength() <= MaxIntSize / rightInt.Value;
+        return true;
+    }
+
+    // const_folding_safe_lshift
+    private static bool SafeLShift(PyObject left, PyObject right)
+    {
+        if (left is PyIntObject leftInt && right is PyIntObject rightInt
+            && !leftInt.Value.IsZero && !rightInt.Value.IsZero)
+        {
+            // refuse when the shift would exceed MaxIntSize bits; a
+            // negative shift raises at runtime and never folds
+            var shift = rightInt.Value;
+            return shift.Sign > 0
+                && shift <= MaxIntSize
+                && BigInteger.Abs(leftInt.Value).GetBitLength() <= MaxIntSize - (long)shift;
+        }
+        return true;
     }
 
     private static AstExprNode FoldUnaryOp(UnaryOpNode node)

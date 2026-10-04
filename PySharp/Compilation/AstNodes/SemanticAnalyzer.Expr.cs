@@ -1,3 +1,4 @@
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
@@ -81,6 +82,7 @@ partial class SemanticAnalyzer
                     throw SyntaxError(PySR.InvalidSyntax_Semantic_KeywordArgumentRepeated, currentKeyword.Arg);
             }
         }
+        CheckCaller(node.Func);
         VisitNode(node.Func);
         VisitNodes(node.Args);
         VisitNodes(node.Keywords);
@@ -563,8 +565,85 @@ partial class SemanticAnalyzer
 
     private void VisitSubscript(SubscriptNode node)
     {
+        CheckSubscripter(node.Value);
+        CheckIndex(node);
         VisitNode(node.Value);
         VisitNode(node.Slice);
+    }
+
+    // codegen.c infer_type — the type a literal or display expression
+    // produces, used only to name it in the missed-comma diagnostics;
+    // null when the type cannot be inferred
+    private static string? InferTypeName(AstExprNode node)
+    {
+        if (node is ConstantNode constant)
+            return constant.Value.PyType.Name;
+        return node switch
+        {
+            TupleNode => "tuple",
+            ListNode or ListCompNode => "list",
+            DictNode or DictCompNode => "dict",
+            SetNode or SetCompNode => "set",
+            GeneratorExpNode => "generator",
+            LambdaNode => "function",
+            // _PyTemplate_Type's tp_name carries its module path
+            TemplateStrNode or InterpolationNode => "string.templatelib.Template",
+            JoinedStrNode or FormattedValueNode => "str",
+            _ => null,
+        };
+    }
+
+    private void WarnSyntaxAt(AstExprNode node, string message)
+    {
+        var metaInfo = CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange);
+        _ = _context.WarnSyntax(message, new FixedMetaInfoProvider(metaInfo), _session).PyUnwrap(_context);
+    }
+
+    // check_caller — calling a literal or a collection display is nearly
+    // always a missing comma
+    private void CheckCaller(AstExprNode func)
+    {
+        if (func is ConstantNode or TupleNode or ListNode or ListCompNode or DictNode or DictCompNode
+            or SetNode or SetCompNode or GeneratorExpNode or JoinedStrNode or TemplateStrNode
+            or FormattedValueNode or InterpolationNode)
+            WarnSyntaxAt(func, PySR.Format(PySR.InvalidSyntax_Warning_ObjectNotCallable, InferTypeName(func)));
+    }
+
+    // check_subscripter — subscripting a constant that is never
+    // subscriptable, or a set/generator/lambda/t-string display
+    private void CheckSubscripter(AstExprNode value)
+    {
+        bool warn = value switch
+        {
+            ConstantNode constant => constant.Value is PyNoneObject or PyEllipsisObject
+                or PyIntObject or PyFloatObject or PyComplexObject or PySetObject,
+            SetNode or SetCompNode or GeneratorExpNode or TemplateStrNode or InterpolationNode or LambdaNode => true,
+            _ => false,
+        };
+        if (warn)
+            WarnSyntaxAt(value, PySR.Format(PySR.InvalidSyntax_Warning_ObjectNotSubscriptable, InferTypeName(value)));
+    }
+
+    // check_index — a str/bytes/tuple constant or a tuple/list/str display
+    // subscripted with an expression of a known non-index type
+    private void CheckIndex(SubscriptNode node)
+    {
+        if (node.Slice is ConstantNode { Value: PyIntObject })
+            return;
+
+        var indexType = InferTypeName(node.Slice);
+        if (indexType is null)
+            return;
+
+        var value = node.Value;
+        bool warn = value switch
+        {
+            ConstantNode constant => constant.Value is PyStrObject or PyBytesObject or PyTupleObject,
+            TupleNode or ListNode or ListCompNode or JoinedStrNode or FormattedValueNode => true,
+            _ => false,
+        };
+        if (warn)
+            WarnSyntaxAt(value, PySR.Format(PySR.InvalidSyntax_Warning_IndicesMustBeIntegers, InferTypeName(value), indexType));
     }
 
     private void VisitSlice(SliceNode node)

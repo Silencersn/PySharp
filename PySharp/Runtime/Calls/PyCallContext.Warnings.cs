@@ -237,7 +237,15 @@ partial class PyCallContext
         if (info is not null && !session.WarnedSyntax.Add((info.Start.Line, info.Start.Offset, message)))
             return default;
 
-        return WarnExplicit(PyStrObject.FromString(message), PySyntaxWarningObjectType.Shared, filename, lineno, sourceLine);
+        var result = WarnExplicit(PyStrObject.FromString(message), PySyntaxWarningObjectType.Shared, filename, lineno, sourceLine);
+
+        // _PyErr_EmitSyntaxWarning: a SyntaxWarning escalated to an error
+        // by the warning filters is replaced with a SyntaxError, which
+        // carries the compile location for a more accurate error report
+        if (result.IsError && PySyntaxWarningObjectType.Shared.IsInstance(result.Exception))
+            return PyResult.FromException(SyntaxError(provider, "{0}", message).PyException);
+
+        return result;
     }
 }
 
