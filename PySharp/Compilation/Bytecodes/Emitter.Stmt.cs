@@ -67,23 +67,75 @@ partial class Emitter
 
     private void EmitTypeAlias(TypeAliasNode n)
     {
-        var currentBuilder = Builder;
-        Builder = new BytecodeBuilder(_source, _session);
+        // CPython codegen_typealias: the value always becomes a lazily-called
+        // function in its own scope; a generic alias wraps everything in a
+        // generic-parameters code object that creates the TypeVars, hands
+        // them to the value function's closure and records them on the
+        // TypeAliasType
+        var aliasValueScope = Model.GetVariableScope<TypeAliasVariableScope>(n)!;
+
+        if (n.TypeParams.Length is 0)
+        {
+            var codeObj = EmitTypeAliasValueCodeObject(n, aliasValueScope);
+
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+            Builder.Emit(OpCode.LoadConst, codeObj);
+            Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
+
+            // an alias without type params carries an empty params tuple
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+            Builder.Emit(OpCode._MakeTypeAlias, n.Name);
+            StoreName(n.Name);
+            return;
+        }
+
+        var genericParamScope = (GenericParamVariableScope)aliasValueScope.Parent!;
+
+        // --- Layer 1 (inner): the alias value code object ---
+        // Type params arrive as closure cells and load via LoadDeref.
+        var valueCodeObj = EmitTypeAliasValueCodeObject(n, aliasValueScope);
+
+        // --- Layer 2 (outer): generic params code object ---
+        // Creates the TypeVar cells, builds the value function (GetFreeVars
+        // reads the cells from this frame), collects the params tuple and
+        // constructs the TypeAliasType, like INTRINSIC_TYPEALIAS's tuple.
+        PyCodeObject genericCodeObj;
+        using (var sub = new EmitterSubScope(this, genericParamScope))
+        {
+            EmitTypeVarCells(n.TypeParams);
+
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+            Builder.Emit(OpCode.LoadConst, valueCodeObj);
+            Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
+
+            foreach (var tp in n.TypeParams)
+            {
+                var index = genericParamScope.LocalsTable[tp.Name];
+                Builder.Emit(OpCode._LoadDerefFast, index);
+            }
+            Builder.Emit(OpCode.BuildTuple, n.TypeParams.Length);
+            Builder.Emit(OpCode._MakeTypeAlias, n.Name);
+            Builder.Emit(OpCode.ReturnValue);
+
+            genericCodeObj = new PyCodeObject(_source.Name, genericParamScope, Builder.ToBytecode());
+        }
+
+        // call the generic params function; its result is the TypeAliasType
+        EmitGenericParamPrologue(genericCodeObj);
+        Builder.Emit(OpCode.Call, 0);
+        StoreName(n.Name);
+    }
+
+    private PyCodeObject EmitTypeAliasValueCodeObject(TypeAliasNode n, TypeAliasVariableScope scope)
+    {
+        using var sub = new EmitterSubScope(this, scope);
 
         LoadExpr(n.Value);
         Builder.Emit(OpCode.ReturnValue);
 
-        var bytecode = Builder.ToBytecode();
-        Builder = currentBuilder;
-
-        var codeObj = new PyCodeObject(n.Name, _source.Name, bytecode, CodeObjectFlags.Function);
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
-
-        Builder.Emit(OpCode._MakeTypeAlias, n.Name);
-        StoreName(n.Name);
+        return new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
     }
 
     private void EmitExpr(ExprNode node)

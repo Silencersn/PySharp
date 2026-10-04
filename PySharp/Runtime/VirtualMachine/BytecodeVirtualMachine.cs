@@ -1115,9 +1115,12 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode._MakeTypeAlias:
                         {
-                            var func = (PyFunctionObject)Stack[-1];
-                            value = new PyTypeAliasTypeObject(names[instructionArg], func);
-                            Stack[-1] = value;
+                            // stack: [value_func, type_params_tuple] — the
+                            // params tuple is empty for a non-generic alias
+                            var typeParams = (PyTupleObject)Stack[-1];
+                            var func = (PyFunctionObject)Stack[-2];
+                            Stack[-2] = value = new PyTypeAliasTypeObject(names[instructionArg], func, typeParams);
+                            Stack.Pop();
                         }
                         break;
 

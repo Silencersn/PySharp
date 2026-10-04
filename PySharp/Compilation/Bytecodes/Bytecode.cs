@@ -189,7 +189,6 @@ public sealed class Bytecode
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
                 case OpCode.SetupAnnotations:
-                case OpCode._MakeTypeAlias:
                 case OpCode.__BytecodeEnd:
                     break;
 
@@ -251,6 +250,7 @@ public sealed class Bytecode
                 case OpCode.FormatWithSpec:
                 case OpCode.ImportName:
                 case OpCode._SetFunctionTypeParams:
+                case OpCode._MakeTypeAlias:
                 case OpCode.PopJumpIfFalse:
                 case OpCode.PopJumpIfTrue:
                 case OpCode.PopJumpIfNone:

@@ -86,8 +86,19 @@ partial class SemanticAnalyzer
         // PEP 649 evaluates class-body annotations in a code object of their
         // own but against the class-body scope, so their names belong to this
         // scope — a name from an enclosing function is captured as a cell.
+        // Everywhere else the annotation never enters the normal walk, but
+        // symtable_visit_annotation still visits it inside an AnnotationBlock
+        // whatever the enclosing scope, so the restricted-expression check
+        // runs there too
         if (node.Simple && _currentScopeStats.Scope is ClassVariableScope)
+        {
+            using var guard = new RestrictedExprBlockGuard(this, "an annotation");
             VisitNode(node.Annotation);
+        }
+        else
+        {
+            CheckRestrictedExprIn(node.Annotation, "an annotation");
+        }
         VisitNullableNode(node.Value);
     }
 
@@ -447,6 +458,7 @@ partial class SemanticAnalyzer
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+                CheckRestrictedTypeParam(tp);
             }
 
             var funcScope = new FunctionVariableScope(node, genericParamScope);
@@ -463,6 +475,9 @@ partial class SemanticAnalyzer
 
         VisitArgumentsArgs(node.Args);
         VisitNodes(node.Body);
+        // CPython visits a function's signature annotations after its body,
+        // inside one AnnotationBlock shared by every parameter (symtable_visit_annotations)
+        CheckRestrictedSignatureAnnotations(node.Args, node.Returns);
 
         PopScope(); // pop function scope
         if (node.TypeParams.Length > 0)
@@ -487,6 +502,7 @@ partial class SemanticAnalyzer
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+                CheckRestrictedTypeParam(tp);
             }
 
             var funcScope = new AsyncFunctionVariableScope(node, genericParamScope);
@@ -503,6 +519,7 @@ partial class SemanticAnalyzer
 
         VisitArgumentsArgs(node.Args);
         VisitNodes(node.Body);
+        CheckRestrictedSignatureAnnotations(node.Args, node.Returns);
 
         PopScope(); // pop function scope
         if (node.TypeParams.Length > 0)
@@ -534,6 +551,7 @@ partial class SemanticAnalyzer
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+                CheckRestrictedTypeParam(tp);
             }
 
             var classScope = new ClassVariableScope(node, genericParamScope);
@@ -561,15 +579,39 @@ partial class SemanticAnalyzer
     private void VisitTypeAlias(TypeAliasNode node)
     {
         // CPython registers every carrier's type params through symtable_add_def
-        // with DEF_TYPE_PARAM, whose clash check rejects duplicates uniformly —
-        // an alias declares no scope of its own here, so a local set plays that
-        // role
-        HashSet<string> seen = [];
-        foreach (var tp in node.TypeParams)
+        // with DEF_TYPE_PARAM, whose clash check rejects duplicates uniformly;
+        // generic aliases do it in a real GenericParamVariableScope (like def
+        // and class), non-generic ones have no params to clash
+        if (node.TypeParams.Length > 0)
         {
-            if (!seen.Add(tp.Name))
-                throw SyntaxErrorAt(tp, PySR.InvalidSyntax_Semantic_DuplicateTypeParam, tp.Name);
+            var genericParamScope = new GenericParamVariableScope(node, _currentScopeStats.Scope);
+            PushScope(genericParamScope);
+
+            foreach (var tp in node.TypeParams)
+            {
+                CheckReservedName(tp.Name, ExprContextType.Store, tp);
+                CheckDuplicateTypeParam(genericParamScope, tp);
+                genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+                CheckRestrictedTypeParam(tp);
+            }
         }
+
+        // The alias value evaluates lazily in a scope of its own (CPython's
+        // TypeAliasBlock): each type param resolves as a free-variable cell
+        // from the generic param scope, other names as globals or enclosing
+        // cells — and sub-scopes like lambdas inside the value get visited
+        var aliasValueScope = new TypeAliasVariableScope(node, _currentScopeStats.Scope);
+        PushScope(aliasValueScope);
+
+        foreach (var tp in node.TypeParams)
+            aliasValueScope.AppendVariable(tp.Name, ExprContextType.Load);
+
+        using (new RestrictedExprBlockGuard(this, "a type alias"))
+            VisitNode(node.Value);
+
+        PopScope(); // pop alias value scope
+        if (node.TypeParams.Length > 0)
+            PopScope(); // pop generic param scope
 
         BindVariable(node.Name, ExprContextType.Store, node);
     }
@@ -583,5 +625,30 @@ partial class SemanticAnalyzer
     {
         if (scope.Variables.ContainsKey(tp.Name))
             throw SyntaxErrorAt(tp, PySR.InvalidSyntax_Semantic_DuplicateTypeParam, tp.Name);
+    }
+
+    // CPython visits a function's signature annotations inside one
+    // AnnotationBlock shared by every parameter and the return annotation
+    // (symtable_visit_annotations), so all of them report the same
+    // restricted-expression error
+    private void CheckRestrictedSignatureAnnotations(AstArgumentsNode args, AstExprNode? returns)
+    {
+        CheckOne(args.VarArg);
+        CheckOne(args.KwArg);
+        if (returns is not null)
+            CheckRestrictedExprIn(returns, "an annotation");
+
+        foreach (var arg in args.PosonlyArgs)
+            CheckOne(arg);
+        foreach (var arg in args.Args)
+            CheckOne(arg);
+        foreach (var arg in args.KwonlyArgs)
+            CheckOne(arg);
+
+        void CheckOne(AstArgNode? arg)
+        {
+            if (arg?.Annotation is not null)
+                CheckRestrictedExprIn(arg.Annotation, "an annotation");
+        }
     }
 }

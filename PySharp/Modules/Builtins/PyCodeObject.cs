@@ -116,6 +116,28 @@ public sealed class PyCodeObject : PyObjectManagedDict
         FreeVars = scope.FreeVars;
     }
 
+    // The lazily-evaluated type-alias value: a function-shaped code object
+    // with no locals of its own whose free vars are the alias's type-param
+    // cells (loaded by name, like a class body)
+    internal PyCodeObject(string filename, TypeAliasVariableScope scope, Bytecode bytecode)
+    {
+        Debug.Assert(scope.QualName is not null);
+
+        LocalsTable = scope.FreeVars.Length is 0 ?
+            FrozenDictionary<string, int>.Empty :
+            scope.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index);
+        Bytecode = bytecode;
+        Flags = CodeObjectFlags.Function;
+
+        Name = scope.Name;
+        Filename = filename;
+        QualName = scope.QualName;
+        NLocals = 0;
+        VarNames = [];
+        CellVars = [];
+        FreeVars = scope.FreeVars;
+    }
+
     internal PyCodeObject(string filename, GenericParamVariableScope scope, Bytecode bytecode)
     {
         Debug.Assert(scope.QualName is not null);
