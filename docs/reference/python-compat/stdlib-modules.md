@@ -13,7 +13,7 @@ PySharp 的标准库以 C# 内嵌模块为主，注册于 `PyStandardLibrary`，
 | `math` | 常量 `pi`、`e`、`tau`；29 个函数：`sqrt`、`acos`、`asin`、`atan`、`atan2`、`cos`、`sin`、`tan`、`acosh`、`asinh`、`atanh`、`cosh`、`sinh`、`tanh`、`exp`、`fabs`、`ceil`、`floor`、`trunc`、`remainder`、`copysign`、`fmod`、`pow`、`gcd`、`lcm`、`log`、`log2`、`log10`、`log1p` |
 | `time` | `time()` |
 | `random` | `random()`、`uniform(a, b)`、`randrange(...)`、`randint(a, b)` |
-| `threading` | `Thread` 类：`start`、`join`、`run`、`is_alive` |
+| `threading` | `Thread` 类：`start`、`join`、`run`、`is_alive`、`name`、`ident`、`native_id`、`daemon`（含 `getName`/`setName`/`isDaemon`/`setDaemon` 旧接口）及其 `Timer` 子类；同步原语 `Lock`、`RLock`、`Condition`、`Event`、`Semaphore`、`BoundedSemaphore`、`Barrier` 与异常 `BrokenBarrierError`；线程局部存储 `local`；函数 `current_thread`、`active_count`、`enumerate`、`main_thread`、`get_ident`、`get_native_id`、`stack_size`、`excepthook`（可替换，工作线程未捕获异常经其报告）；常量 `TIMEOUT_MAX` 与 `ThreadError`（即 `RuntimeError`）。与 CPython 的行为差异见[与 CPython 的差异](./cpython-differences.md) |
 | `queue` | `Queue` 类：`qsize`、`empty`、`full`、`put`、`put_nowait`、`get`、`get_nowait`、`task_done`、`join` |
 | `typing` | `Generic` 基类、`GenericAlias`、`TypeVar`、`TypeAliasType` 等泛型运行时设施 |
 | `this` | Python 之禅，冻结模块，源码在编译期嵌入 |

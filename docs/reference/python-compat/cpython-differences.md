@@ -14,6 +14,10 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   `AppContext.BaseDirectory`；`flags.utf8_mode` 恒为 0（不读 `PYTHONUTF8`），
   `dont_write_bytecode` 恒为 1；`intern` 仅收精确 `str` 的语义与 CPython 一致，但驻留池为
   每环境一份。
+- structseq 类型的模块归属：`sys.version_info` 与 `sys.flags` 的类型 `__module__` 报
+  `"builtins"`，`str(type(sys.version_info))` 为 `<class 'version_info'>`；CPython 报 `'sys'`
+  与 `<class 'sys.version_info'>`。错误消息与实例 repr 中的全名（`cannot create
+  'sys.version_info' instances`、`sys.version_info(major=3, ...)`）与 CPython 一致。
 - `types` 模块整体不可用；`sys.implementation` 背后的 `SimpleNamespace` 类型可经
   `type(sys.implementation)` 间接取得，名字本身暂无处挂载。
 - 内建函数为高频子集，共 44 个。`classmethod` 等少数 CPython 内建未暴露；`__import__`
@@ -33,6 +37,23 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 - 线程模型：`threading.Thread` 映射为 .NET 托管线程，解释器在环境退出时以中断加等待收尾，与
   CPython 的 daemon 线程语义不完全一致。没有 GIL，跨线程共享可变内建对象（dict 是非线程安全
   实现）需自行加锁。
+- `threading` 模块状态的生命周期：模块的运行时状态（活跃线程注册表、主线程对象、`stack_size()`
+  配置）归属于执行环境而非模块对象，不随模块重建重置。`del sys.modules['threading']` 后重新
+  import 得到新模块对象，但 `active_count()`、`enumerate()`、`main_thread()` 与运行中线程的
+  `current_thread()` 仍报告原有线程与同一主线程实例。CPython 中这些状态放在模块对象上，重载后
+  全部重置：旧线程从注册表消失、`main_thread()` 返回新实例、失联线程的 `current_thread()`
+  返回 `_DummyThread`，重新 import `_thread` 后连 `stack_size()` 配置也归零。重载 threading
+  在 CPython 中同样是病态用法（线程注册全部丢失、运行中的线程降级为 dummy），本差异按环境
+  隔离性优先取舍。另外 CPython 的 `threading` 是纯 Python 模块、底层为 C 模块 `_thread`；
+  PySharp 无独立 `_thread` 模块，C 层设施（`lock`、`RLock`、`_local` 类型与 `get_ident` 等
+  函数）直接由 `threading` 提供。
+- 外来线程的 `_DummyThread` 不过期：未经 `threading.Thread` 启动的线程首次调用
+  `current_thread()` 时注册的 `_DummyThread` 不会随线程退出而出册，CPython 借 `_thread._local`
+  的析构自动移除。同一环境内多个外来宿主线程先后触碰会让 `enumerate()` 与 `active_count()`
+  逐渐累积。
+- `threading.local` 的属性错误消息不带模块前缀：报 `'_local' object has no attribute ...`，
+  CPython 为 `'_thread._local' object ...`；类型名、`__module__` 与 `<class '_thread._local'>`
+  显示两侧一致。
 - GC 语义：对象生命周期由 .NET GC 管理，`__del__` 的时机与 CPython 引用计数驱动的方式不同，
   析构时机不保证。
 - 缓冲协议：`memoryview` 是底层 `bytes` / `bytearray` 的活视图——视图写入落入导出方、导出方的
