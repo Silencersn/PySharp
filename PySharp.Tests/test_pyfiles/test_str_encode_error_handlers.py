@@ -35,4 +35,11 @@ assert 'abc'.encode('ascii') == b'abc'
 assert 'abc'.encode('utf-16-le') == b'a\x00b\x00c\x00'
 assert 'abc'.encode('utf-8') == b'abc'
 
+# interleaved unmappable/encodable content: each error event advances its
+# own window, so the cursor walk must stay in lockstep on both sides
+assert ('\u1234a' * 3).encode('latin-1', 'replace') == b'?a?a?a'
+assert ('\u1234ab' * 3).encode('latin-1', 'ignore') == b'ababab'
+assert ('a\u1234' * 3).encode('latin-1', 'backslashreplace') == b'a\\u1234a\\u1234a\\u1234'
+assert ('\u1234\xff' * 3).encode('latin-1', 'xmlcharrefreplace') == b'&#4660;\xff&#4660;\xff&#4660;\xff'
+
 print("test_str_encode_error_handlers passed")
