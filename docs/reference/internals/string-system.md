@@ -57,6 +57,32 @@ internal ref struct CodePointEnumerator(ReadOnlySpan<char> value)
 由此派生的 `CountCodePoints`、`CodePointAt` 与 `EnumerateCodePoints` 是长度、下标、切片、迭代与
 `in` 的共同基础。
 
+### 孤立代理项的权威码点序列
+
+UTF-16 无法区分「两条孤立代理项相邻」与「一个星文字符」：`"\ud800" + "\udc00"` 的载荷与
+`"\U00010000"` 逐码元相同，而 CPython 里前者是两个码点。因此 `PyStrObject` 携带一个可选的
+权威码点数组（`_codePoints`）：
+
+- 仅当产生方知道码点序列（拼接、`join`、`%` 格式化、f-string 的 `BuildString`、字面量转义、
+  `*` 重复）且序列中出现相邻的孤立高+低代理项时才存在；其余字符串为 `null`，一切走原有
+  UTF-16 快路径，零额外开销。不变式：逐码点经 `AppendCodePoint` 展开恰好等于 `Value`。
+- 实例读路径（`PyLength`、`PyCharAt`、`EnumerateCodePoints`、下标/切片、迭代器）优先权威序列；
+  `Eq`/`Hash`/比较/`in` 按码点序列进行（`hi+lo != "\U00010000"`，两者哈希不同，可各自作 dict 键）；
+  `str.encode` 的共享核 `EncodeCore` 按权威序列对代理码点走 codec 错误事件（utf-8 报
+  `surrogates not allowed`，`errors=` 处理器照常生效）。
+- 逐段拼接用 `PyStrConcatBuilder`：段的边界一旦把孤立高代理项带到孤立低代理项前（或任一段
+  自身携带权威序列），它才开始收集权威序列，之前的积累按 UTF-16 解释回溯成序列。`+` 的
+  两操作数情形由 `ConcatValues` 用 O(1) 的边界码元检测走快路径或序列路径。
+- 字面量路径在 `PyStrConverter` 的写入流上按「意图」跟踪：`\U` 星文转义一次写入的两个码元是
+  有意代理对，转义产出的孤立代理相邻则经 `TryFromLiteralToString`/`TryFromTextToString` 的
+  重载带出权威序列，Parser 构造常量与隐式拼接（`ConcatConstants`）经 `FromCodePoints` 落地。
+- Python 层与 C# 层的边界：py 层 `hash`/`==` 走码点序列（`PyStrHash`/`PyStrEquals`），C# 层
+  `GetHashCode()` 保持载荷哈希（引用相等语义）；`PyDictObject` 的 C# string 快捷查找只匹配
+  无权威序列的键，携带序列的键对 string API 不可见——.NET `string` 本身无法表达歧义键，
+  宿主应以 `PyStrObject` 构造与查询。
+
+decode 方向（codec 解码产物重组相邻孤立代理）尚不携带权威序列，是已知边界。
+
 ## 驻留体系
 
 `PyStrObject.InternPool` 同时提供静态入口与每环境实例（`PyEnvironment.InternPool`）：

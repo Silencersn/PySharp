@@ -825,14 +825,16 @@ internal static partial class BytecodeVirtualMachine
                         }
                         else
                         {
-                            states.CacheBuilder.Clear();
                             LoadArgs(ref Stack, states.CacheArgs, instructionArg);
+                            // f-string assembly keeps code-point semantics:
+                            // adjacent segments must not pair lone surrogates
+                            var builder = new PyStrConcatBuilder();
                             foreach (var arg in states.CacheArgs)
                             {
                                 Debug.Assert(arg is PyStrObject);
-                                states.CacheBuilder.Append(((PyStrObject)arg).Value);
+                                builder.Append((PyStrObject)arg);
                             }
-                            Stack.Push(PyStrObject.FromString(states.CacheBuilder.ToString()));
+                            Stack.Push(builder.ToStr());
                         }
                         break;
 

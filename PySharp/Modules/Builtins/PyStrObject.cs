@@ -7,6 +7,7 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -24,13 +25,21 @@ public partial class PyStrObject : PyObject
     }
 
     public string Value { get; }
+    // CPython's str is a code-point sequence where adjacent lone surrogates
+    // stay separate ('\ud800\udc00' is two code points); .NET stores UTF-16
+    // units, and those two units form a legal pair indistinguishable from
+    // '\U00010000'. A producer that knows the code-point sequence (concat,
+    // join, %-format, literals, ...) keeps it here whenever the sequence
+    // contains an adjacent lone high+low surrogate; null everywhere else,
+    // where the plain UTF-16 reading is already the correct sequence.
+    private readonly int[]? _codePoints;
     public int PyLength
     {
         get
         {
             if (field is not -1)
                 return field;
-            return field = CountCodePoints(Value);
+            return field = _codePoints?.Length ?? CountCodePoints(Value);
         }
     }
 
@@ -48,6 +57,10 @@ public partial class PyStrObject : PyObject
     {
         get
         {
+            // the authoritative sequence and the UTF-16 indices never agree
+            // on a lone-surrogate string: it always takes the array path
+            if (_codePoints is not null)
+                return false;
             var state = _surrogatePairState;
             if (state is 0)
                 _surrogatePairState = state = ContainsSurrogatePair(Value) ? 2 : 1;
@@ -76,17 +89,24 @@ public partial class PyStrObject : PyObject
         Value = value;
         PyLength = -1;
     }
+
+    private PyStrObject(string value, int[] codePoints)
+    {
+        Value = value;
+        _codePoints = codePoints;
+        PyLength = -1;
+    }
     internal static PyStrObject FromLiteral(ReadOnlySpan<char> literal)
     {
-        if (!PyStrConverter.TryFromLiteralToString(literal, out var str, out _))
+        if (!PyStrConverter.TryFromLiteralToString(literal, out var str, out var codePoints, out _))
             throw new ArgumentException($"failed to parse {literal}");
-        return FromString(str);
+        return codePoints is null ? FromString(str) : FromCodePoints(codePoints);
     }
     internal static PyStrObject FromLiteralContent(ReadOnlySpan<char> text)
     {
-        if (!PyStrConverter.TryFromTextToString(text, out var str, out _))
+        if (!PyStrConverter.TryFromTextToString(text, out var str, out var codePoints, out _))
             throw new ArgumentException($"failed to parse {text}");
-        return FromString(str);
+        return codePoints is null ? FromString(str) : FromCodePoints(codePoints);
     }
 
     public static PyStrObject FromString(string value)
@@ -119,9 +139,54 @@ public partial class PyStrObject : PyObject
             : new PyStrObject(char.ConvertFromUtf32(codePoint));
     }
 
+    internal bool HasAmbiguousCodePoints => _codePoints is not null;
+
+    // the string's code points: the authoritative sequence when present,
+    // otherwise the UTF-16 reading (which is the correct sequence for every
+    // string without adjacent lone surrogates)
+    internal int[] GetCodePointArray() => _codePoints ?? ToCodePointArray(Value);
+
+    // the authoritative sequence itself, or null when the UTF-16 reading is
+    // already correct — consumers that only need to differ stay allocation-free
+    internal int[]? GetCodePointArrayOrNull() => _codePoints;
+
+    internal static bool ContainsAdjacentLoneSurrogates(ReadOnlySpan<int> codePoints)
+    {
+        for (var i = 0; i + 1 < codePoints.Length; i++)
+        {
+            if (codePoints[i] is >= 0xD800 and <= 0xDBFF && codePoints[i + 1] is >= 0xDC00 and <= 0xDFFF)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Build a str from a producer-known code-point sequence. Adjacent lone
+    /// surrogates must survive as separate code points, which a UTF-16
+    /// payload cannot express on its own — such strings carry the sequence
+    /// as their authoritative view; every other sequence maps to a plain
+    /// string through the pooled factory.
+    /// </summary>
+    internal static PyStrObject FromCodePoints(int[] codePoints)
+    {
+        var builder = new StringBuilder(codePoints.Length);
+        foreach (var codePoint in codePoints)
+            AppendCodePoint(builder, codePoint);
+        if (!ContainsAdjacentLoneSurrogates(codePoints))
+            return FromString(builder.ToString());
+        return new PyStrObject(builder.ToString(), codePoints);
+    }
+
+    /// <summary>
+    /// A fresh exact str with the same payload and code-point view, the
+    /// conversion <see cref="FromString"/> cannot express for a string
+    /// carrying lone surrogates (subclass-to-exact-str and friends).
+    /// </summary>
+    internal PyStrObject ToExactStr() => _codePoints is null ? FromString(Value) : new PyStrObject(Value, _codePoints);
+
     internal string Repr()
     {
-        return PyStrConverter.FromStringToLiteral(Value);
+        return PyStrConverter.FromStringToLiteral(Value, _codePoints);
     }
 
     // CPython's str stores code points (PEP 393), where U+D800-U+DFFF are
@@ -156,7 +221,40 @@ public partial class PyStrObject : PyObject
         }
     }
 
-    internal CodePointEnumerator EnumerateCodePoints() => new(Value);
+    /// <summary>
+    /// The per-instance code-point enumeration: strings carrying lone
+    /// surrogates step over their authoritative sequence, everything else
+    /// over the UTF-16 units (where pairs mean astral characters).
+    /// </summary>
+    internal CodePointsViewEnumerator EnumerateCodePoints() => new(Value, _codePoints);
+
+    internal ref struct CodePointsViewEnumerator(ReadOnlySpan<char> value, int[]? codePoints)
+    {
+        // not readonly: MoveNext advances the wrapped enumerator in place —
+        // a readonly field would silently run on defensive copies and spin
+        private CodePointEnumerator _utf16 = new(value);
+        private readonly int[]? _codePoints = codePoints;
+        private int _index = -1;
+
+        public int Current { get; private set; } = -1;
+
+        public bool MoveNext()
+        {
+            if (_codePoints is not null)
+            {
+                var next = _index + 1;
+                if (next >= _codePoints.Length)
+                    return false;
+                _index = next;
+                Current = _codePoints[next];
+                return true;
+            }
+            if (!_utf16.MoveNext())
+                return false;
+            Current = _utf16.Current;
+            return true;
+        }
+    }
 
     internal static int CountCodePoints(ReadOnlySpan<char> value)
     {
@@ -181,6 +279,8 @@ public partial class PyStrObject : PyObject
     // callers clamp the index into [0, PyLength) before calling
     internal int PyCharAt(int index)
     {
+        if (_codePoints is not null)
+            return _codePoints[index];
         if (IsSurrogatePairFree)
             return Value[index];
         return CodePointAt(Value, index);
@@ -250,9 +350,29 @@ public partial class PyStrObject : PyObject
         return builder.ToString();
     }
 
+    /// <summary>
+    /// The %-formatting precision cut over the code-point view: a prefix of
+    /// an ambiguous string may keep adjacent lone surrogates.
+    /// </summary>
+    internal PyStrObject CodePointPrefixStr(int count)
+    {
+        if (_codePoints is not null)
+            return _codePoints.Length <= count ? this : SubstringByCodePointRangeStr(0, count);
+        return FromString(CodePointPrefix(Value, count));
+    }
+
     /// <summary>Convert a code-point index to a char index in the string.</summary>
     internal int CodePointIndexToCharIndex(int codePointIndex)
     {
+        if (_codePoints is not null)
+        {
+            // sum the UTF-16 widths of the authoritative sequence's prefix
+            codePointIndex = Math.Clamp(codePointIndex, 0, _codePoints.Length);
+            var chars = 0;
+            for (var i = 0; i < codePointIndex; i++)
+                chars += _codePoints[i] >= 0x10000 ? 2 : 1;
+            return chars;
+        }
         // without surrogate pairs the indices coincide; clamp keeps the
         // below-zero and past-end contract of the scanning path
         if (IsSurrogatePairFree)
@@ -277,6 +397,20 @@ public partial class PyStrObject : PyObject
     /// <summary>Convert a char index back to a code-point index.</summary>
     internal int CharIndexToCodePointIndex(int charIndex)
     {
+        if (_codePoints is not null)
+        {
+            // count the authoritative code points fully inside [0, charIndex)
+            var count = 0;
+            var chars = 0;
+            foreach (var codePoint in _codePoints)
+            {
+                if (chars >= charIndex)
+                    break;
+                chars += codePoint >= 0x10000 ? 2 : 1;
+                count++;
+            }
+            return count;
+        }
         if (IsSurrogatePairFree)
             return Math.Clamp(charIndex, 0, Value.Length);
         return CharIndexToCodePointIndex(Value, charIndex);
@@ -290,9 +424,24 @@ public partial class PyStrObject : PyObject
         return count;
     }
 
-    /// <summary>Return the substring covering the code-point range [start, end).</summary>
+    /// <summary>
+    /// The code points of the range [start, end) as a fresh string. Callers
+    /// that feed the result back into a str must use
+    /// <see cref="SubstringByCodePointRangeStr"/> instead: a range may keep
+    /// adjacent lone surrogates, which <see cref="FromString(string)"/> would
+    /// silently pair.
+    /// </summary>
     internal string SubstringByCodePointRange(int start, int end)
     {
+        if (_codePoints is not null)
+        {
+            start = Math.Clamp(start, 0, _codePoints.Length);
+            end = Math.Clamp(end, start, _codePoints.Length);
+            var builder = new StringBuilder(end - start);
+            for (var i = start; i < end; i++)
+                AppendCodePoint(builder, _codePoints[i]);
+            return builder.ToString();
+        }
         if (IsSurrogatePairFree)
             return Value[Math.Clamp(start, 0, Value.Length)..Math.Clamp(end, 0, Value.Length)];
         int startChar = CodePointIndexToCharIndex(Value, start);
@@ -300,21 +449,53 @@ public partial class PyStrObject : PyObject
         return Value[startChar..endChar];
     }
 
+    /// <summary>The substring over the code-point range, as a str.</summary>
+    internal PyStrObject SubstringByCodePointRangeStr(int start, int end)
+    {
+        if (_codePoints is not null)
+        {
+            start = Math.Clamp(start, 0, _codePoints.Length);
+            end = Math.Clamp(end, start, _codePoints.Length);
+            if (end - start is 0)
+                return Empty;
+            var codePoints = _codePoints[start..end];
+            var builder = new StringBuilder(end - start);
+            foreach (var codePoint in codePoints)
+                AppendCodePoint(builder, codePoint);
+            return ContainsAdjacentLoneSurrogates(codePoints)
+                ? new PyStrObject(builder.ToString(), codePoints)
+                : FromString(builder.ToString());
+        }
+        return FromString(SubstringByCodePointRange(start, end));
+    }
+
     /// <summary>First code point of the string, or -1 when empty.</summary>
-    internal int FirstCodePoint() => Value.Length is 0 ? -1 : CodePointAt(Value, 0);
+    internal int FirstCodePoint() => _codePoints is not null ? _codePoints[0]
+        : Value.Length is 0 ? -1 : CodePointAt(Value, 0);
 
     // CPython's unicode_upper/lower/casefold shape: map every code point and
     // rebuild the string
     internal static PyResult MapCodePoints(PyStrObject self, Func<int, string> map)
     {
-        var builder = new StringBuilder(self.Value.Length);
-        var enumerator = self.EnumerateCodePoints();
-        while (enumerator.MoveNext())
-            builder.Append(map(enumerator.Current));
-        return PyStrObject.FromString(builder.ToString());
+        // the rebuilt sequence can only need an authoritative view when the
+        // input has one: mappings of a plain string read back through UTF-16
+        // unchanged, so the fast path stays allocation-free
+        if (self._codePoints is null)
+        {
+            var builder = new StringBuilder(self.Value.Length);
+            var enumerator = self.EnumerateCodePoints();
+            while (enumerator.MoveNext())
+                builder.Append(map(enumerator.Current));
+            return PyStrObject.FromString(builder.ToString());
+        }
+        var mapped = new List<int>(self._codePoints.Length);
+        var enumerator2 = self.EnumerateCodePoints();
+        while (enumerator2.MoveNext())
+            mapped.AddRange(ToCodePointArray(map(enumerator2.Current)));
+        return PyStrObject.FromCodePoints([.. mapped]);
     }
 
-    internal static int[] ToCodePointArray(PyStrObject self) => ToCodePointArray(self.Value);
+    internal static int[] ToCodePointArray(PyStrObject self) => self.GetCodePointArray();
 
     internal static int[] ToCodePointArray(ReadOnlySpan<char> value)
     {
@@ -363,6 +544,27 @@ public partial class PyStrObject : PyObject
         return GetHashCode(Value);
     }
 
+    /// <summary>
+    /// The code points of the literal segment covering the char range
+    /// [charStart, charEnd), read from the authoritative sequence.
+    /// </summary>
+    internal int[] LiteralCodePointRange(int charStart, int charEnd)
+    {
+        Debug.Assert(_codePoints is not null);
+        var segment = new List<int>();
+        var position = 0;
+        foreach (var codePoint in _codePoints)
+        {
+            var width = codePoint >= 0x10000 ? 2 : 1;
+            if (position >= charStart && position + width <= charEnd)
+                segment.Add(codePoint);
+            position += width;
+            if (position >= charEnd)
+                break;
+        }
+        return [.. segment];
+    }
+
     // CPython unicode_expandtabs: the column counts runes, a tab advances
     // to the next tab stop, and \n/\r reset the column
     internal static string ExpandTabsCore(string value, int tabsize)
@@ -392,6 +594,186 @@ public partial class PyStrObject : PyObject
             }
         }
         return sb.ToString();
+    }
+
+    // CPython unicode_compare_eq: equality is over code-point sequences, so
+    // two strings with equal UTF-16 payloads can differ when one carries
+    // adjacent lone surrogates ('\ud800\udc00' != '\U00010000'). A sequence
+    // with adjacent lone surrogates can never equal a plain UTF-16 reading:
+    // equal sequences expand to equal payloads, and the lone-surrogate
+    // payload would then read back as its own sequence — contradiction.
+    internal bool PyStrEquals(PyStrObject other)
+    {
+        if (_codePoints is null && other._codePoints is null)
+            return Value == other.Value;
+        if (_codePoints is null || other._codePoints is null)
+            return false;
+        return _codePoints.AsSpan().SequenceEqual(other._codePoints);
+    }
+
+    // CPython unicode_compare: ordering over code-point sequences
+    internal int PyStrCompare(PyStrObject other)
+    {
+        if (_codePoints is null && other._codePoints is null)
+            return CompareCodePoints(Value, other.Value);
+        var left = GetCodePointArray();
+        var right = other.GetCodePointArray();
+        var shared = Math.Min(left.Length, right.Length);
+        for (var i = 0; i < shared; i++)
+        {
+            if (left[i] != right[i])
+                return left[i] < right[i] ? -1 : 1;
+        }
+        return left.Length.CompareTo(right.Length);
+    }
+
+    // the Python-level hash: sequences with lone surrogates hash over their
+    // authoritative view (never equal to a plain string, see PyStrEquals),
+    // everything else keeps the payload hash. The -1 sentinel never escapes
+    // a Python hash.
+    internal int PyStrHash()
+    {
+        if (_codePoints is null)
+            return GetHashCode();
+        var accumulator = new HashCode();
+        accumulator.AddBytes(MemoryMarshal.AsBytes(_codePoints.AsSpan()));
+        var code = accumulator.ToHashCode();
+        return code is -1 ? -2 : code;
+    }
+
+    // CPython unicode_contains: the substring test is over code-point
+    // sequences; UTF-16 substring search is only valid when both sides are
+    // plain readings
+    internal bool PyStrContains(PyStrObject sub)
+    {
+        if (_codePoints is null && sub._codePoints is null)
+            return Value.Contains(sub.Value);
+        var haystack = GetCodePointArray();
+        var needle = sub.GetCodePointArray();
+        if (needle.Length is 0)
+            return true;
+        for (var i = 0; i + needle.Length <= haystack.Length; i++)
+        {
+            var j = 0;
+            while (j < needle.Length && haystack[i + j] == needle[j])
+                j++;
+            if (j == needle.Length)
+                return true;
+        }
+        return false;
+    }
+
+    // sq_concat with code-point semantics: the common case stays a plain
+    // UTF-16 concat; a boundary that would pair lone surrogates across the
+    // operands (or an operand already carrying them) goes through the
+    // authoritative sequence
+    internal static PyStrObject ConcatValues(PyStrObject left, PyStrObject right)
+    {
+        if (left._codePoints is null && right._codePoints is null
+            && !PairsLoneSurrogatesAcross(left.Value, right.Value))
+            return FromString(left.Value + right.Value);
+        var codePoints = new int[left.PyLength + right.PyLength];
+        left.GetCodePointArray().AsSpan().CopyTo(codePoints);
+        right.GetCodePointArray().AsSpan().CopyTo(codePoints.AsSpan(left.PyLength));
+        return FromCodePoints(codePoints);
+    }
+
+    // the payloads' boundary chars decide: a trailing high unit is necessarily
+    // a lone high-surrogate code point in its own string (nothing follows to
+    // pair with), and a leading low unit likewise
+    internal static bool PairsLoneSurrogatesAcross(string left, string right) =>
+        left.Length is not 0 && right.Length is not 0
+        && char.IsHighSurrogate(left[^1]) && char.IsLowSurrogate(right[0]);
+}
+
+/// <summary>
+/// Segment-wise string building that preserves code-point semantics: when a
+/// segment boundary brings a lone high surrogate next to a lone low one, or a
+/// segment itself carries lone surrogates, the builder additionally collects
+/// the authoritative code-point sequence so the result keeps them separate —
+/// CPython concatenates code-point sequences, while a plain UTF-16 buffer
+/// would silently pair them. Unaffected concatenations build a plain string
+/// exactly as before.
+/// </summary>
+internal sealed class PyStrConcatBuilder
+{
+    private readonly StringBuilder _sb = new();
+    private List<int>? _codePoints;
+    private bool _tailLoneHigh;
+
+    public void Append(char ch)
+    {
+        if (_codePoints is null && _tailLoneHigh && char.IsLowSurrogate(ch))
+            CollectPending();
+        _codePoints?.Add(ch);
+        _sb.Append(ch);
+        _tailLoneHigh = char.IsHighSurrogate(ch);
+    }
+
+    public void Append(string segment)
+    {
+        if (segment.Length is 0)
+            return;
+        if (_codePoints is null && _tailLoneHigh && char.IsLowSurrogate(segment[0]))
+            CollectPending();
+        _codePoints?.AddRange(PyStrObject.ToCodePointArray(segment));
+        _sb.Append(segment);
+        _tailLoneHigh = char.IsHighSurrogate(segment[^1]);
+    }
+
+    public void Append(PyStrObject segment)
+    {
+        var value = segment.Value;
+        if (value.Length is 0)
+            return;
+        // a segment with its own lone surrogates must carry them even
+        // before any boundary pairing
+        if (_codePoints is null && (segment.HasAmbiguousCodePoints
+            || (_tailLoneHigh && char.IsLowSurrogate(value[0]))))
+            CollectPending();
+        _codePoints?.AddRange(segment.GetCodePointArray());
+        _sb.Append(value);
+        _tailLoneHigh = char.IsHighSurrogate(value[^1]);
+    }
+
+    /// <summary>
+    /// Append the format-string literal segment <paramref name="source"/>
+    /// [charStart, charEnd). A source with an authoritative sequence reads
+    /// the segment from it — the UTF-16 range view could not tell its lone
+    /// surrogates from astral pairs.
+    /// </summary>
+    public void AppendLiteral(PyStrObject source, int charStart, int charEnd)
+    {
+        if (!source.HasAmbiguousCodePoints)
+        {
+            Append(source.Value[charStart..charEnd]);
+            return;
+        }
+
+        var segment = source.LiteralCodePointRange(charStart, charEnd);
+        // the segment belongs to an ambiguous source, so the collected view
+        // is authoritative regardless of any boundary pairing
+        var collected = CollectPending();
+        collected.AddRange(segment);
+        _sb.Append(source.Value[charStart..charEnd]);
+        _tailLoneHigh = segment is [.., var last] && last is >= 0xD800 and <= 0xDBFF;
+    }
+
+    public PyStrObject ToStr() => _codePoints is null
+        ? PyStrObject.FromString(_sb.ToString())
+        : PyStrObject.FromCodePoints([.. _codePoints]);
+
+    // start authoritative collection over what is already built and return
+    // the collecting list: the content became ambiguous only now, so the
+    // UTF-16 reading of the pending prefix is its correct code-point sequence
+    private List<int> CollectPending()
+    {
+        if (_codePoints is not null)
+            return _codePoints;
+        _codePoints = new List<int>(_sb.Length);
+        if (_sb.Length is not 0)
+            _codePoints.AddRange(PyStrObject.ToCodePointArray(_sb.ToString()));
+        return _codePoints;
     }
 }
 
@@ -1875,7 +2257,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[1] is not PyStrObject errorsArg)
             return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "errors", PyUtils.ArgumentTypeName(arguments[1]));
 
-        return EncodeCore(context, self.Value, encodingArg.Value, errorsArg.Value);
+        return EncodeCore(context, self.Value, encodingArg.Value, errorsArg.Value, authoritativeCodePoints: self.GetCodePointArrayOrNull());
     }
 
     // The str.encode core shared with the bytes()/bytearray()
@@ -1884,9 +2266,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     // substitute a replacement character instead of failing, so the whole
     // string goes through an encoder that reports the first unmappable
     // code point, and the CPython handler for errors= decides what happens
-    // from there.
+    // from there. The authoritative code points, when the payload carries
+    // adjacent lone surrogates, override the UTF-16 reading — the .NET
+    // encoder would encode the accidental pair as an astral character.
     internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors,
-        bool emitPreamble = true)
+        bool emitPreamble = true, int[]? authoritativeCodePoints = null)
     {
         // utf-7, hz and big5hkscs have no BCL backing; their stateful encoders
         // are self-contained and carry their own errors= handling
@@ -1919,7 +2303,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             && PyCharmapUndefined.TryGet(NormalizeEncodingName(encoding), out var undef))
             undefined = undef.Chars;
         var strict = CreateReportingEncoding(enc);
-        var codePoints = PyStrObject.ToCodePointArray(value);
+        var codePoints = authoritativeCodePoints ?? PyStrObject.ToCodePointArray(value);
         var bytes = new List<byte>(value.Length);
 
         var position = 0;
@@ -1929,6 +2313,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         while (position < codePoints.Length)
         {
             var rest = value.AsSpan(charPos);
+            // an authoritative view may hold surrogates the payload shows as
+            // legal pairs, which the .NET encoder would happily encode: stop
+            // before the next surrogate code point and raise the codec's own
+            // error event instead (utf-8: 'surrogates not allowed')
+            if (authoritativeCodePoints is not null)
+            {
+                var surrogateAt = IndexOfSurrogate(codePoints, position);
+                if (surrogateAt is 0)
+                {
+                    var surrogateRunEnd = codec.CollectsRun ? UnmappableRunEnd(strict, codePoints, position) : position + 1;
+                    var surrogateError = ApplyEncodeErrorHandler(codec, codePoints, position, surrogateRunEnd, errors, bytes, strict, value);
+                    if (surrogateError is not null)
+                        return PyResult.FromException(surrogateError);
+                    charPos += CharsForCodePoints(codePoints, position, surrogateRunEnd);
+                    position = surrogateRunEnd;
+                    continue;
+                }
+                if (surrogateAt > 0)
+                    rest = rest[..CharsForCodePoints(codePoints, position, surrogateAt)];
+            }
             // stop the .NET encoder before the first undefined character; a
             // run opening there is its own error event
             var undefinedAt = -1;
@@ -2029,6 +2433,18 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             if (undefined.Contains(text[i]))
                 return i;
+        }
+        return -1;
+    }
+
+    // the code-point offset of the next surrogate relative to start, or -1
+    // when the rest of the sequence holds none
+    private static int IndexOfSurrogate(int[] codePoints, int start)
+    {
+        for (var i = start; i < codePoints.Length; i++)
+        {
+            if (codePoints[i] is >= 0xD800 and <= 0xDFFF)
+                return i - start;
         }
         return -1;
     }
@@ -2323,12 +2739,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         // subclass instance converts to a fresh exact str
         if (self.PyType == PyStrObjectType.Shared)
             return self;
-        return PyStrObject.FromString(self.Value);
+        return self.ToExactStr();
     }
 
     protected override PyResult Hash(PyCallContext context, PyStrObject self)
     {
-        return PyIntObject.FromInteger(self.GetHashCode());
+        // the Python-level hash follows the code-point sequence, unlike the
+        // C#-level GetHashCode which stays on the payload for reference use
+        return PyIntObject.FromInteger(self.PyStrHash());
     }
     protected override PyResult Len(PyCallContext context, PyStrObject self)
     {
@@ -2337,8 +2755,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     protected override PyResult Iter(PyCallContext context, PyStrObject self)
     {
         // CPython str_iter names the iterator after the string's storage
-        // kind: UCS-1 ascii strings report str_ascii_iterator
-        return new PyStrIteratorObject(self.Value, HasOnlyAscii(self.Value));
+        // kind: UCS-1 ascii strings report str_ascii_iterator; the iterator
+        // steps over the authoritative code-point view when present
+        return new PyStrIteratorObject(self.Value, HasOnlyAscii(self.Value), self.GetCodePointArrayOrNull());
     }
 
     private static bool HasOnlyAscii(string value)
@@ -2379,10 +2798,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             while (enumerator.MoveNext())
                 codePoints.Add(enumerator.Current);
 
-            var sb = new StringBuilder(length);
+            // rebuild from the picked code points: a slice may keep adjacent
+            // lone surrogates that a plain string would silently pair
+            var picked = new int[length];
             for (int i = start, ri = 0; ri < length; i += step, ri++)
-                PyStrObject.AppendCodePoint(sb, codePoints[i]);
-            return PyStrObject.FromString(sb.ToString());
+                picked[ri] = codePoints[i];
+            return PyStrObject.FromCodePoints(picked);
         }
 
         // unicode_subscript branches on PyIndex_Check before any conversion;
@@ -2407,7 +2828,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     protected override PyResult Concat(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
-            return PyStrObject.FromString(self.Value + strObj.Value);
+            return PyStrObject.ConcatValues(self, strObj);
         // the right operand's reflected __radd__ (if its type synthesized
         // one) runs first on the dispatch layer; the concat TypeError is
         // the last resort here
@@ -2416,7 +2837,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
-            return PyBoolObject.FromBoolean(self.Value == strObj.Value);
+            return PyBoolObject.FromBoolean(self.PyStrEquals(strObj));
         return PyNotImplementedObject.NotImplemented;
     }
     protected override PyResult Lt(PyCallContext context, PyStrObject self, PyObject other)
@@ -2425,25 +2846,25 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyNotImplementedObject.NotImplemented;
         // CPython unicode_compare order; string.CompareTo would use culture
         // rules ('a' < 'B' incorrectly) and CompareOrdinal code units.
-        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) < 0);
+        return PyBoolObject.FromBoolean(self.PyStrCompare(strObj) < 0);
     }
     protected override PyResult Le(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) <= 0);
+        return PyBoolObject.FromBoolean(self.PyStrCompare(strObj) <= 0);
     }
     protected override PyResult Gt(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) > 0);
+        return PyBoolObject.FromBoolean(self.PyStrCompare(strObj) > 0);
     }
     protected override PyResult Ge(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) >= 0);
+        return PyBoolObject.FromBoolean(self.PyStrCompare(strObj) >= 0);
     }
     protected override PyResult Repeat(PyCallContext context, PyStrObject self, PyObject other)
     {
@@ -2459,6 +2880,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyStrObject.Empty;   // CPython: 'x' * -1 == ''
         if (!count.IsInt32)
             return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
+        // sequence_repeat over code points: only a repeat count above one
+        // can pair a lone trailing surrogate with a lone leading one
+        if (self.HasAmbiguousCodePoints
+            || (count.Int32Value > 1 && PyStrObject.PairsLoneSurrogatesAcross(self.Value, self.Value)))
+        {
+            var unit = self.GetCodePointArray();
+            var repeated = new int[unit.Length * count.Int32Value];
+            for (var i = 0; i < count.Int32Value; i++)
+                unit.AsSpan().CopyTo(repeated.AsSpan(i * unit.Length));
+            return PyStrObject.FromCodePoints(repeated);
+        }
         return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, count.Int32Value)));
     }
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
@@ -2510,15 +2942,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.TypeError("not enough arguments for format string");
         }
 
-        var sb = new StringBuilder();
+        // PyUnicode_Format assembles code-point sequences: literal runs,
+        // conversion results and pad segments must not pair lone surrogates
+        // across their boundaries
+        var builder = new PyStrConcatBuilder();
+        int literalStart = 0;
 
         for (int i = 0; i < formatStr.Length; i++)
         {
             if (formatStr[i] is not '%')
-            {
-                sb.Append(formatStr[i]);
                 continue;
-            }
+
+            if (i > literalStart)
+                builder.AppendLiteral(self, literalStart, i);
 
             i++; // skip '%'
             if (i >= formatStr.Length)
@@ -2526,7 +2962,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             if (formatStr[i] is '%')
             {
-                sb.Append('%');
+                builder.Append('%');
+                literalStart = i + 1;
                 continue;
             }
 
@@ -2665,8 +3102,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return valueResult;
             PyObject value = valueResult.Value;
 
-            // Format the value
+            // Format the value; s/r/a keep the str object around so its
+            // code-point view survives into the assembled result
             string formatted;
+            PyStrObject? formattedObj = null;
             switch (fmtType)
             {
                 case 's':
@@ -2674,9 +3113,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         var strResult = PySpecialMethods.Str(context, value);
                         if (strResult.IsError)
                             return strResult;
-                        formatted = strResult.Value.Value;
-                        if (precision >= 0)
-                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
+                        var strObj = strResult.Value;
+                        formattedObj = precision >= 0 ? strObj.CodePointPrefixStr(precision) : strObj;
+                        formatted = formattedObj.Value;
                         break;
                     }
                 case 'r':
@@ -2684,9 +3123,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         var reprResult = PySpecialMethods.Repr(context, value);
                         if (reprResult.IsError)
                             return reprResult;
-                        formatted = reprResult.Value.Value;
-                        if (precision >= 0)
-                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
+                        var reprObj = reprResult.Value;
+                        formattedObj = precision >= 0 ? reprObj.CodePointPrefixStr(precision) : reprObj;
+                        formatted = formattedObj.Value;
                         break;
                     }
                 case 'a':
@@ -2694,9 +3133,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         var asciiResult = PyBuiltinFunctions.Ascii.Call(context, [value]);
                         if (asciiResult.IsError)
                             return asciiResult;
-                        formatted = ((PyStrObject)asciiResult.Value).Value;
-                        if (precision >= 0)
-                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
+                        var asciiObj = (PyStrObject)asciiResult.Value;
+                        formattedObj = precision >= 0 ? asciiObj.CodePointPrefixStr(precision) : asciiObj;
+                        formatted = formattedObj.Value;
                         break;
                     }
                 case 'd':
@@ -2938,8 +3377,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             // Override width if the # flag added extra characters for octal/hex
 
             // Apply width and alignment; CPython unicode_format pads the
-            // code point sequence, so an astral character counts once
-            var formattedLength = PyStrObject.CountCodePoints(formatted);
+            // code point sequence, so an astral character counts once. Pad
+            // characters are ASCII, so they append as their own segments
+            // around a conversion that kept its str object.
+            string? padPrefix = null;
+            string? padSuffix = null;
+            var formattedLength = formattedObj?.PyLength ?? PyStrObject.CountCodePoints(formatted);
             if (width > formattedLength)
             {
                 var pad = width - formattedLength;
@@ -2951,7 +3394,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 char padChar = zeroPad ? '0' : ' ';
                 if (flagLeftAlign)
                 {
-                    formatted += new string(padChar, pad);
+                    padSuffix = new string(padChar, pad);
+                    formatted += padSuffix;
                 }
                 else if (zeroPad && formatted.Length > 0)
                 {
@@ -2973,12 +3417,28 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 }
                 else
                 {
-                    formatted = new string(padChar, pad) + formatted;
+                    padPrefix = new string(padChar, pad);
+                    formatted = padPrefix + formatted;
                 }
             }
 
-            sb.Append(formatted);
+            if (formattedObj is not null)
+            {
+                if (padPrefix is not null)
+                    builder.Append(padPrefix);
+                builder.Append(formattedObj);
+                if (padSuffix is not null)
+                    builder.Append(padSuffix);
+            }
+            else
+            {
+                builder.Append(formatted);
+            }
+            literalStart = i + 1;
         }
+
+        if (literalStart < formatStr.Length)
+            builder.AppendLiteral(self, literalStart, formatStr.Length);
 
         // Check for unused arguments: leftover tuple entries, or an
         // unconsumed single value that is not a mapping candidate
@@ -2992,7 +3452,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.TypeError("not all arguments converted during string formatting");
         }
 
-        return PyStrObject.FromString(sb.ToString());
+        return builder.ToStr();
     }
 
     // the CPython None split by entry path (getargs.c): positional
@@ -3207,9 +3667,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         // CPython unicode_contains (Objects/unicodeobject.c): the left
         // operand must be a str, and the rejection names its tp_name —
         // None included, unlike the getargs converter path
-        if (item is not PyStrObject { Value: var str })
+        if (item is not PyStrObject sub)
             return PyResult.TypeError(PySR.Runtime_Str_ContainsLeftOperandMustBeStr, item.PyType.Name);
 
-        return PyBoolObject.FromBoolean(self.Value.Contains(str));
+        return PyBoolObject.FromBoolean(self.PyStrContains(sub));
     }
 }
