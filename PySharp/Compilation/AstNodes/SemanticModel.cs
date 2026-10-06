@@ -71,7 +71,18 @@ internal abstract class VariableScope
                 var parent = Parent;
                 while (!parent.IsRoot && (currentName is "<lambda>" or "<genexpr>" || !parent.Variables.TryGetValue(currentName, out var varType) || varType is not PyVariableType.Global))
                 {
-                    if (parent is CallableVariableScope)
+                    // Inlined comprehension scopes are anonymous in qualnames (CPython's PEP 709
+                    // path enters no compiler scope for them): contribute neither name nor <locals>
+                    if (parent is ComprehensionVariableScope)
+                    {
+                        parent = parent.Parent;
+                        continue;
+                    }
+
+                    // <locals> separates only function/async function/lambda parents from the
+                    // nested scope; <genexpr> keeps its name without one (CPython compile.c
+                    // compiler_set_qualname)
+                    if (parent is FunctionVariableScope or AsyncFunctionVariableScope or LambdaVariableScope)
                         nameToRoot.Push("<locals>");
 
                     // Skip transparent scopes (e.g. GenericParamVariableScope) for naming
