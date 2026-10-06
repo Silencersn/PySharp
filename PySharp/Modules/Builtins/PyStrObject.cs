@@ -33,6 +33,42 @@ public partial class PyStrObject : PyObject
             return field = CountCodePoints(Value);
         }
     }
+
+    // 0 = not scanned yet, 1 = free of surrogate pairs, 2 = contains surrogate pairs
+    private int _surrogatePairState;
+
+    /// <summary>
+    /// True when the payload has no surrogate pair, so code-point indices and
+    /// UTF-16 char indices coincide and convert in O(1); lazily computed with
+    /// one full scan per instance. CPython stores code points natively
+    /// (PEP 393) while .NET stores UTF-16 units — only astral content forces
+    /// the O(n) index walks.
+    /// </summary>
+    internal bool IsSurrogatePairFree
+    {
+        get
+        {
+            var state = _surrogatePairState;
+            if (state is 0)
+                _surrogatePairState = state = ContainsSurrogatePair(Value) ? 2 : 1;
+            return state is 1;
+        }
+    }
+
+    // a lone surrogate is itself a code point of width 1, so only a high unit
+    // directly followed by a low one breaks the index identity
+    internal static bool ContainsSurrogatePair(ReadOnlySpan<char> value)
+    {
+        if (!value.ContainsAnyInRange('\uD800', '\uDFFF'))
+            return false;
+        for (int i = 0; i < value.Length - 1; i++)
+        {
+            if (char.IsHighSurrogate(value[i]) && char.IsLowSurrogate(value[i + 1]))
+                return true;
+        }
+        return false;
+    }
+
     public static PyStrObject Empty { get; } = new PyStrObject(string.Empty);
     public override PyTypeObject DefaultPyType => PyStrObjectType.Shared;
     private PyStrObject(string value)
@@ -209,7 +245,14 @@ public partial class PyStrObject : PyObject
     }
 
     /// <summary>Convert a code-point index to a char index in the string.</summary>
-    internal int CodePointIndexToCharIndex(int codePointIndex) => CodePointIndexToCharIndex(Value, codePointIndex);
+    internal int CodePointIndexToCharIndex(int codePointIndex)
+    {
+        // without surrogate pairs the indices coincide; clamp keeps the
+        // below-zero and past-end contract of the scanning path
+        if (IsSurrogatePairFree)
+            return Math.Clamp(codePointIndex, 0, Value.Length);
+        return CodePointIndexToCharIndex(Value, codePointIndex);
+    }
 
     internal static int CodePointIndexToCharIndex(ReadOnlySpan<char> value, int codePointIndex)
     {
@@ -226,6 +269,13 @@ public partial class PyStrObject : PyObject
     }
 
     /// <summary>Convert a char index back to a code-point index.</summary>
+    internal int CharIndexToCodePointIndex(int charIndex)
+    {
+        if (IsSurrogatePairFree)
+            return Math.Clamp(charIndex, 0, Value.Length);
+        return CharIndexToCodePointIndex(Value, charIndex);
+    }
+
     internal static int CharIndexToCodePointIndex(string value, int charIndex)
     {
         int count = 0;
@@ -237,8 +287,10 @@ public partial class PyStrObject : PyObject
     /// <summary>Return the substring covering the code-point range [start, end).</summary>
     internal string SubstringByCodePointRange(int start, int end)
     {
-        int startChar = CodePointIndexToCharIndex(start);
-        int endChar = CodePointIndexToCharIndex(end);
+        if (IsSurrogatePairFree)
+            return Value[Math.Clamp(start, 0, Value.Length)..Math.Clamp(end, 0, Value.Length)];
+        int startChar = CodePointIndexToCharIndex(Value, start);
+        int endChar = CodePointIndexToCharIndex(Value, end);
         return Value[startChar..endChar];
     }
 
@@ -497,8 +549,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         // zero-width windows and the empty string
         if (end - start < needle.PyLength)
             return false;
-        var sliced = self.SubstringByCodePointRange(start, end);
-        return startswith ? sliced.StartsWith(needle.Value, StringComparison.Ordinal) : sliced.EndsWith(needle.Value, StringComparison.Ordinal);
+        // compare the window edge in place; the code-point window fit does
+        // not imply the UTF-16 window fits an astral needle, so check again
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int charEnd = self.CodePointIndexToCharIndex(end);
+        int needleChars = needle.Value.Length;
+        if (charEnd - charStart < needleChars)
+            return false;
+        return startswith
+            ? self.Value.AsSpan(charStart, needleChars).SequenceEqual(needle.Value)
+            : self.Value.AsSpan(charEnd - needleChars, needleChars).SequenceEqual(needle.Value);
     }
 
     [PyMethod("replace")]
@@ -776,13 +836,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(start);
         if (start >= end)
             return PyIntObject.MinusOne;
-        var sliced = self.SubstringByCodePointRange(start, end);
-        int charIdx = sliced.IndexOf(subStr.Value, StringComparison.Ordinal);
+        // search the window in place: repeated offset calls (tokenizer loops)
+        // must stay linear overall, so no window copy
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int charEnd = self.CodePointIndexToCharIndex(end);
+        int charIdx = self.Value.IndexOf(subStr.Value, charStart, charEnd - charStart, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
-        int charStart = self.CodePointIndexToCharIndex(start);
-        int resultRuneIdx = PyStrObject.CharIndexToCodePointIndex(self.Value, charStart + charIdx);
-        return PyIntObject.FromInteger(resultRuneIdx);
+        return PyIntObject.FromInteger(self.CharIndexToCodePointIndex(charIdx));
     }
 
     [PyMethod("rfind")]
@@ -811,13 +872,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(end);
         if (start >= end)
             return PyIntObject.MinusOne;
-        var sliced = self.SubstringByCodePointRange(start, end);
-        int charIdx = sliced.LastIndexOf(subStr.Value, StringComparison.Ordinal);
+        // search the window in place (no copy), anchored at the window end
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int charEnd = self.CodePointIndexToCharIndex(end);
+        int charIdx = self.Value.LastIndexOf(subStr.Value, charEnd - 1, charEnd - charStart, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
-        int charStart = self.CodePointIndexToCharIndex(start);
-        int resultRuneIdx = PyStrObject.CharIndexToCodePointIndex(self.Value, charStart + charIdx);
-        return PyIntObject.FromInteger(resultRuneIdx);
+        return PyIntObject.FromInteger(self.CharIndexToCodePointIndex(charIdx));
     }
 
     [PyMethod("index")]
@@ -937,11 +998,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         if (start >= end)
             return PyIntObject.Zero;
-        var sliced = self.SubstringByCodePointRange(start, end);
+        // count inside the window in place: the needle chain walks forward,
+        // so repeated calls and large windows stay linear (no window copy)
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int charEnd = self.CodePointIndexToCharIndex(end);
 
         int count = 0;
-        int index = 0;
-        while ((index = sliced.IndexOf(subStr.Value, index, StringComparison.Ordinal)) is not -1)
+        int index = charStart;
+        while ((index = self.Value.IndexOf(subStr.Value, index, charEnd - index, StringComparison.Ordinal)) is not -1)
         {
             count++;
             index += subStr.Value.Length;
