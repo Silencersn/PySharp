@@ -20,3 +20,7 @@
 ## Generated Source
 
 - Before inspecting source-generator output, rebuild the project with `EmitCompilerGeneratedFiles` enabled. This ensures that generated files are present and up to date.
+
+## Commit Messages
+
+- Before creating or suggesting a commit, read `.agents\skills\git-commit-msg-guidelines\SKILL.md` and follow its requirements.
