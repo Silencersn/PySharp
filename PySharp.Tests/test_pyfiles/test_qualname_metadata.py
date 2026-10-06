@@ -199,4 +199,41 @@ assert type("M", (), {"__module__": "mm"}).__module__ == "mm"
 Y = type("Y", (), {"__qualname__": "qq"})
 assert (Y.__name__, Y.__qualname__) == ("Y", "qq")
 
+# comprehension scopes are anonymous in qualnames (PEP 709 inlining enters
+# no code scope), while <genexpr> keeps its name but no <locals> segment
+# (CPython compiler_set_qualname inserts <locals> only after function,
+# async function, and lambda parents)
+def comp_holder():
+    return [(lambda: x) for x in range(2)]
+assert comp_holder()[0].__qualname__ == "comp_holder.<locals>.<lambda>"
+
+assert [(lambda: 1) for _ in range(1)][0].__qualname__ == "<lambda>"
+assert {(lambda: 1) for _ in range(1)}.pop().__qualname__ == "<lambda>"
+dk = {(lambda: 1): 0 for _ in range(1)}
+assert list(dk)[0].__qualname__ == "<lambda>"
+
+class CompClass:
+    fs = [(lambda: 1) for _ in range(1)]
+assert CompClass.fs[0].__qualname__ == "CompClass.<lambda>"
+
+def nested_comp():
+    return [[(lambda: i) for i in range(1)] for j in range(1)]
+assert nested_comp()[0][0].__qualname__ == "nested_comp.<locals>.<lambda>"
+
+def genexp_holder():
+    return (lambda: 1 for _ in range(1))
+assert next(genexp_holder()).__qualname__ == "genexp_holder.<locals>.<genexpr>.<lambda>"
+
+def nested_genexp():
+    return ((i for i in range(1)) for j in range(1))
+assert next(nested_genexp()).__qualname__ == "nested_genexp.<locals>.<genexpr>.<genexpr>"
+
+def comp_genexp():
+    return [(n for n in range(1)) for _ in range(1)]
+assert comp_genexp()[0].__qualname__ == "comp_genexp.<locals>.<genexpr>"
+
+def lambda_genexp():
+    return [(lambda: (n for n in range(1))) for _ in range(1)]
+assert lambda_genexp()[0]().__qualname__ == "lambda_genexp.<locals>.<lambda>.<locals>.<genexpr>"
+
 print("test_qualname_metadata passed")
