@@ -1443,7 +1443,7 @@ internal static class PyUnicodeErrorStr
         {
             // PyUnicode_ReadChar returns the raw code point, lone
             // surrogates included
-            uint badchar = (uint)PyStrObject.CodePointAt(objectStr.Value, (int)start);
+            uint badchar = (uint)objectStr.PyCharAt((int)start);
 
             string escape = badchar <= 0xff ? $"\\x{badchar:x2}"
                 : badchar <= 0xffff ? $"\\u{badchar:x4}" : $"\\U{badchar:x8}";

@@ -48,4 +48,22 @@ assert len('a'.center(4, astral)) == 4
 assert [ord(c) for c in 'a'.rjust(3, hi)] == [0xD800, 0xD800, 0x61]
 assert 'a'.rjust(3, 'é') == 'ééa'
 
+# stepped/negative slicing on repeated content: the surrogate-pair path
+# (any astral code point forces code-point stepping) and the plain BMP path
+mix = "x😀y😀z" * 8
+assert mix[1:6] == '😀y😀zx'
+assert mix[1:6:2] == '😀😀x'
+assert mix[5:1:-2] == 'x😀'
+assert mix[-7:-2] == '😀zx😀y'
+assert mix[-1:-8:-3] == 'z😀😀'
+assert mix[::7] == 'xyz😀😀x'
+assert mix[2::-1] == 'y😀x'
+e = 'ab\udd00cd\U0001F600ef'
+assert e[1:4] == 'b\udd00c'
+assert e[::2] == 'a\udd00de'
+assert e[::-1] == 'fe😀dc\udd00ba'
+assert e[-2] == 'e'
+p = 'abcdef'
+assert (p[4:1:-1], p[::2]) == ('edc', 'ace')
+
 print("test_str_codepoint_view passed")

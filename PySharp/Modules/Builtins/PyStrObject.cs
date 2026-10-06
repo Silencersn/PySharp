@@ -178,7 +178,13 @@ public partial class PyStrObject : PyObject
         throw new UnreachableException();
     }
 
-    internal int PyCharAt(int index) => CodePointAt(Value, index);
+    // callers clamp the index into [0, PyLength) before calling
+    internal int PyCharAt(int index)
+    {
+        if (IsSurrogatePairFree)
+            return Value[index];
+        return CodePointAt(Value, index);
+    }
 
     // width in UTF-16 code units of the code point starting at index
     internal static int CharWidthAt(ReadOnlySpan<char> value, int index) =>
@@ -1917,9 +1923,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var bytes = new List<byte>(value.Length);
 
         var position = 0;
+        // UTF-16 cursor kept in lockstep with the code-point cursor, so the
+        // per-event window is a zero-copy span instead of a tail slice
+        var charPos = 0;
         while (position < codePoints.Length)
         {
-            var rest = value[PyStrObject.CodePointIndexToCharIndex(value, position)..];
+            var rest = value.AsSpan(charPos);
             // stop the .NET encoder before the first undefined character; a
             // run opening there is its own error event
             var undefinedAt = -1;
@@ -1934,34 +1943,46 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     var undefinedError = ApplyEncodeErrorHandler(codec, codePoints, position, undefinedRunEnd, errors, bytes, strict, value);
                     if (undefinedError is not null)
                         return PyResult.FromException(undefinedError);
+                    charPos += CharsForCodePoints(codePoints, position, undefinedRunEnd);
                     position = undefinedRunEnd;
                     continue;
                 }
                 if (undefinedAt > 0)
                     rest = rest[..undefinedAt];
             }
-            byte[] encoded;
+            // GetByteCount would trip the strict fallback before any bytes
+            // exist, so size the buffer with the arithmetic worst case and
+            // let GetBytes itself report the first unmappable code point
+            var buffer = new byte[strict.GetMaxByteCount(rest.Length)];
+            int written;
             try
             {
-                encoded = strict.GetBytes(rest);
+                written = strict.GetBytes(rest, buffer);
             }
             catch (EncoderFallbackException ex)
             {
                 // the failed call discards what it had encoded so far
                 if (ex.Index > 0)
-                    bytes.AddRange(strict.GetBytes(rest[..ex.Index]));
-                var failed = position + PyStrObject.CharIndexToCodePointIndex(rest, ex.Index);
+                {
+                    var prefix = rest[..ex.Index];
+                    var prefixBuffer = new byte[strict.GetMaxByteCount(prefix.Length)];
+                    var prefixWritten = strict.GetBytes(prefix, prefixBuffer);
+                    bytes.AddRange(prefixBuffer.AsSpan(0, prefixWritten));
+                }
+                var failed = position + PyStrObject.CountCodePoints(rest[..ex.Index]);
                 var runEnd = codec.CollectsRun ? UnmappableRunEnd(strict, codePoints, failed) : failed + 1;
                 var error = ApplyEncodeErrorHandler(codec, codePoints, failed, runEnd, errors, bytes, strict, value);
                 if (error is not null)
                     return PyResult.FromException(error);
+                charPos += CharsForCodePoints(codePoints, position, runEnd);
                 position = runEnd;
                 continue;
             }
-            bytes.AddRange(encoded);
+            bytes.AddRange(buffer.AsSpan(0, written));
             if (undefinedAt > 0)
             {
-                position += PyStrObject.CharIndexToCodePointIndex(rest, undefinedAt);
+                charPos += undefinedAt;
+                position += PyStrObject.CountCodePoints(rest);
                 continue;
             }
             break;
@@ -2002,7 +2023,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     // the char index of the first code point CPython's charmap table
     // leaves undefined, or -1 when the text encodes cleanly
-    private static int IndexOfUndefined(string text, FrozenSet<char> undefined)
+    private static int IndexOfUndefined(ReadOnlySpan<char> text, FrozenSet<char> undefined)
     {
         for (var i = 0; i < text.Length; i++)
         {
@@ -2010,6 +2031,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return i;
         }
         return -1;
+    }
+
+    // UTF-16 code units spanned by the code points [start, end)
+    private static int CharsForCodePoints(int[] codePoints, int start, int end)
+    {
+        var chars = 0;
+        for (var i = start; i < end; i++)
+            chars += codePoints[i] >= 0x10000 ? 2 : 1;
+        return chars;
     }
 
     private static bool CanEncode(Encoding strict, int codePoint)
@@ -2330,6 +2360,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             var (start, _, step, length) = indices;
             if (length is 0)
                 return PyStrObject.Empty;
+
+            if (self.IsSurrogatePairFree)
+            {
+                // code-point and char indices coincide: pick the chars
+                // directly at O(1) each instead of materializing the whole
+                // code-point array first (repeated slicing stays linear)
+                if (step is 1)
+                    return PyStrObject.FromString(self.Value[start..(start + length)]);
+                var fast = new StringBuilder(length);
+                for (int i = start, ri = 0; ri < length; i += step, ri++)
+                    fast.Append(self.Value[i]);
+                return PyStrObject.FromString(fast.ToString());
+            }
 
             var codePoints = new List<int>(self.PyLength);
             var enumerator = self.EnumerateCodePoints();
