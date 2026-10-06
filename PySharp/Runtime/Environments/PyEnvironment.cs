@@ -101,6 +101,10 @@ public sealed partial class PyEnvironment : IDisposable
     internal PyEnvironmentOptions Options { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
+    // per-environment threading module state (_active registry, the main
+    // thread object, the configured stack size); lives here because
+    // CPython keeps it on the per-interpreter threading module singleton
+    internal PySharp.Modules.Threading.PyThreadingState ThreadingState { get; } = new();
     internal List<string> Paths => _paths;
     internal List<string> Args => _args;
     internal List<PyModuleProvider> ModuleProviders { get; }

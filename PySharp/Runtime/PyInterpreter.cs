@@ -187,7 +187,7 @@ public sealed class PyInterpreter : IDisposable
                     context.PyEnvironment.FlushStandardStreams();
 
                     if (!PySystemExitObjectType.Shared.IsInstance(exc))
-                        WriteTopLevelExceptionMessage(context, exc);
+                        ReportThroughThreadingExcepthook(context, exc);
 
                     return;
                 }
@@ -198,6 +198,43 @@ public sealed class PyInterpreter : IDisposable
             Debug.Assert(currentException is null);
             throw;
         }
+    }
+
+    // CPython threading: an uncaught worker exception goes through
+    // threading.excepthook (replaceable from Python); the default hook
+    // prints "Exception in thread <name>:" plus the traceback, and a hook
+    // that itself fails reports under "Exception in threading.excepthook:"
+    // and swallows both exceptions
+    private static void ReportThroughThreadingExcepthook(PyCallContext context, PyExceptionObject exc)
+    {
+        var environment = context.PyEnvironment;
+        var thread = Modules.Threading.PyThreadObjectType.TryGetActiveThread(environment)
+            ?? Modules.Threading.PyThreadObjectType.CreateDummyThread(environment);
+
+        if (environment.Modules.TryGetValue("threading", out var threadingModule) && threadingModule is not null)
+        {
+            var replaced = threadingModule.PyAttributes.TryGetValue("excepthook", out var hook)
+                && hook is not null
+                && !ReferenceEquals(hook, Modules.Threading.PyThreadingFunctions.ExceptHook);
+            if (replaced)
+            {
+                var args = Modules.Threading.PyExceptHookArgsObject.Create(exc.PyType, exc, PyNoneObject.None, thread);
+                var report = hook!.Call(context, [args]);
+                if (!report.IsError)
+                    return;
+                if (report.Exception is { } hookException)
+                {
+                    environment.Error.Write("Exception in threading.excepthook:\n");
+                    WriteNativeExceptionMessage(context, hookException);
+                    return;
+                }
+            }
+        }
+
+        // the default hook: the report itself. The "Exception in thread
+        // <name>:" heading is part of the traceback rendering (it rides on
+        // the exception's thread-root frame), so no extra header here
+        WriteNativeExceptionMessage(context, exc);
     }
 
     // CPython's PyErr_PrintEx reports an uncaught exception through
@@ -241,7 +278,7 @@ public sealed class PyInterpreter : IDisposable
         return false;
     }
 
-    private static void WriteNativeExceptionMessage(PyCallContext context, PyExceptionObject exc)
+    internal static void WriteNativeExceptionMessage(PyCallContext context, PyExceptionObject exc)
     {
         const string ANSIColorRed = "\e[31m";
         const string ANSIClearColor = "\e[0m";

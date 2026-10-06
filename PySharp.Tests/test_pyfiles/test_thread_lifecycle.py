@@ -4,8 +4,6 @@
 :background: is_alive() on a never-started thread used to pierce the process
     with a .NET InvalidOperationException instead of returning False, and a
     subclass run() override was never dispatched.
-
-:cpython-diff: an uncaught exception in a non-main thread leaves PySharp's exit code at 1 where CPython 3.14 exits 0; remove this exemption once exit codes match
 """
 
 # threading.Thread lifecycle semantics.
