@@ -78,9 +78,11 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 - match 语句的 sequence/mapping 判定与槽位无关：纯类型 flag（`PyTypeFlags.Sequence/Mapping`，
   对齐 `Py_TPFLAGS_*` 的位值），构造期查静态表并沿 MRO 继承；str/bytes/bytearray 与自带
   `__getitem__` 的用户类因无 flag 而不匹配序列模式。
-- 比较族（`Lt` 与 `Gt` 族）：无条件以「右操作数的镜像形式优先」调用，即 `left < right` 先试
-  `right.__gt__` 再试 `left.__lt__`，与算术不同，不受同类型省略的影响。`Eq` 是特例，反射查询
-  两侧都查 `__eq__`，均返回 `NotImplemented` 时退化为引用相等。
+- 比较族（`Lt` 与 `Gt` 族）：镜像配对（`Lt`↔`Gt`、`Le`↔`Ge`），对齐 CPython
+  `do_richcompare` 的「交换参数加交换操作码」：右类型是左类型的真子类时先
+  `right.__gt__(right, left)`，否则先 `left.__lt__(left, right)`，返回
+  `NotImplemented` 再试 `right.__gt__(right, left)`；与算术不同，不受同类型省略的影响。
+  `Eq` 是特例，反射查询两侧都查 `__eq__`，均返回 `NotImplemented` 时退化为引用相等。
 - 就地运算（`InPlaceOperator`）：先试 `__iadd__` 家族，返回 `NotImplemented` 再回退普通二元运算，
   回退时错误消息用增强形式拼写。
 - 一元运算（`UAdd`、`USub`、`Invert` 对应 `__pos__`、`__neg__`、`__invert__`）：槽存在时结果原样
