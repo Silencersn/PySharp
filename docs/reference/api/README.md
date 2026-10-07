@@ -13,7 +13,7 @@
 | [PyFileSystem](./PyFileSystem.md) | `IVirtualFileSystem`、`IVirtual*Info`、`MemoryFileSystem`、`PhysicalFileSystem` |
 | [PyObject](./PyObject.md) | `PyObject`、`PyObjectManagedDict`、`Call` 与 `CallMethod` 扩展 |
 | [PyResult](./PyResult.md) | `PyResult`、`PyResult<T>`、`PyExceptionResult`：错误即值、状态判定、异常工厂 |
-| [PyOperators](./PyOperators.md) | `PyOperators`、`PyOperatorTypes`：运算符入口与分发规则 |
+| [PyOperators](./PyOperators.md) | `PyOperators`、`PyOperatorTypes`：运算符入口面与分发规则（骨架见 `PyOperatorProtocol`） |
 | [PySpecialMethods](./PySpecialMethods.md) | `PySpecialMethods`：协议方法入口与回退规则 |
 | [内建类型速查表](./builtin-types.md) | 内建类型到构造入口的对照、异常类型体系、执行与迭代构件 |
 

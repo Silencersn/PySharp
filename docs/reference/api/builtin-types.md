@@ -33,7 +33,7 @@
 | Python 概念 | C# 类型 |
 | --- | --- |
 | `type` | `PyTypeObjectType`（`PyTypeObject` 的元类型） |
-| 类型对象基类 | `PyTypeObject` 与 `PyTypeObject<T>`（自定义类型继承后者，见[自定义类型](../user-guide/custom-types.md)） |
+| 类型对象基类 | `PyTypeObject`、`PyOperableObjectType<T>`（运算槽中间层）与 `PyTypeObject<T>`（自定义类型继承后者，见[自定义类型](../user-guide/custom-types.md)） |
 | `object` 类型 | `PyObjectType` |
 | 用户定义类 | `PyObjectManagedDict` 布局的运行时类型 |
 | 函数（`def`） | `PyFunctionObject` |

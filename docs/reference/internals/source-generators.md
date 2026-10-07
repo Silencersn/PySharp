@@ -67,6 +67,12 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
      wrapper 委托与次槽的引用相等甄别族别，命中则保留 Sequence 侧、Number 侧保持字典驱动。
   4. `PySpecialNames.g.cs`：dunder 名常量与 `Interned` 预驻留字段。
   5. `PyTypeObjectOfT.Partial.g.cs`：`protected virtual` 协议声明，即手写覆写的目标。
+
+  槽位分层迁移（见[协议分发](./protocol-dispatch.md)）在以上链路之外引入了中间层
+  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`）与反射回退桥工厂；
+  试点类型经 `PostConstruct` 把槽重接到这些入口，生成器接线与反射合成
+  （`FillReflectedSlots`）在此之前落位、之后被整体替换。生成器自身的拆层排在
+  迁移阶段 4，届时本节描述的密封桥与合成器将按旧物清单退役。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，
   与上一条的第 4 点互补。
 

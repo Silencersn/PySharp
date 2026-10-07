@@ -1,6 +1,6 @@
 # PyOperators 参考
 
-源码：`PySharp/Runtime/PyOperators.cs`。命名空间：`PySharp.Runtime`。
+源码：`PySharp/Runtime/PyOperators.cs`、`PySharp/Runtime/PyOperatorProtocol.cs`。命名空间：`PySharp.Runtime`。
 
 Python 运算符的静态分发入口，`public static class`。所有方法第一个参数为 `PyCallContext`。
 语义细节见[运算符与协议分发](../user-guide/operators-and-protocols.md)。
@@ -20,7 +20,8 @@ public static PyResult Op(PyCallContext context, PyObject left, PyObject right);
 public static PyResult Pow(PyCallContext context, PyObject left, PyObject right, PyObject modulo);
 ```
 
-分发规则按 CPython 的 `binary_op1` 实现。两侧类型相同时，算术运算只调用前向槽，反射方法不参与
+分发规则按 CPython 的 `binary_op1` 实现，骨架收拢在 `PyOperatorProtocol`（槽配对与比较镜像的读取器表、
+序列回退、就地族），本类是稳定的公开入口面。两侧类型相同时，算术运算只调用前向槽，反射方法不参与
 （比较运算保持双向）；右侧类型是左侧类型的真子类时，先调用右侧反射槽再调用左侧槽；其余情况先调
 左侧槽，返回 `NotImplemented` 时调右侧反射槽，仍为 `NotImplemented` 则报 `TypeError`。两侧均为
 `PyIntObject` 时走 `PyMath` 的任意精度整数快速路径。

@@ -1,6 +1,6 @@
 # 运算符与协议分发
 
-源码：`PySharp/Runtime/PyOperators.cs`、`PySpecialMethods.cs`、`PySharp/Runtime/Calls/PyResult.cs`。
+源码：`PySharp/Runtime/PyOperators.cs`、`PyOperatorProtocol.cs`、`PySpecialMethods.cs`、`PySharp/Runtime/Calls/PyResult.cs`。
 
 Python 的运算符与内建函数不是 C# 运算符重载，而是协议分发：每个类型对象的 `PyTypeObject.Slots`
 持有一组协议槽，对应 `__add__`、`__len__`、`__getitem__` 等 dunder 方法；公共入口 `PyOperators`

@@ -51,7 +51,7 @@ public static PyResult<PyCodeObject> Compile(string code, CompileMode mode, PyCa
 | `Compilation/CodeAnalysis/` | 源码文本基础设施：`CodeSource`、`CodeText`（行索引与定位）、`CodeTextSpan`、`CodeMetaInfo` |
 | `Compilation/Primitives/` | 编译期枚举：`OperatorType`、`BoolOpType`、`CmpopType`、`ExprContextType`、`UnaryOpType`、`PyVariableType` |
 | `Compilation/Bytecodes/` | 字节码层：`OpCode`、`Instruction`、`BytecodeBuilder`、`Emitter`、`LineTable`、`Label`、`IntrinsicFunctionType` |
-| `Runtime/` | 执行环境：`PyInterpreter`、`PyCore`、`PyOperators` 与 `PySpecialMethods`、`Calls/`、`Environments/`、`VirtualMachine/`、`IO/`、`Comparison/`、`PyAttributes/` |
+| `Runtime/` | 执行环境：`PyInterpreter`、`PyCore`、`PyOperators` 与 `PySpecialMethods`、`PyOperatorProtocol`（运算协议骨架）、`Calls/`、`Environments/`、`VirtualMachine/`、`IO/`、`Comparison/`、`PyAttributes/` |
 | `Modules/Builtins/` | 对象模型：`PyObject`、全部 `Py*Object` 与 `Py*ObjectType`、异常层次、内建函数 |
 | `Modules/<其他>/` | 各标准库模块（`Mathematics`、`Sys`、`Threading`、`Queue`、`Typing`、`Random`、`Time`、`Operator`、`Site`、`This`、`String/TemplateLib`、`Dataclasses`、`Warnings`）、`IO/`（`_io.TextIOWrapper` 与文本编解码，三标准流与文本模式 `open()` 的实现）与 `CSharp/`（用户定义类型的宿主侧布局） |
 | `Utility/` | 与 Python 语义无关的 .NET 工具，见[速览](./utility-overview.md)：`ArrayStackHelper`、`BigIntegerHelper`、`ImmutableArrayBuilderPool`、`ConcurrentSet` 等 |

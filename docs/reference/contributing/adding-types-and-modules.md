@@ -13,7 +13,7 @@
 3. **元类型**：`[PyType("Name", Module = "builtins")]`（放其他模块时写模块名）加 `sealed partial class ... : PyTypeObject<Py<Name>Object>`。不要手写 `Shared`、私有构造、`DefaultName` / `DefaultModule` / `IsSealed`、`FillSlots()`、`RegisterMethods()` / `RegisterProperties()`，这些全部由 `PyTypeGenerator` 产出，手写会重复定义；只有 `[PyTypeConstructor(DoNotGenerateConstructor = true)]` 时才例外。
 4. **方法**：`[PyMethod("名字")]` 加 `[PyFunctionParameters("a", "b=1")]`，缺后者报 PYARG010；签名为 `static PyResult M(PyCallContext, Py<Name>Object self, PyArguments)`。静态方法与类方法用 `[PyStaticMethod]` / `[PyClassMethod]`；属性用 `[PyProperty]` 三件套。
 5. **构造行为**：用 `[PyExport(PySpecialNames.New, nameof(NewImpl))]` 声明 partial 属性加 `NewImpl` 实现，再覆写 `New`；支持子类化的 `obj.Value._pyType = cls` 写法用的是 internal 字段，库内可直接用。
-6. **协议**：覆写 `PyTypeObject<T>` 的 `protected virtual partial` 方法（`Repr`、`Len`、`GetItem`、`Add` 等，完整清单见[自定义类型](../user-guide/custom-types.md)）；也可在构造期调用 `FillSlot`。
+6. **协议**：覆写 `PyTypeObject<T>` 的 `protected virtual partial` 方法（`Repr`、`Len`、`GetItem`、`Add` 等，完整清单见[自定义类型](../user-guide/custom-types.md)）；也可在构造期调用 `FillSlot`。运算协议另有中间层 C 风格入口（`Nb*`/`RichCompare`，试点形态，见[协议分发](../internals/protocol-dispatch.md)）。
 7. **注册进 `builtins`**：在 `Modules/Builtins/PyBuiltinsModuleObject.cs` 顶部追加一行
    `[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(Py<Name>ObjectType))]`
    该文件按“内建类型、异常层次、警告层次”分组排列，放在对应分组里。

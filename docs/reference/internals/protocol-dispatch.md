@@ -1,6 +1,7 @@
 # 协议分发
 
-源码：`PySharp/Runtime/PySpecialMethods.cs`、`PySharp/Runtime/Comparison/`。
+源码：`PySharp/Runtime/PySpecialMethods.cs`、`PySharp/Runtime/PyOperators.cs`、
+`PySharp/Runtime/PyOperatorProtocol.cs`、`PySharp/Runtime/Comparison/`。
 
 协议分发相当于 Python 语义的函数库：给定对象与协议名，查类型槽、调用委托、执行回退规则。
 入口共享一套约定，即第一个参数为 `PyCallContext`，返回 `PyResult`，错误即值，见
@@ -39,7 +40,12 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 
 ## 运算符的反射协议
 
-二元运算入口 `ReflectiveOperator` 对齐 CPython 的 `binary_op1`，按三档决策：
+二元运算的公开入口在 `PyOperators`（`Add`/`Sub`/…，签名稳定），分发骨架收拢在
+`PyOperatorProtocol`（槽位分层迁移引入，见[槽位分层](#槽位分层与中间层)与
+[分层迁移实施记录](../../design/20261007/08-layering-implementation-record.md)）：
+前向/反射槽配对与比较镜像退化为一张「操作符 → (前向读取器, 反射读取器)」表
+（`_Py_SwappedOp` 的数据表形态），序列回退、就地族与 `divmod` 的简化协议也在此处。
+骨架入口 `ReflectiveOperator` 对齐 CPython 的 `binary_op1`，按三档决策：
 
 ```text
 1. int 与 int 相运算 → PyMath.CalculatePyIntObject 快速路径
@@ -100,6 +106,29 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 - 属性访问：`GetAttr` 两段式，先 `__getattribute__`，结果为 `AttributeError` 且定义了 `__getattr__`
   时才调用后者。`string` 名字重载先经环境 `InternPool` 驻留再进入查找。
 
+## 槽位分层与中间层
+
+槽位分层重构（[提案评估](../../design/20261007/06-slot-protocol-layering-proposal.md)、
+[实施记录](../../design/20261007/08-layering-implementation-record.md)）在
+`PyTypeObject` 与 `PyTypeObject<T>` 之间插入了中间层
+`PyOperableObjectType<T>`（`Modules/Builtins/PyOperableObjectType.cs`）：
+
+- **C 风格虚方法族**：`NbAdd`…`NbOr`（前向二元）、`NbInplaceAdd`…（就地族）与单一的
+  `RichCompare(self, other, op)`。接收者 `self` 为 `PyObject`，无类型承诺——双侧守卫与
+  NotImplemented 回退是实现者的显式责任（CPython 静态槽如 `set_sub` 的双侧
+  `PyAnySet_Check` 正是此形态）。双侧守卫使入口参数序无关，同一 delegate 可同时服务
+  前向位、反射位（分发器已交换）与 CPython `binary_op1` 第三步的原序调用。
+- **反射回退桥工厂**：`BridgeBinarySlot` / `BridgeTernarySlot` 是 `SLOT1BINFULL`
+  （`slot_nb_add`）的面向对象等价物：前向守卫转发，NotImplemented 后按同布局省略，
+  外类型 `self`（原序第三步的形态）时回落到反射虚方法。回退使顶层 R\* 覆写在 C 形态
+  下可达；适配视图分发期间它保持就绪而不被触发（反射位仍走 R\* 槽）。
+
+迁移按行为冻结原则分阶段进行：分发骨架经**适配视图**读取现有槽字段（行为与迁移前
+零差异，已知语义判型差异与 `divmod` 简化协议原样冻结）；已迁移的试点类型
+（frozenset、bool、float）在 `PostConstruct` 中把槽重接到 C 形态入口，合成器
+`FillReflectedSlots` 见 R\* 槽非空自动让位，其余类型仍走生成器接线与合成。
+R\* 槽字段、比较六槽与槽级合成的退役排在生成器拆层之后（迁移阶段 4）。
+
 ## 比较器
 
 `Runtime/Comparison/` 下的类型：
@@ -114,7 +143,9 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 ## 修改协议行为的位置
 
 - 给内建类型加协议：在元类型上覆写 `protected virtual` 方法，或 `FillSlot`，见
-  [对象模型](./object-model.md)。
+  [对象模型](./object-model.md)；运算协议可改覆写中间层
+  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`，试点形态，
+  见[槽位分层](#槽位分层与中间层)）。
 - 用户定义类的 `__repr__` 等在类体中定义，由类型创建路径把它们登记进类型属性与槽。
 - 新增全局协议入口：在 `PySpecialMethods` 加分发方法并加对应槽字段，注意与 CPython 的回退行为
   对齐，并补 `test_pyfiles` 回归。
