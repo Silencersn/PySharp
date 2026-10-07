@@ -92,6 +92,11 @@ public PyObject this[string key] { get; set; }   // 读取未命中抛 KeyNotFou
 - 方法面：`items`、`keys`、`values`、`clear`、`get`、`setdefault`、`pop`（单参与双参两个重载）、
   `popitem`、`copy`、`update`、`fromkeys`（classmethod）。`Eq` 槽逐条目经 `PyComparer.Eq` 比较，
   `Bool`、`Len`、`Contains`（经 `IsKeyError` 判定）、`Iter`（迭代键）。
+- PEP 584 合并运算符，对齐 CPython 的 `dict_or` / `dict_ior`：`Or` 槽要求右操作数也是 dict
+  （含子类）否则 `NotImplemented`，结果是 `PyDict_Copy(self)` 再 `Update(other)`，因此子类参与
+  合并仍产出 plain dict；`IOr` 槽无类型门槛，直接走 `Update` 的 `dict_update_arg` 三分语义
+  （exact dict、带 `keys()` 的映射、二元组可迭代），原地更新并返回自身。`__or__`、`__ror__`、
+  `__ior__` 包装经生成器 `FillSlot` 与 `FillReflectedSlots` 自动可见。
 - `builtins` 模块经 `[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDictObjectType))]`
   把名字 `dict` 绑到类型单例，因此 `dict(...)` 即调用类型本身，走 `New` 槽。
 
@@ -175,6 +180,20 @@ dict 的三个消费场景（对象属性、帧 locals、全局名字空间）�
   正向一致。
 - 尺寸变更检测：迭代器创建时快照 `_count`，每次 `Next` 对照当前 `dict.Count`，不一致即报
   `RuntimeError("dictionary changed size during iteration")`。
+- 视图集合运算，对齐 CPython 的 `dictviews_as_number`：`dict_keys` 与 `dict_items` 各接线
+  `Sub`/`And`/`Xor`/`Or` 四槽（`dict_values` 无），共享实现集中在 `PyDictItemsObjectType`。
+  `|`、`-`、`^` 先把视图物化进 `PySetTable`（`ViewToTable`，条目快照防中途重哈希失效）再用
+  `PySetOps` 的对应批量操作折入右操作数（可为任意可迭代）；`&` 走
+  `IntersectionTableOfIterable`（遍历右操作数探测视图内容，即 CPython
+  `_PyDictView_Intersect` 的方向）。四个操作均返回新 `set`。
+- 视图的反射槽：`&`/`|`/`^` 满足交换律，由 `FillReflectedSlots` 通用合成即可等价；`-` 不满足，
+  手写 `RSub`——CPython `binary_op1` 的反射尝试以原序 `slotw(v, w)` 调用右类型槽，
+  `dictviews_sub` 的 self 位收到的是 `-` 左侧的操作数，`set - view` 保留左侧内容，因此
+  `ViewLeftDifference` 先物化左操作数再减去视图元素，而非反向。
+- items 视图间的 `^` 走 `ItemsSymmetricDifference` 特化（CPython `dictitems_xor`）：按 key
+  索引配对、值相等（经 `PyComparer.Eq`）的对直接剔除，只有幸存者才进入结果集参与哈希——
+  相等但不可哈希的值不会触达 set 插入，`d.items() ^ d.items()` 互相抵消的边界得以工作；
+  幸存对中的不可哈希值仍在 set 插入时报 TypeError，与 CPython 一致。
 
 ## 性能与并发
 

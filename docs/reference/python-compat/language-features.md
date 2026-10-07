@@ -110,7 +110,8 @@
   `<=` 与 `>=` 槽位），`decode` 的错误处理器全链路，默认 `strict` 抛 `UnicodeDecodeError`。
 - `list`、`tuple`、`dict`、`set`、`frozenset`、`range`、`slice`、`memoryview`：方法与语义，
   含 `slice` 步长为零、排序稳定性与移植自 listsort 的比较顺序（不足 64 项二分插入，64 项及以上
-  稳定归并）、非一致比较器的异常传播、哈希不变量、dict 视图的 `len` 与集合式比较等。
+  稳定归并）、非一致比较器的异常传播、哈希不变量、dict 视图的 `len` 与集合式比较、PEP 584 的
+  dict `|` 与 `|=` 合并、dict 视图的 `&`/`|`/`^`/`-` 集合运算等。
 - 文件对象：`open()` 返回值支持 `read`、`readline`、`readlines`（含 `hint`）、`write`、`seek`、
   `tell` 等常用面。
 
