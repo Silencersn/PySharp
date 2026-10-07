@@ -1,7 +1,5 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Comparison;
-using System.Diagnostics;
 
 namespace PySharp.Runtime;
 
@@ -28,494 +26,139 @@ public enum PyOperatorTypes
     GtE
 }
 
+// The public operator entries. Since the slot layering rework the binary
+// dispatch knowledge — forward/reflected slot pairing, the comparison
+// mirror, the operand-position swap, the same-type omission and the
+// sequence fallback — lives in PyOperatorProtocol (the operator-protocol
+// skeleton); these entries only keep the stable call surface and the
+// identity fallbacks of ==/!=.
 public static class PyOperators
 {
-
-    private static string OperatorToString(PyOperatorTypes op)
-    {
-        return op switch
-        {
-            PyOperatorTypes.Add => "+",
-            PyOperatorTypes.Sub => "-",
-            PyOperatorTypes.Mult => "*",
-            PyOperatorTypes.MatMult => "@",
-            PyOperatorTypes.TrueDiv => "/",
-            PyOperatorTypes.FloorDiv => "//",
-            PyOperatorTypes.Mod => "%",
-            PyOperatorTypes.Pow => "**",
-            PyOperatorTypes.LShift => "<<",
-            PyOperatorTypes.RShift => ">>",
-            PyOperatorTypes.BitAnd => "&",
-            PyOperatorTypes.BitOr => "|",
-            PyOperatorTypes.BitXor => "^",
-            PyOperatorTypes.Lt => "<",
-            PyOperatorTypes.LtE => "<=",
-            PyOperatorTypes.Eq => "==",
-            PyOperatorTypes.NotEq => "!=",
-            PyOperatorTypes.Gt => ">",
-            PyOperatorTypes.GtE => ">=",
-            _ => throw new UnreachableException(),
-        };
-    }
-
-
-    private static bool IsComparisonOp(PyOperatorTypes op)
-    {
-        return op is PyOperatorTypes.Lt or PyOperatorTypes.LtE or PyOperatorTypes.Eq
-            or PyOperatorTypes.NotEq or PyOperatorTypes.Gt or PyOperatorTypes.GtE;
-    }
-
-    private static string OperatorTypeErrorName(PyOperatorTypes op)
-    {
-        return IsComparisonOp(op)
-            ? PySR.Runtime_Operator_UnsupportedBetween
-            : PySR.Runtime_Operator_UnsupportedOperand;
-    }
-
-    // CPython's binop_type_error operator spellings: pow shares one
-    // display across ** and pow(), and in-place ops name the augmented
-    // form ("+=", "**=", ...) instead of the plain operator.
-    private static string OperatorErrorToString(PyOperatorTypes op, bool inPlace)
-    {
-        var name = OperatorToString(op);
-        if (inPlace)
-            return name + "=";
-        return op is PyOperatorTypes.Pow ? "** or pow()" : name;
-    }
-
-    private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
-    {
-        if (selfFunc is not null)
-        {
-            var result = selfFunc(context, self, other);
-            if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
-                return result;
-        }
-        if (otherFunc is not null)
-        {
-            var result = otherFunc(context, other, self);
-            if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
-                return result;
-        }
-        return PyNotImplementedObject.NotImplemented;
-    }
-
-    private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyObject third, PyTernaryFunction? selfFunc, PyTernaryFunction? otherFunc)
-    {
-        if (selfFunc is not null)
-        {
-            var result = selfFunc(context, self, other, third);
-            if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
-                return result;
-        }
-        if (otherFunc is not null)
-        {
-            var result = otherFunc(context, other, self, third);
-            if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
-                return result;
-        }
-        return PyNotImplementedObject.NotImplemented;
-    }
-
-    // The abstract-layer fallback from the number family to the sequence
-    // family (Objects/abstract.c): after the nb slots decline, PyNumber_Add
-    // tries the left operand's sq_concat only; PyNumber_Multiply tries the
-    // left operand's sq_repeat, else the right operand's — a left sequence
-    // family takes precedence in both directions, in-place included
-    private static PyResult ApplySequenceFallback(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyResult result, bool inPlace)
-    {
-        switch (op)
-        {
-            case PyOperatorTypes.Add:
-                {
-                    var leftSequence = left.PyType.Slots.Sequence;
-                    var concat = inPlace
-                        ? leftSequence?.InplaceConcat ?? leftSequence?.Concat
-                        : leftSequence?.Concat;
-                    if (concat is not null)
-                        result = concat(context, left, right);
-                    break;
-                }
-            case PyOperatorTypes.Mult:
-                {
-                    // CPython: `if (mv && mv->sq_repeat) ... else if (mw &&
-                    // mw->sq_repeat)` — the left side wins only by carrying an
-                    // actual repeat slot, not by merely having the family struct
-                    var leftSequence = left.PyType.Slots.Sequence;
-                    var leftRepeat = inPlace
-                        ? leftSequence?.InplaceRepeat ?? leftSequence?.Repeat
-                        : leftSequence?.Repeat;
-                    if (leftRepeat is not null)
-                    {
-                        result = leftRepeat(context, left, right);
-                        break;
-                    }
-                    // the right operand's plain repeat runs only when the left
-                    // operand has no repeat slot at all, and must not mutate it
-                    // (abstract.c PyNumber_InPlaceMultiply)
-                    var rightRepeat = right.PyType.Slots.Sequence?.Repeat;
-                    if (rightRepeat is not null)
-                        result = rightRepeat(context, right, left);
-                    break;
-                }
-        }
-        return result;
-    }
-
-    private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected, bool inPlace = false)
-    {
-        PyResult result;
-        var leftType = left.PyType;
-        var rightType = right.PyType;
-        switch (op)
-        {
-            case PyOperatorTypes.Add:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Add, allowReflected ? rightType.Slots.RAdd : null);
-                break;
-            case PyOperatorTypes.Sub:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Sub, allowReflected ? rightType.Slots.RSub : null);
-                break;
-            case PyOperatorTypes.Mult:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mul, allowReflected ? rightType.Slots.RMul : null);
-                break;
-            case PyOperatorTypes.MatMult:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.MatMul, allowReflected ? rightType.Slots.RMatMul : null);
-                break;
-            case PyOperatorTypes.TrueDiv:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.TrueDiv, allowReflected ? rightType.Slots.RTrueDiv : null);
-                break;
-            case PyOperatorTypes.FloorDiv:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.FloorDiv, allowReflected ? rightType.Slots.RFloorDiv : null);
-                break;
-            case PyOperatorTypes.Mod:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mod, allowReflected ? rightType.Slots.RMod : null);
-                break;
-            case PyOperatorTypes.Pow:
-                Debug.Assert(modulo is not null);
-                result = EvalReflectiveOperator(context, left, right, modulo, leftType.Slots.Pow, allowReflected ? rightType.Slots.RPow : null);
-                break;
-            case PyOperatorTypes.LShift:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.LShift, allowReflected ? rightType.Slots.RLShift : null);
-                break;
-            case PyOperatorTypes.RShift:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.RShift, allowReflected ? rightType.Slots.RRShift : null);
-                break;
-            case PyOperatorTypes.BitAnd:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.And, allowReflected ? rightType.Slots.RAnd : null);
-                break;
-            case PyOperatorTypes.BitXor:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Xor, allowReflected ? rightType.Slots.RXor : null);
-                break;
-            case PyOperatorTypes.BitOr:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Or, allowReflected ? rightType.Slots.ROr : null);
-                break;
-            case PyOperatorTypes.Lt:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Lt, rightType.Slots.Gt);
-                break;
-            case PyOperatorTypes.LtE:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Le, rightType.Slots.Ge);
-                break;
-            case PyOperatorTypes.Gt:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Gt, rightType.Slots.Lt);
-                break;
-            case PyOperatorTypes.GtE:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Ge, rightType.Slots.Le);
-                break;
-            default:
-                return PyResult.PySharpException($"Operator '{OperatorToString(op)}' is not supported.");
-        }
-
-        if (result.IsNotImplemented)
-            result = ApplySequenceFallback(context, op, left, right, result, inPlace);
-        if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.TpName, right.PyType.TpName);
-
-        return result;
-    }
-
-    private static PyResult EvalRightFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool inPlace = false)
-    {
-        PyResult result;
-        var leftType = left.PyType;
-        var rightType = right.PyType;
-        switch (op)
-        {
-            case PyOperatorTypes.Add:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RAdd, leftType.Slots.Add);
-                break;
-            case PyOperatorTypes.Sub:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RSub, leftType.Slots.Sub);
-                break;
-            case PyOperatorTypes.Mult:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RMul, leftType.Slots.Mul);
-                break;
-            case PyOperatorTypes.MatMult:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RMatMul, leftType.Slots.MatMul);
-                break;
-            case PyOperatorTypes.TrueDiv:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RTrueDiv, leftType.Slots.TrueDiv);
-                break;
-            case PyOperatorTypes.FloorDiv:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RFloorDiv, leftType.Slots.FloorDiv);
-                break;
-            case PyOperatorTypes.Mod:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RMod, leftType.Slots.Mod);
-                break;
-            case PyOperatorTypes.Pow:
-                Debug.Assert(modulo is not null);
-                result = EvalReflectiveOperator(context, right, left, modulo, rightType.Slots.RPow, leftType.Slots.Pow);
-                break;
-            case PyOperatorTypes.LShift:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RLShift, leftType.Slots.LShift);
-                break;
-            case PyOperatorTypes.RShift:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RRShift, leftType.Slots.RShift);
-                break;
-            case PyOperatorTypes.BitAnd:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RAnd, leftType.Slots.And);
-                break;
-            case PyOperatorTypes.BitXor:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RXor, leftType.Slots.Xor);
-                break;
-            case PyOperatorTypes.BitOr:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.ROr, leftType.Slots.Or);
-                break;
-            case PyOperatorTypes.Lt:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.Gt, leftType.Slots.Lt);
-                break;
-            case PyOperatorTypes.LtE:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.Ge, leftType.Slots.Le);
-                break;
-            case PyOperatorTypes.Gt:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.Lt, leftType.Slots.Gt);
-                break;
-            case PyOperatorTypes.GtE:
-                result = EvalReflectiveOperator(context, right, left, rightType.Slots.Le, leftType.Slots.Ge);
-                break;
-            default:
-                return PyResult.PySharpException($"Operator '{OperatorToString(op)}' is not supported.");
-        }
-
-        if (result.IsNotImplemented)
-            result = ApplySequenceFallback(context, op, left, right, result, inPlace);
-        if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.TpName, right.PyType.TpName);
-
-        return result;
-    }
-
-    private static PyResult InPlaceOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
-    {
-        if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
-        {
-            // Front-load the modulus validation for the ternary pow form so
-            // NotImplemented can never escape this fast path (matches the
-            // non-integer-modulus rejection inside CalculatePyIntObject).
-            if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
-                return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
-            return PyMath.CalculatePyIntObject(context, op, (PyIntObject)left, (PyIntObject)right, modulo);
-        }
-
-        var slots = left.PyType.Slots;
-        if (op is not PyOperatorTypes.Pow)
-        {
-            var func = op switch
-            {
-                PyOperatorTypes.Add => slots.IAdd,
-                PyOperatorTypes.Sub => slots.ISub,
-                PyOperatorTypes.Mult => slots.IMul,
-                PyOperatorTypes.MatMult => slots.IMatMul,
-                PyOperatorTypes.TrueDiv => slots.ITrueDiv,
-                PyOperatorTypes.FloorDiv => slots.IFloorDiv,
-                PyOperatorTypes.Mod => slots.IMod,
-                PyOperatorTypes.LShift => slots.ILShift,
-                PyOperatorTypes.RShift => slots.IRShift,
-                PyOperatorTypes.BitAnd => slots.IAnd,
-                PyOperatorTypes.BitXor => slots.IXor,
-                PyOperatorTypes.BitOr => slots.IOr,
-                _ => throw new UnreachableException()
-            };
-            if (func is not null)
-            {
-                var result = func(context, left, right);
-                if (!result.IsNotImplemented)
-                    // error or non-NotImplemented value
-                    return result;
-            }
-        }
-        else
-        {
-            var func = slots.IPow;
-            if (func is not null)
-            {
-                Debug.Assert(modulo is not null);
-                var result = func(context, left, right, modulo);
-                if (!result.IsNotImplemented)
-                    // error or non-NotImplemented value
-                    return result;
-            }
-        }
-        var reflective = ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
-        if (reflective.IsNotImplemented)
-            reflective = ApplySequenceFallback(context, op, left, right, reflective, inPlace: true);
-        return reflective;
-    }
-    private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
-    {
-        if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
-        {
-            // Front-load the modulus validation for the ternary pow form so
-            // NotImplemented can never escape this fast path (matches the
-            // non-integer-modulus rejection inside CalculatePyIntObject).
-            if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
-                return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
-            return PyMath.CalculatePyIntObject(context, op, (PyIntObject)left, (PyIntObject)right, modulo);
-        }
-
-        var eq = PyComparer.Eq(context, left.PyType, right.PyType);
-        if (eq.IsError)
-            return eq;
-
-        if (!eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType))
-            return EvalRightFirstReflectiveOperator(context, op, left, right, modulo, inPlace);
-
-        // CPython binary_op1: identical operand types resolve to a single
-        // shared slot, so for arithmetic ops only the forward variant is
-        // tried and the reflected method never runs; comparisons keep both
-        // directions.
-        var allowReflected = !eq.Value.BoolValue || IsComparisonOp(op);
-        return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo, allowReflected, inPlace);
-    }
-
     public static PyResult Add(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Add, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Add, left, right);
     }
     public static PyResult Sub(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Sub, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Sub, left, right);
     }
     public static PyResult Mult(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Mult, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Mult, left, right);
     }
     public static PyResult MatMult(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.MatMult, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.MatMult, left, right);
     }
     public static PyResult TrueDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.TrueDiv, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.TrueDiv, left, right);
     }
     public static PyResult FloorDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.FloorDiv, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.FloorDiv, left, right);
     }
     public static PyResult Mod(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Mod, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Mod, left, right);
     }
     public static PyResult Pow(PyCallContext context, PyObject left, PyObject right, PyObject modulo)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Pow, left, right, modulo);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Pow, left, right, modulo);
     }
     public static PyResult LShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.LShift, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.LShift, left, right);
     }
     public static PyResult RShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.RShift, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.RShift, left, right);
     }
     public static PyResult BitAnd(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.BitAnd, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.BitAnd, left, right);
     }
     public static PyResult BitXor(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.BitXor, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.BitXor, left, right);
     }
     public static PyResult BitOr(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.BitOr, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.BitOr, left, right);
     }
     public static PyResult Lt(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Lt, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Lt, left, right);
     }
     public static PyResult LtE(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.LtE, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.LtE, left, right);
     }
     public static PyResult Gt(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Gt, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.Gt, left, right);
     }
     public static PyResult GtE(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.GtE, left, right);
+        return PyOperatorProtocol.ReflectiveOperator(context, PyOperatorTypes.GtE, left, right);
     }
 
     public static PyResult InPlaceAdd(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.Add, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.Add, left, right);
     }
     public static PyResult InPlaceSub(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.Sub, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.Sub, left, right);
     }
     public static PyResult InPlaceMult(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.Mult, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.Mult, left, right);
     }
     public static PyResult InPlaceMatMult(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.MatMult, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.MatMult, left, right);
     }
     public static PyResult InPlaceTrueDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.TrueDiv, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.TrueDiv, left, right);
     }
     public static PyResult InPlaceFloorDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.FloorDiv, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.FloorDiv, left, right);
     }
     public static PyResult InPlaceMod(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.Mod, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.Mod, left, right);
     }
     public static PyResult InPlacePow(PyCallContext context, PyObject left, PyObject right, PyObject modulo)
     {
-        return InPlaceOperator(context, PyOperatorTypes.Pow, left, right, modulo);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.Pow, left, right, modulo);
     }
     public static PyResult InPlaceLShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.LShift, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.LShift, left, right);
     }
     public static PyResult InPlaceRShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.RShift, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.RShift, left, right);
     }
     public static PyResult InPlaceBitAnd(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.BitAnd, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.BitAnd, left, right);
     }
     public static PyResult InPlaceBitXor(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.BitXor, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.BitXor, left, right);
     }
     public static PyResult InPlaceBitOr(PyCallContext context, PyObject left, PyObject right)
     {
-        return InPlaceOperator(context, PyOperatorTypes.BitOr, left, right);
+        return PyOperatorProtocol.InPlaceOperator(context, PyOperatorTypes.BitOr, left, right);
     }
 
     public static PyResult Eq(PyCallContext context, PyObject left, PyObject right)
     {
-        var result = EvalReflectiveOperator(context, left, right, left.PyType.Slots.Eq, right.PyType.Slots.Eq);
+        var result = PyOperatorProtocol.EvalReflectiveOperator(context, left, right, left.PyType.Slots.Eq, right.PyType.Slots.Eq);
         if (!result.IsNotImplemented)
             // error or non-NotImplemented value
             return result;
@@ -524,7 +167,7 @@ public static class PyOperators
     }
     public static PyResult NotEq(PyCallContext context, PyObject left, PyObject right)
     {
-        var neResult = EvalReflectiveOperator(context, left, right, left.PyType.Slots.Ne, right.PyType.Slots.Ne);
+        var neResult = PyOperatorProtocol.EvalReflectiveOperator(context, left, right, left.PyType.Slots.Ne, right.PyType.Slots.Ne);
         if (!neResult.IsNotImplemented)
             // error or non-NotImplemented value
             return neResult;
@@ -625,6 +268,7 @@ public static class PyOperators
     {
         return EvalUnaryOperator(context, value, value.PyType.Slots.Pos, '+');
     }
+
     public static PyResult USub(PyCallContext context, PyObject value)
     {
         return EvalUnaryOperator(context, value, value.PyType.Slots.Neg, '-');

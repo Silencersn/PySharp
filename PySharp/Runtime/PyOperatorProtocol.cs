@@ -106,7 +106,7 @@ internal static class PyOperatorProtocol
         };
     }
 
-    private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
+    internal static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
     {
         if (selfFunc is not null)
         {
@@ -241,7 +241,7 @@ internal static class PyOperatorProtocol
         return result;
     }
 
-    private static PyResult InPlaceOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
+    internal static PyResult InPlaceOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
         {
@@ -298,7 +298,7 @@ internal static class PyOperatorProtocol
         return reflective;
     }
 
-    private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
+    internal static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
     {
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
         {
@@ -328,5 +328,31 @@ internal static class PyOperatorProtocol
         // directions.
         var allowReflected = !eq.Value.BoolValue || IsComparisonOp(op);
         return EvalLeftFirst(context, op, left, right, modulo, allowReflected, inPlace);
+    }
+
+    // The divmod entry frozen as baseline: the left type's forward slot,
+    // then the right type's reflected slot with swapped operands, then
+    // TypeError — no subclass priority and no same-type omission (a known
+    // divergence from CPython's PyNumber_Divmod, which shares binary_op;
+    // kept verbatim until the post-migration alignment pass)
+    internal static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
+    {
+        var func = left.PyType.Slots.DivMod;
+        if (func is not null)
+        {
+            var result = func(context, left, right);
+            if (!result.IsNotImplemented)
+                return result;
+        }
+
+        func = right.PyType.Slots.RDivMod;
+        if (func is not null)
+        {
+            var result = func(context, right, left);
+            if (!result.IsNotImplemented)
+                return result;
+        }
+
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForDivmod, left.PyType.TpName, right.PyType.TpName);
     }
 }

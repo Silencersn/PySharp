@@ -340,23 +340,7 @@ public static class PySpecialMethods
 
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
-        var func = left.PyType.Slots.DivMod;
-        if (func is not null)
-        {
-            var result = func(context, left, right);
-            if (!result.IsNotImplemented)
-                return result;
-        }
-
-        func = right.PyType.Slots.RDivMod;
-        if (func is not null)
-        {
-            var result = func(context, right, left);
-            if (!result.IsNotImplemented)
-                return result;
-        }
-
-        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForDivmod, left.PyType.TpName, right.PyType.TpName);
+        return PyOperatorProtocol.DivMod(context, left, right);
     }
 
     public static PyResult Abs(PyCallContext context, PyObject obj)
