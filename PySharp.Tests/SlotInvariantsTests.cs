@@ -13,7 +13,12 @@ namespace PySharp.Tests;
 //   A. FillSlot shares ONE delegate instance between the slot field and the
 //      dict's wrapper descriptor. TrySetWrappedSlot's specific extraction
 //      (the generated `_func is TDelegate` test) and the propagation
-//      provider-copy rule only stay faithful while this holds.
+//      provider-copy rule only stay faithful while this holds. The ONE
+//      exception: reflected dunders synthesized by FillReflectedSlots are
+//      two deliberate views — the slot forwards (self, other) for the
+//      already-swapped dispatch path, the dict wrapper flips the pair like
+//      wrap_binaryfunc_r — so they share no instance; hand-written R*
+//      overrides go through FillSlot and keep sharing.
 //   B. Inherited construction delegates keep reference identity: FillNullWith
 //      bakes ancestor delegates into static types by reference, and the
 //      New/Init provider-copy rule re-wires runtime classes to the provider's
@@ -37,6 +42,27 @@ public sealed class SlotInvariantsTests
     private static bool IsSetAttrExempt(PyTypeObject type, string name) =>
         (ReferenceEquals(type, PyObjectType.Shared) || ReferenceEquals(type, PyTypeObjectType.Shared))
         && (name is PySpecialNames.SetAttr or PySpecialNames.DelAttr);
+
+    // reflected dunders synthesized by FillReflectedSlots carry a flipped
+    // wrapper by design (see invariant A); they only have to be wired on
+    // both sides, not to share one delegate instance
+    private static readonly HashSet<string> SynthesizedReflectedNames =
+    [
+        PySpecialNames.RAdd,
+        PySpecialNames.RMul,
+        PySpecialNames.RSub,
+        PySpecialNames.RMatMul,
+        PySpecialNames.RTrueDiv,
+        PySpecialNames.RFloorDiv,
+        PySpecialNames.RMod,
+        PySpecialNames.RDivMod,
+        PySpecialNames.RLShift,
+        PySpecialNames.RRShift,
+        PySpecialNames.RAnd,
+        PySpecialNames.RXor,
+        PySpecialNames.ROr,
+        PySpecialNames.RPow,
+    ];
 
     [TestMethod]
     public void BuiltinSlotWrappers_ShareSlotDelegate()
@@ -79,7 +105,16 @@ public sealed class SlotInvariantsTests
 
                 checkedPairs++;
                 if (!slotValues.Any(slot => slot is not null && ReferenceEquals(slot, wrapper._func)))
+                {
+                    // hand-written R* overrides (FillSlot) keep sharing; the
+                    // FillReflectedSlots synthesis is the one exception —
+                    // the slot and the dict wrapper are two views (dispatch
+                    // path swaps, attribute path flips), so both sides just
+                    // have to be wired
+                    if (SynthesizedReflectedNames.Contains(name) && slotValues.Any(slot => slot is not null))
+                        continue;
                     violations.Add($"{type.TpName}.{name}: slot delegate and wrapper._func must be one shared instance");
+                }
             }
         }
 

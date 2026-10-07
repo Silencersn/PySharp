@@ -120,6 +120,32 @@ public sealed class ExternalTypeProtocolTests
     }
 
     [TestMethod]
+    public void ReflectedArithmetic_SynthesizedSlot_DispatchesFromPython()
+    {
+        using var environment = NewEnvironment();
+
+        var main = Run(environment, """
+            from probetypes import ProbeValue
+            v = ProbeValue(3)
+            # the reflected dispatch hands the right operand to the
+            # synthesized RAdd slot as self (SLOT1BIN semantics), so an
+            # int + ProbeValue resolves through ProbeValue.__add__
+            assert 4 + v == 7
+            assert 10 + v == 13
+            # a non-int left operand still declines inside the forward
+            # slot: the activated reflected path must not swallow it
+            for left in ("s", 4.5):
+                try:
+                    left + v
+                except TypeError:
+                    pass
+                else:
+                    raise AssertionError(f"{left!r} + ProbeValue must stay a TypeError")
+            assert hasattr(type(v), "__radd__")
+            """);
+    }
+
+    [TestMethod]
     public void GroupSlotOverride_LandsInNumberFamily()
     {
         using var environment = NewEnvironment();

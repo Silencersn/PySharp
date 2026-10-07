@@ -52,6 +52,18 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 两者皆返回 NotImplemented → TypeError
 ```
 
+- 合成反射槽（`PyTypeObjectOfT.Init.cs` 的 `FillReflectedSlots`，对齐 CPython
+  `add_operators`）：静态类型非空的正向算术槽自动派生反射视图，但槽字段与类型字典里的
+  wrapper 是**两个不同的委托**——CPython 的 `nb_add` 是原序槽（`binary_op1` 三次尝试都不
+  交换操作数，实现方两侧自检），`wrap_binaryfunc_r` 只在属性层翻转；PySharp 的正向槽是
+  sealed 单侧桥（self 位必须是本类型实例），无法复用「两侧自检 + 翻转」的单委托模型：
+  - **槽字段**镜像 `SLOT1BIN` 的分发步——`PyOperators` 调反射槽时已交换操作数
+    （`__r*(self=右操作数, other=左操作数)`），因此以 `(self, other)` 原样转发给正向槽，
+    守卫 `self is TObject` 让继承槽对外来 self 退回 NotImplemented；
+  - **`__r*__` wrapper** 镜像 `wrap_binaryfunc_r`——属性层 `x.__rop__(y)` 语义为
+    `y op x`，翻转后转发，守卫落在翻转后的 self 位（调用方的 other）。
+  手写 `R*` 覆写同时占住槽与 wrapper；继承的正向槽（`slot_inherited`）跳过合成，属性
+  查找沿 MRO 落到基类的 wrapper（bool 没有自己的 `__radd__`，用 int 的）。
 - 协议族回退（nb → sq）：Number 组槽都放弃后，`ApplySequenceFallback` 对齐 abstract.c 的
   abstract 层回退。`+` 只试左操作数的 `sq_concat`；`*` 先试左 `sq_repeat`，左侧没有才试右侧
   （`2 * [1]` 即走右侧，以 `(right, left)` 调用）；就地版本依次
