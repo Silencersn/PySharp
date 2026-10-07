@@ -29,7 +29,8 @@ PySharp 的对象模型贴近 CPython 的数据模型：一切皆 `PyObject`（�
 | `PyTypeObjectOfT.cs`、`.Init.cs`、`.Virtual.cs` | 泛型侧：构造流程（基类构造按 `PreConstruct()` → `FillSlots()` → `PostConstruct()` 序调虚钩子，不可散列类型的 `__hash__ = None` 等落 `PostConstruct`）、成员注册 API（`AppendMethodDescriptor`、`AppendClassMethod`、`AppendStaticMethod`、`AppendMemberDescriptor`，由生成代码调用）、92 个 `protected virtual` 协议方法 |
 
 `PyTypeSlots` 的字段即协议槽，例如 `Repr`、`Str`、`Len`、`Hash`、`Iter`、`Next`、`GetItem`、
-`SetItem`、`Contains`、`Call`、`Eq`、`Add`、`RAdd`、`IAdd`。生成的槽字段是 `public`——挂载在
+`SetItem`、`Contains`、`Call`、`Add`、`IAdd`（反射算术无槽字段——反射协议住在前向槽的
+桥实现里；比较族收敛到单一的 `RichCompare`）。生成的槽字段是 `public`——挂载在
 `protected internal` 的嵌套类上，仅供生成代码经派生路径接线（库外类型对的 `FillSlots` 同样编译），
 不应手写。完整清单见 `PySpecialMethods` 与
 `PyOperators` 的分发面，即[协议分发](./protocol-dispatch.md)。槽类型是 `PyDelegates.cs` 中的

@@ -54,9 +54,10 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
   1. `PyTypeObject.Virtual.g.cs`：`PyTypeObject` 上的 `*Bridge` 虚方法占位（`protected internal`，
      `PyObject` 签名）。
   2. `PyTypeObjectOfT.Sealed.g.cs`：`PyTypeObject<T>` 上的密封桥接（`ReprBridge` 等，`protected
-     internal`）：检查 `self is not TObject` 后转发到第 5 点的强类型虚方法。槽委托（如
-     `PyUnaryFunction`）以 `PyObject` 为参数，`*Bridge` 是签名精确匹配的目标，强类型覆写经它
-     间接到达。
+     internal`）。普通方法检查 `self is not TObject` 后转发到第 5 点的强类型虚方法；14 个
+     配对的算术前向（`Add`…`Pow`）生成 `SLOT1BINFULL` 形态（`slot_nb_add` 的等价物）：
+     前向守卫转发 → 同布局省略 → 外类型 self 时回落到 R\* 反射虚方法（翻转回传），
+     反射协议因此住进槽实现而无需 r\* 槽字段。
   3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组，`public`——挂载在
      `protected internal` 的嵌套类上，仅供生成代码经派生路径接线；`New` 等手工字段仍为
      `internal`）、`AllSlotNames`/`IsSlotName()`、
@@ -65,14 +66,21 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
      `Sequence.Concat`）：`TrySetSlot`/`ClearSlot` 按名合并 case，赋值填首选（Number 侧）槽并
      置空其余槽（CPython 的 sq=NULL 特判，typeobject.c:11131）；`TrySetWrappedSlot` 对多槽名以
      wrapper 委托与次槽的引用相等甄别族别，命中则保留 Sequence 侧、Number 侧保持字典驱动。
-  4. `PySpecialNames.g.cs`：dunder 名常量与 `Interned` 预驻留字段。
+     两个收敛族有专门的 case 形态：六个比较 dunder 落到共享查名桥 `LookupRichCompare`
+     （`slot_tp_richcompare`），十四个算术 dunder 与其反射孪生合并双标签（`__add__` 与
+     `__radd__` 同一 case）落到共享查名桥 `LookupAdd`…`LookupPow`（`slot_nb_add` 形态，
+     字典条目即事实源，转换值不捕获）——运行时更新机制（`UpdateOneSlot`）清除收敛名槽位前
+     经 `GetConvergedTwinName` 询问孪生名是否仍有提供者。
+  4. `PySpecialNames.g.cs`：dunder 名常量与 `Interned` 预驻留字段。反射与比较 dunder 的
+     常量是手写的（收敛后不在声明清单里，见 `PySpecialNames.cs`）。
   5. `PyTypeObjectOfT.Partial.g.cs`：`protected virtual` 协议声明，即手写覆写的目标。
 
-  槽位分层迁移（见[协议分发](./protocol-dispatch.md)）在以上链路之外引入了中间层
-  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`）与反射回退桥工厂；
-  试点类型经 `PostConstruct` 把槽重接到这些入口，生成器接线与反射合成
-  （`FillReflectedSlots`）在此之前落位、之后被整体替换。生成器自身的拆层排在
-  迁移阶段 4，届时本节描述的密封桥与合成器将按旧物清单退役。
+  槽位分层（见[协议分发](./protocol-dispatch.md)）在以上链路之外引入中间层
+  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`）与反射回退桥工厂
+  （手写接线的备选面）。外层 `PyTypeGenerator` 对两类标记做特判：比较虚方法覆写
+  （基类 `[PySlot]` 继承检测）触发 `FillRichCompareSlot()` 接线；R\* 虚方法覆写
+  （覆写处显式 `[PySlot]` 标记）生成 `FillReflectedView()`——只暴露直连覆写的字典
+  wrapper，不接槽字段（反射算术无槽字段）。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，
   与上一条的第 4 点互补。
 
