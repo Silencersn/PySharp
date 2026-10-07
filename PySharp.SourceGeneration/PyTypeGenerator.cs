@@ -39,6 +39,50 @@ public class PyTypeGenerator : IIncrementalGenerator
         "ROr",
     ];
 
+    // the middle-layer C-form virtuals (NbAdd, ..., NbInplaceOr): same
+    // [PySlot] override detection, but the override is its own slot
+    // implementation — the generator wires the raw method group into the
+    // forward slot (no sealed bridge wraps it) and the reflected dict view
+    // falls out of the FillReflectedSlots synthesis for the forward names
+    private static readonly HashSet<string> NbVirtualNames =
+    [
+        "NbAdd",
+        "NbSub",
+        "NbMul",
+        "NbMatMul",
+        "NbTrueDiv",
+        "NbFloorDiv",
+        "NbMod",
+        "NbDivMod",
+        "NbPow",
+        "NbLShift",
+        "NbRShift",
+        "NbAnd",
+        "NbXor",
+        "NbOr",
+        "NbInplaceAdd",
+        "NbInplaceSub",
+        "NbInplaceMul",
+        "NbInplaceMatMul",
+        "NbInplaceTrueDiv",
+        "NbInplaceFloorDiv",
+        "NbInplaceMod",
+        "NbInplacePow",
+        "NbInplaceLShift",
+        "NbInplaceRShift",
+        "NbInplaceAnd",
+        "NbInplaceXor",
+        "NbInplaceOr",
+    ];
+
+    // NbAdd -> Add, NbInplaceAdd -> IAdd (PySpecialNames and the
+    // PyNumberMethods fields share the forward spelling)
+    private static string NbForwardName(string name)
+    {
+        var rest = name.Substring(2);
+        return rest.StartsWith("Inplace", System.StringComparison.Ordinal) ? "I" + rest.Substring("Inplace".Length) : rest;
+    }
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         static bool predicate(SyntaxNode syntaxNode, CancellationToken _) => syntaxNode is ClassDeclarationSyntax;
@@ -263,7 +307,7 @@ public class PyTypeGenerator : IIncrementalGenerator
                     // comparison wiring stay conditional
                     .AppendLine("protected override void FillSlots()")
                     .EnterBlock()
-                        .ForEach(pyType.Slots.Where(static slot => slot.Name is not ("Lt" or "Le" or "Eq" or "Ne" or "Gt" or "Ge")), static (builder, slot) =>
+                        .ForEach(pyType.Slots.Where(static slot => slot.Name is not ("Lt" or "Le" or "Eq" or "Ne" or "Gt" or "Ge" or "RichCompare")), static (builder, slot) =>
                         {
                             if (slot.Name is "New")
                             {
@@ -274,6 +318,17 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 // no slot field of its own — only the dict
                                 // view over the override
                                 builder.AppendLine($"FillReflectedView(PySpecialNames.{slot.Name}, {slot.Name});");
+                            }
+                            else if (NbVirtualNames.Contains(slot.Name))
+                            {
+                                // the C-form entry is its own slot
+                                // implementation: the raw method group lands
+                                // in the forward slot, the reflected view is
+                                // synthesized from it further below
+                                var forward = NbForwardName(slot.Name);
+                                var cast = slot.Name is "NbPow" or "NbInplacePow" ? "(PyTernaryFunction)" : "(PyBinaryFunction)";
+                                builder.AppendLine("Slots.Number ??= new();");
+                                builder.AppendLine($"FillSlot(PySpecialNames.{forward}, ref Slots.Number.{forward}, {cast}{slot.Name});");
                             }
                             else if (slot.SlotsMember is not null)
                             {
@@ -295,6 +350,11 @@ public class PyTypeGenerator : IIncrementalGenerator
                             // own bridge; a type overriding none keeps the
                             // MRO-merged base bridge
                             builder.AppendLine("FillRichCompareSlot();"))
+                        .If(pyType.Slots.Any(static slot => slot.Name is "RichCompare"), static builder =>
+                            // a middle-layer RichCompare override is its own
+                            // slot implementation — the delegate goes to the
+                            // slot and the six fixed-op views unchanged
+                            builder.AppendLine("FillRichCompareSlot((PyRichCompareFunction)RichCompare);"))
                         .AppendLine("FillReflectedSlots();")
                     .ExitBlock()
 

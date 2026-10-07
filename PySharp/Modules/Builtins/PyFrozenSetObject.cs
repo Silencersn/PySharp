@@ -384,57 +384,10 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         return PyOperators.Not(context, (PyBoolObject)eq.Value);
     }
 
-    // rewires the operator and comparison slots off the generated bridges
-    // and the reflected-slot synthesizer onto the C-form virtual entries
-    // above. PostConstruct runs after FillSlots (which ends with the
-    // synthesis), so both legacy wirings land first and are replaced here
-    protected override void PostConstruct()
-    {
-        base.PostConstruct();
-
-        // one shared delegate instance per operator keeps the slot field and
-        // the wrapper's func identical (SlotInvariantsTests asserts this,
-        // and TrySetWrappedSlot recognizes slots by that identity); the
-        // wrappers also need the runtime type to be PyBinaryFunction — a
-        // bare method group would bind as its natural Func type
-        var number = Slots.Number!;
-        PyBinaryFunction sub = NbSub;
-        number.Sub = sub;
-        PyAttributes[PySpecialNames.Sub] = new PyWrapperDescriptorObject(sub);
-        PyBinaryFunction and = NbAnd;
-        number.And = and;
-        PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
-        PyBinaryFunction xor = NbXor;
-        number.Xor = xor;
-        PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
-        PyBinaryFunction or = NbOr;
-        number.Or = or;
-        PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
-        // the reflected wrappers keep the guarded flip (wrap_binaryfunc_r):
-        // a direct x.__r*(y) call only runs when y carries this layout
-        PyAttributes[PySpecialNames.RSub] = new PyWrapperDescriptorObject(ReflectedWrapper(NbSub));
-        PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));
-        PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
-        PyAttributes[PySpecialNames.ROr] = new PyWrapperDescriptorObject(ReflectedWrapper(NbOr));
-
-        // the six-slot comparison wiring collapses onto the single
-        // RichCompare slot over the C-form entry above; the dict wrappers
-        // are fixed-op views over the shared delegate (a bare method group
-        // would also bind as its natural Func type)
-        PyRichCompareFunction richCompare = RichCompare;
-        Slots.RichCompare = richCompare;
-        FillComparisonWrapper(PySpecialNames.Lt, richCompare, PyOperatorTypes.Lt);
-        FillComparisonWrapper(PySpecialNames.Le, richCompare, PyOperatorTypes.LtE);
-        FillComparisonWrapper(PySpecialNames.Eq, richCompare, PyOperatorTypes.Eq);
-        FillComparisonWrapper(PySpecialNames.Ne, richCompare, PyOperatorTypes.NotEq);
-        FillComparisonWrapper(PySpecialNames.Gt, richCompare, PyOperatorTypes.Gt);
-        FillComparisonWrapper(PySpecialNames.Ge, richCompare, PyOperatorTypes.GtE);
-    }
-
-    private static PyBinaryFunction ReflectedWrapper(PyBinaryFunction entry)
-        => (context, self, other) => other is PyFrozenSetObject
-            ? entry(context, other, self)
-            : PyNotImplementedObject.NotImplemented;
+    // The operator and comparison slots with their dict views (forward via
+    // FillSlot, reflected via the FillReflectedSlots synthesis, the six
+    // comparison views via FillRichCompareSlot) are generated from the
+    // C-form overrides above.
 
     [PyMethod("copy")]
     [PyFunctionParameters()]

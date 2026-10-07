@@ -154,8 +154,10 @@ float 的手写重接已由生成的桥形态取代。已知语义判型差异�
 
 - 给内建类型加协议：在元类型上覆写 `protected virtual` 方法，或 `FillSlot`，见
   [对象模型](./object-model.md)；反射算术语义直接覆写 `R*` 虚方法（免标记，经继承检测生成
-  `FillReflectedView` 字典视图），运算协议也可改覆写中间层
-  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`，
+  `FillReflectedView` 字典视图）；需要参数序无关的槽实现时覆写中间层
+  `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`，同样免标记：`Nb*` 覆写
+  的方法组直落前向槽，反射视图由合成器顺带产出；`RichCompare` 覆写经
+  `FillRichCompareSlot` 重载接槽与六个固定 op 视图，
   见[槽位分层](#槽位分层与中间层)）。
 - 用户定义类的 `__repr__` 等在类体中定义，由类型创建路径把它们登记进类型属性与槽。
 - 新增全局协议入口：在 `PySpecialMethods` 加分发方法并加对应槽字段，注意与 CPython 的回退行为

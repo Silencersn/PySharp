@@ -102,35 +102,12 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         return PyNotImplementedObject.NotImplemented;
     }
 
-    // rewires the three bitwise slots onto the C-form entries; the
-    // inherited arithmetic slots (Add/Sub/... off int) stay untouched, so
-    // IsInheritedForwardSlot keeps skipping their synthesis and bool keeps
-    // picking int's reflected wrappers through the MRO. The reflected
-    // dict views keep the guarded flip (wrap_binaryfunc_r)
-    protected override void PostConstruct()
-    {
-        base.PostConstruct();
-
-        var number = Slots.Number!;
-        PyBinaryFunction and = NbAnd;
-        number.And = and;
-        PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
-        PyBinaryFunction xor = NbXor;
-        number.Xor = xor;
-        PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
-        PyBinaryFunction or = NbOr;
-        number.Or = or;
-        PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
-
-        PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));
-        PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
-        PyAttributes[PySpecialNames.ROr] = new PyWrapperDescriptorObject(ReflectedWrapper(NbOr));
-    }
-
-    private static PyBinaryFunction ReflectedWrapper(PyBinaryFunction entry)
-        => (context, self, other) => other is PyBoolObject
-            ? entry(context, other, self)
-            : PyNotImplementedObject.NotImplemented;
+    // The three bitwise slots and their dict views (forward via FillSlot,
+    // reflected via the FillReflectedSlots synthesis) are generated from
+    // the Nb* overrides above. The inherited arithmetic slots
+    // (Add/Sub/... off int) stay untouched, so IsInheritedForwardSlot
+    // keeps skipping their synthesis and bool keeps picking int's
+    // reflected wrappers through the MRO.
 
     // CPython bool has no nb_positive of its own: the inherited int slot
     // returns its exact receiver, which for bool upgrades to int 1/0.

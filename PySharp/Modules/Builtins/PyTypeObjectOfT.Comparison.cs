@@ -36,7 +36,15 @@ partial class PyTypeObject<TObject>
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void FillRichCompareSlot()
     {
-        PyRichCompareFunction richCompare = CreateRichCompareBridge();
+        FillRichCompareSlot(CreateRichCompareBridge());
+    }
+
+    // The C-form entry point of the above: a middle-layer RichCompare
+    // override is its own slot implementation (no bridge folds anything
+    // into it), so the generator passes its delegate straight through
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillRichCompareSlot(PyRichCompareFunction richCompare)
+    {
         Slots.RichCompare = richCompare;
         FillComparisonWrapper(PySpecialNames.Lt, richCompare, PyOperatorTypes.Lt);
         FillComparisonWrapper(PySpecialNames.Le, richCompare, PyOperatorTypes.LtE);

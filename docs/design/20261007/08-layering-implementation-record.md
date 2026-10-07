@@ -18,6 +18,7 @@
 | `8ccc98f7` | 4 | S2：比较六槽收敛单一 RichCompare（手写槽字段 + LookupRichCompare 查名桥 + SwapComparisonOp 镜像表） | 全量测试零 diff |
 | `5dbf98c5` | 4 | S3：R\* 槽字段退役——原序反射位、堆类型查名桥、FillReflectedSlots 缩减为视图合成 | 全量测试零 diff |
 | `5a71010c` | 4 | S4：镜像硬编码清理核查 + 本篇阶段 4 记录 + 参考文档同步 | 全量测试零 diff |
+| `7f61043f` | 4.1 | S5：覆写检测回归基类标记（外部扩展 R\* 覆写免标记接线修复） | 全量 +1 用例 |
 
 基线与每个验收点的全量结果一致：总计 1077 / 成功 1073 / 跳过 4 /
 失败 0。
@@ -74,7 +75,8 @@
 3. **重接时机是 `PostConstruct`。** 生成的 `FillSlots`（含尾部
    `FillReflectedSlots` 合成）不可再覆写（CS0111）；`PostConstruct`
    在其后执行，合成产物先落位再被整体替换（`PyTypeObjectType` 已有
-   同型先例）。
+   同型先例）。（阶段 4.1 后中间层覆写由生成器接线，本条仅剩
+   生成器覆盖不了的定制场景。）
 4. **合成器自动让位。** 试点类型的 R\* 槽在 `PostConstruct` 重接后
    非空，`FillReflectedSlots` 对后续构造（如 `__bases__` 变更重建）
    自动跳过——无需与合成器显式协调。
@@ -85,11 +87,12 @@
 ## 四、遗留与下一步
 
 - 迁移全部完成（见五）：`PyTypeSlots` 字段与 CPython 槽结构一一对应
-  （算术族无 r\* 面位、比较族单一 `RichCompare`），分发器全原序。
+  （算术族无 r\* 面位、比较族单一 `RichCompare`），分发器全原序；
+  阶段 4.1 的复核把覆写检测全部收回到基类标记，库外覆写免标记。
 - 两处 P1 缺陷与已记录的语义偏差仍在冻结队列（类型相等检查走
   `__eq__` 的判型差异、`divmod` 简化协议），进入日常对齐节奏处理。
-- 中间层 `Nb*` 直塞的试点残留（frozenset/bool 的四个位运算槽）保持
-  双侧守卫形态不迁移——C 形态是设计内的正式面而非过渡物。
+- 中间层 C 形态（`Nb*`/`RichCompare` 的双侧守卫）是设计内的正式面；
+  其接线已生成器化（S6），`PostConstruct` 手接退役。
 
 ## 五、阶段 4：反射协议入槽与终态删除
 
@@ -157,7 +160,8 @@ self 时回落 R\* 虚方法（交换回传）。此前 float 的 PostConstruct 
   x-y。
 - **试点残留**：float 的 PostConstruct 重接删除（生成桥已同形态）；
   bool/frozenset 的 Nb\* 直塞保留（双侧守卫在原序第三步下左操作数
-  可占 self 位，正是守卫的用武之地——`2 & True` 左类型前向兜底）。
+  可占 self 位，正是守卫的用武之地——`2 & True` 左类型前向兜底；
+  S6 起其接线由生成器产出，手接段删除）。
 
 ### S3 的三个关键回归（全量 23 → 7 → 0 的修复轨迹）
 
@@ -183,4 +187,28 @@ S3 删除基类 R\* 声明的 `[PySlot]`（随槽字段一起退役）后，覆�
 `ProbeMirror` 探针类型——在 PySharp 之外的程序集覆写 `RAdd` 且不带
 任何标记——钉住库外免标记接线（`hasattr`、属性直调、Python 子类
 经 MRO 捡拾三条路径）。验收：全量 1078/1074/4/0（基线 + 该新用例），
+`--no-incremental` 零警告。
+
+### S6 · 中间层覆写的生成器接线
+
+阶段 3 试点唯一的 `PostConstruct` 手接残留（bool 3 槽 + 6 wrapper、
+frozenset 5 槽 + 10 wrapper）由生成器替代：`PyOperableObjectType<T>`
+的 27 个 `Nb*` 与 `RichCompare` 声明加 `[PySlot]` 检测标记（S5 同款
+继承查找），`PyTypeGenerator` 两个新分支：
+
+- `Nb*` 覆写生成 `FillSlot(前向名, ref Slots.Number.前向, 方法组)`——
+  裸方法组直落前向槽（C 形态条目**就是**槽实现，无 sealed 桥包装），
+  就地名映射 `NbInplace{X}` → `I{X}`，`NbPow`/`NbInplacePow` 走三元
+  委托；反射字典视图不用生成——`FillReflectedSlots` 合成器对非空前
+  向槽本来就会产出守卫翻转视图（与试点手写的 `ReflectedWrapper`
+  逐字相同），让位/继承跳过条件一并复用。
+- `RichCompare` 覆写经新重载 `FillRichCompareSlot(delegate)` 接槽与
+  六个固定 op 视图（无参版折叠为 `CreateRichCompareBridge` 的转发）。
+
+bool/frozenset 的手接段与各自的 `ReflectedWrapper` 私有方法删除，
+继承敏感行为不变（bool 未覆写 `NbAdd` → 无生成行 → 继承 int 槽 →
+`IsInheritedForwardSlot` 照旧跳过合成）。`ExternalTypeProtocolTests`
+的探针类型再覆写 `NbSub`（免标记）钉住：前向分发、原序第三步
+（左操作数占 self 位、双侧守卫让位 → `TypeError`，CPython 静态槽
+同款）、合成反射视图的属性直调语义。验收：全量 1079/1075/4/0，
 `--no-incremental` 零警告。

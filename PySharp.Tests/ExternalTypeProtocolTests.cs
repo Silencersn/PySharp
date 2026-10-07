@@ -85,6 +85,14 @@ public sealed partial class ProbeMirrorObjectType : PyTypeObject<ProbeMirrorObje
         => other is PyIntObject number && number.IsInt32
             ? PyIntObject.FromInteger(number.Int32Value * 100 + self.Value)
             : PyNotImplementedObject.NotImplemented;
+
+    // same marker-less deal for the C-form middle layer: the raw entry
+    // lands in the forward slot, and the reflected dict view falls out of
+    // the FillReflectedSlots synthesis
+    protected internal override PyResult NbSub(PyCallContext context, PyObject self, PyObject other)
+        => self is ProbeMirrorObject mirror && other is PyIntObject number && number.IsInt32
+            ? PyIntObject.FromInteger(mirror.Value * 100 - number.Int32Value)
+            : PyNotImplementedObject.NotImplemented;
 }
 
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbeValueObjectType))]
@@ -206,6 +214,36 @@ public sealed class ExternalTypeProtocolTests
             """);
 
         Assert.AreEqual(1007, ((PyIntObject)GetAttr(main, "RESULT")).Int32Value);
+    }
+
+    [TestMethod]
+    public void CFormOverride_WithoutMarker_WiresOutsidePySharp()
+    {
+        using var environment = NewEnvironment();
+
+        var main = Run(environment, """
+            from probetypes import ProbeMirror
+            m = ProbeMirror(7)
+            # forward dispatch runs the raw C-form entry in the slot
+            assert m - 3 == 697
+            # original order: the int side declines, and the mirror slot
+            # runs with the LEFT operand in the self position — the CPython
+            # static-slot convention, where the double-sided guard declines
+            # and the pair stays a TypeError
+            try:
+                3 - m
+            except TypeError:
+                pass
+            else:
+                raise AssertionError("int - ProbeMirror must stay a TypeError")
+            # the synthesized reflected view flips only when the other
+            # operand carries this layout (wrap_binaryfunc_r)
+            assert hasattr(ProbeMirror, "__rsub__")
+            assert m.__rsub__(3) is NotImplemented
+            RESULT = m - 10
+            """);
+
+        Assert.AreEqual(690, ((PyIntObject)GetAttr(main, "RESULT")).Int32Value);
     }
 
     [TestMethod]

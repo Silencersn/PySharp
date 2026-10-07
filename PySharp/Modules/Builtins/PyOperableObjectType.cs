@@ -46,93 +46,131 @@ public abstract partial class PyOperableObjectType<TObject> : PyTypeObject where
 
     // forward binary number slots (nb_add, nb_subtract, ...). Every entry
     // follows the C convention: check both operands, compute, or decline
-    // with NotImplemented — never assume the receiver's own layout
+    // with NotImplemented — never assume the receiver's own layout.
+    // [PySlot] is an override-detection marker (see PyTypeObject's
+    // PySlotAttribute): an override wires its raw forward slot through
+    // FillSlot — no sealed bridge wraps it, the entry is its own
+    // order-agnostic slot implementation — and the reflected dict view
+    // falls out of the FillReflectedSlots synthesis like any non-null
+    // forward slot would
+    [PySlot]
     protected internal virtual PyResult NbAdd(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbSub(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbMul(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbMatMul(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbTrueDiv(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbFloorDiv(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbMod(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbDivMod(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbPow(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbLShift(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbRShift(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbAnd(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbXor(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbOr(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
     // in-place slots (nb_inplace_add, ...): a NotImplemented result falls
-    // back to the forward pair in the skeleton, matching CPython
+    // back to the forward pair in the skeleton, matching CPython. [PySlot]
+    // detection is the same as the forward slots, minus the reflected view
+    // (nb_inplace_* has no r* variant)
+    [PySlot]
     protected internal virtual PyResult NbInplaceAdd(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceSub(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceMul(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceMatMul(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceTrueDiv(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceFloorDiv(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceMod(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplacePow(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceLShift(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceRShift(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceAnd(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceXor(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
+    [PySlot]
     protected internal virtual PyResult NbInplaceOr(PyCallContext context, PyObject self, PyObject other)
         => PyNotImplementedObject.NotImplemented;
 
     // tp_richcompare: the single comparison entry — the six-slot mirror
     // (Lt<->Gt, Le<->Ge) and the Py_EQ/Py_NE identity fallbacks live in
-    // the skeleton and the public entries, not in per-op slots
+    // the skeleton and the public entries, not in per-op slots. [PySlot]
+    // detection wires an override with its six fixed-op dict views through
+    // the FillRichCompareSlot overload
+    [PySlot]
     protected internal virtual PyResult RichCompare(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op)
         => PyNotImplementedObject.NotImplemented;
 
