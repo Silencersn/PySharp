@@ -18,7 +18,7 @@ namespace PySharp.Modules.Builtins;
 /// (e.g., MyType : PyTypeObject&lt;PyIntObject&gt;), some internal details in the standard library will still treat it as an int.
 /// Please exercise caution when choosing a standard library data class as this generic parameter.
 /// </typeparam>
-public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject : PyObject
+public abstract partial class PyTypeObject<TObject> : PyOperableObjectType<TObject> where TObject : PyObject
 {
     public sealed override Type LayoutType => typeof(TObject);
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;

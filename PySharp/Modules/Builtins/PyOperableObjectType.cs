@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using System.Collections.Generic;
 
 namespace PySharp.Modules.Builtins;
 
@@ -34,6 +35,14 @@ namespace PySharp.Modules.Builtins;
 /// </typeparam>
 public abstract partial class PyOperableObjectType<TObject> : PyTypeObject where TObject : PyObject
 {
+    public PyOperableObjectType()
+    {
+    }
+
+    public PyOperableObjectType(string qualName, IReadOnlyList<PyTypeObject> bases) : base(qualName, bases)
+    {
+    }
+
     // forward binary number slots (nb_add, nb_subtract, ...). Every entry
     // follows the C convention: check both operands, compute, or decline
     // with NotImplemented — never assume the receiver's own layout
