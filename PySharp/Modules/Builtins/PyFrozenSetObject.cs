@@ -284,86 +284,81 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         return unchecked((long)hash);
     }
 
-    protected override PyResult Sub(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    // stage-3 pilot of the C-form middle layer: the set operators move from
+    // the type-safe virtual surface to the slot-shaped entries. Each entry
+    // guards both operands and declines with NotImplemented, which makes it
+    // order-agnostic — the same virtual method serves the forward slot,
+    // the reflected slot (the dispatcher already swapped the operands),
+    // and the original-order call of the CPython binary_op1 third step
+    protected internal override PyResult NbSub(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyFrozenSetObject frozenSelf)
+            return PyNotImplementedObject.NotImplemented;
         if (other is not PySetObject && other is not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyDifference(context, [other]);
+        return frozenSelf.PyDifference(context, [other]);
     }
 
-    protected override PyResult And(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    protected internal override PyResult NbAnd(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyFrozenSetObject frozenSelf)
+            return PyNotImplementedObject.NotImplemented;
         if (other is not PySetObject && other is not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyIntersection(context, [other]);
+        return frozenSelf.PyIntersection(context, [other]);
     }
 
-    protected override PyResult Xor(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    protected internal override PyResult NbXor(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyFrozenSetObject frozenSelf)
+            return PyNotImplementedObject.NotImplemented;
         if (other is not PySetObject && other is not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PySymmetricDifference(context, other);
+        return frozenSelf.PySymmetricDifference(context, other);
     }
 
-    protected override PyResult Or(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    protected internal override PyResult NbOr(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyFrozenSetObject frozenSelf)
+            return PyNotImplementedObject.NotImplemented;
         if (other is not PySetObject && other is not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyUnion(context, [other]);
+        return frozenSelf.PyUnion(context, [other]);
     }
 
-    protected override PyResult Lt(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    // the six-slot comparison surface collapses into the single richcompare
+    // entry; the mirror pairing (Lt<->Gt, Le<->Ge) is skeleton knowledge,
+    // not per-slot code
+    protected internal override PyResult RichCompare(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op)
     {
+        if (self is not PyFrozenSetObject frozenSelf)
+            return PyNotImplementedObject.NotImplemented;
+
         var otherTable = PySetOps.SetTableOf(other);
         if (otherTable is null)
             return PyNotImplementedObject.NotImplemented;
 
-        if (self.Count >= otherTable.Count)
-            return PyBoolObject.False;
-
-        return PySetOps.IsSubset(context, self._table, otherTable);
+        return op switch
+        {
+            PyOperatorTypes.Lt => frozenSelf.Count >= otherTable.Count
+                ? PyBoolObject.False
+                : PySetOps.IsSubset(context, frozenSelf._table, otherTable),
+            PyOperatorTypes.LtE => PySetOps.IsSubset(context, frozenSelf._table, otherTable),
+            PyOperatorTypes.Gt => frozenSelf.Count <= otherTable.Count
+                ? PyBoolObject.False
+                : PySetOps.IsSuperset(context, frozenSelf._table, otherTable),
+            PyOperatorTypes.GtE => PySetOps.IsSuperset(context, frozenSelf._table, otherTable),
+            PyOperatorTypes.Eq => EqCore(context, frozenSelf, other, otherTable),
+            _ => PyNotImplementedObject.NotImplemented,
+        };
     }
 
-    protected override PyResult Le(PyCallContext context, PyFrozenSetObject self, PyObject other)
+    private static PyResult EqCore(PyCallContext context, PyFrozenSetObject self, PyObject other, PySetTable otherTable)
     {
-        var otherTable = PySetOps.SetTableOf(other);
-        if (otherTable is null)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PySetOps.IsSubset(context, self._table, otherTable);
-    }
-
-    protected override PyResult Gt(PyCallContext context, PyFrozenSetObject self, PyObject other)
-    {
-        var otherTable = PySetOps.SetTableOf(other);
-        if (otherTable is null)
-            return PyNotImplementedObject.NotImplemented;
-
-        if (self.Count <= otherTable.Count)
-            return PyBoolObject.False;
-
-        return PySetOps.IsSuperset(context, self._table, otherTable);
-    }
-
-    protected override PyResult Ge(PyCallContext context, PyFrozenSetObject self, PyObject other)
-    {
-        var otherTable = PySetOps.SetTableOf(other);
-        if (otherTable is null)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PySetOps.IsSuperset(context, self._table, otherTable);
-    }
-
-    protected override PyResult Eq(PyCallContext context, PyFrozenSetObject self, PyObject other)
-    {
-        var otherTable = PySetOps.SetTableOf(other);
-        if (otherTable is null)
-            return PyNotImplementedObject.NotImplemented;
-
         if (self.Count != otherTable.Count)
             return PyBoolObject.False;
 
@@ -376,6 +371,68 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
         return PySetOps.IsSubset(context, self._table, otherTable);
     }
+
+    // rewires the operator and comparison slots off the generated bridges
+    // and the reflected-slot synthesizer onto the C-form virtual entries
+    // above. PostConstruct runs after FillSlots (which ends with the
+    // synthesis), so both legacy wirings land first and are replaced here
+    protected override void PostConstruct()
+    {
+        base.PostConstruct();
+
+        // one shared delegate instance per operator keeps the slot field and
+        // the wrapper's func identical (SlotInvariantsTests asserts this,
+        // and TrySetWrappedSlot recognizes slots by that identity); the
+        // wrappers also need the runtime type to be PyBinaryFunction — a
+        // bare method group would bind as its natural Func type
+        var number = Slots.Number!;
+        PyBinaryFunction sub = NbSub;
+        number.Sub = sub;
+        number.RSub = sub;
+        PyAttributes[PySpecialNames.Sub] = new PyWrapperDescriptorObject(sub);
+        PyBinaryFunction and = NbAnd;
+        number.And = and;
+        number.RAnd = and;
+        PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
+        PyBinaryFunction xor = NbXor;
+        number.Xor = xor;
+        number.RXor = xor;
+        PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
+        PyBinaryFunction or = NbOr;
+        number.Or = or;
+        number.ROr = or;
+        PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
+        // the reflected wrappers keep the synthesizer's guarded flip: a
+        // direct x.__r*(y) call only runs when y carries this layout
+        PyAttributes[PySpecialNames.RSub] = new PyWrapperDescriptorObject(ReflectedWrapper(NbSub));
+        PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));
+        PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
+        PyAttributes[PySpecialNames.ROr] = new PyWrapperDescriptorObject(ReflectedWrapper(NbOr));
+
+        var lt = ComparisonEntry(PyOperatorTypes.Lt);
+        Slots.Lt = lt;
+        PyAttributes[PySpecialNames.Lt] = new PyWrapperDescriptorObject(lt);
+        var le = ComparisonEntry(PyOperatorTypes.LtE);
+        Slots.Le = le;
+        PyAttributes[PySpecialNames.Le] = new PyWrapperDescriptorObject(le);
+        var gt = ComparisonEntry(PyOperatorTypes.Gt);
+        Slots.Gt = gt;
+        PyAttributes[PySpecialNames.Gt] = new PyWrapperDescriptorObject(gt);
+        var ge = ComparisonEntry(PyOperatorTypes.GtE);
+        Slots.Ge = ge;
+        PyAttributes[PySpecialNames.Ge] = new PyWrapperDescriptorObject(ge);
+        var eq = ComparisonEntry(PyOperatorTypes.Eq);
+        Slots.Eq = eq;
+        PyAttributes[PySpecialNames.Eq] = new PyWrapperDescriptorObject(eq);
+    }
+
+    private static PyBinaryFunction ReflectedWrapper(PyBinaryFunction entry)
+        => (context, self, other) => other is PyFrozenSetObject
+            ? entry(context, other, self)
+            : PyNotImplementedObject.NotImplemented;
+
+    private PyBinaryFunction ComparisonEntry(PyOperatorTypes op)
+        => (context, self, other) => RichCompare(context, self, other, op);
 
     [PyMethod("copy")]
     [PyFunctionParameters()]
