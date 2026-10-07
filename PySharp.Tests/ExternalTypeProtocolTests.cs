@@ -95,8 +95,88 @@ public sealed partial class ProbeMirrorObjectType : PyTypeObject<ProbeMirrorObje
             : PyNotImplementedObject.NotImplemented;
 }
 
+// the shared-delegate sibling scenario binary_op1 folds into one call: the
+// base type carries the forward entry (its NbAdd declines on every call,
+// the CPython reference shape `def __add__(self, other): return
+// NotImplemented`), the two subtypes share that inherited delegate
+// (neither overrides NbAdd), and only the right subtype overrides RAdd —
+// pinning how far the sealed bridge's same-layout omission (any TObject
+// other declines) is observable against CPython's exact
+// Py_TYPE(self) != Py_TYPE(other) do_other test, which would flip the pair
+// into the right subtype's __radd__
+public class ProbePairBaseObject : PyObject
+{
+    public override PyTypeObject DefaultPyType => ProbePairBaseObjectType.Shared;
+}
+
+public sealed class ProbePairLeftObject : ProbePairBaseObject
+{
+    public override PyTypeObject DefaultPyType => ProbePairLeftObjectType.Shared;
+}
+
+public sealed class ProbePairRightObject : ProbePairBaseObject
+{
+    public override PyTypeObject DefaultPyType => ProbePairRightObjectType.Shared;
+}
+
+[PyType("ProbePairBase", Module = "probetypes")]
+public sealed partial class ProbePairBaseObjectType : PyTypeObject<ProbePairBaseObject>
+{
+    protected override PyResult New(PyCallContext context, PyTypeObject cls,
+        IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is not 0)
+            return PyResult.TypeError("ProbePairBase() expects no arguments");
+
+        return new ProbePairBaseObject();
+    }
+
+    protected internal override PyResult NbAdd(PyCallContext context, PyObject self, PyObject other)
+        => PyNotImplementedObject.NotImplemented;
+}
+
+[PyType("ProbePairLeft", Module = "probetypes")]
+public sealed partial class ProbePairLeftObjectType : PyTypeObject<ProbePairLeftObject>
+{
+    public override IReadOnlyList<PyTypeObject> Bases => [ProbePairBaseObjectType.Shared];
+
+    protected override PyResult New(PyCallContext context, PyTypeObject cls,
+        IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is not 0)
+            return PyResult.TypeError("ProbePairLeft() expects no arguments");
+
+        return new ProbePairLeftObject { _pyType = cls };
+    }
+}
+
+[PyType("ProbePairRight", Module = "probetypes")]
+public sealed partial class ProbePairRightObjectType : PyTypeObject<ProbePairRightObject>
+{
+    public override IReadOnlyList<PyTypeObject> Bases => [ProbePairBaseObjectType.Shared];
+
+    protected override PyResult New(PyCallContext context, PyTypeObject cls,
+        IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is not 0)
+            return PyResult.TypeError("ProbePairRight() expects no arguments");
+
+        return new ProbePairRightObject { _pyType = cls };
+    }
+
+    // only the reflected entry is overridden: the forward Add slot stays
+    // the inherited base delegate — the very instance the left subtype
+    // resolves — which is what makes EvalBinarySlots' identical-delegate
+    // skip fold the pair into the single slotv call
+    protected override PyResult RAdd(PyCallContext context, ProbePairRightObject self, PyObject other)
+        => PyIntObject.FromInteger(42);
+}
+
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbeValueObjectType))]
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbeMirrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbePairBaseObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbePairLeftObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbePairRightObjectType))]
 internal sealed partial class ProbeTypesModule : PyModuleObject
 {
     public ProbeTypesModule() : base("probetypes") { }
@@ -167,13 +247,14 @@ public sealed class ExternalTypeProtocolTests
         var main = Run(environment, """
             from probetypes import ProbeValue
             v = ProbeValue(3)
-            # the reflected dispatch hands the right operand to the
-            # synthesized RAdd slot as self (SLOT1BIN semantics), so an
-            # int + ProbeValue resolves through ProbeValue.__add__
+            # the reflected resolution runs the right type's slot in the
+            # original operand order (binary_op1's third step, left operand
+            # in the self position); the bridge's flipped fallback lands in
+            # ProbeValue.__add__, so an int + ProbeValue works
             assert 4 + v == 7
             assert 10 + v == 13
-            # a non-int left operand still declines inside the forward
-            # slot: the activated reflected path must not swallow it
+            # a non-int left operand still declines inside the right
+            # type's slot: the reflected fallback must not swallow it
             for left in ("s", 4.5):
                 try:
                     left + v
@@ -183,6 +264,32 @@ public sealed class ExternalTypeProtocolTests
                     raise AssertionError(f"{left!r} + ProbeValue must stay a TypeError")
             assert hasattr(type(v), "__radd__")
             """);
+    }
+
+    [TestMethod]
+    public void SameLayoutSibling_SharedForwardDelegate_FoldsIntoOneCall()
+    {
+        using var environment = NewEnvironment();
+
+        // known frozen-baseline divergence: CPython's slot_nb_add would
+        // flip the pair into the right subtype's __radd__ and resolve to
+        // 42; the identical-delegate skip folds the pair into the single
+        // forward call, whose NotImplemented ends the resolution
+        // (registered in docs/design/20261007/08, section four)
+        var main = Run(environment, """
+            from probetypes import ProbePairLeft, ProbePairRight
+            a = ProbePairLeft()
+            b = ProbePairRight()
+            assert hasattr(type(b), "__radd__")
+            try:
+                a + b
+            except TypeError:
+                RESULT = "TypeError"
+            else:
+                raise AssertionError("the registered divergence changed: a + b resolved")
+            """);
+
+        Assert.AreEqual("TypeError", ((PyStrObject)GetAttr(main, "RESULT")).Value);
     }
 
     [TestMethod]

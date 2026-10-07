@@ -14,11 +14,11 @@ namespace PySharp.Tests;
 //      dict's wrapper descriptor. TrySetWrappedSlot's specific extraction
 //      (the generated `_func is TDelegate` test) and the propagation
 //      provider-copy rule only stay faithful while this holds. The ONE
-//      exception: reflected dunders synthesized by FillReflectedSlots are
-//      two deliberate views — the slot forwards (self, other) for the
-//      already-swapped dispatch path, the dict wrapper flips the pair like
-//      wrap_binaryfunc_r — so they share no instance; hand-written R*
-//      overrides go through FillSlot and keep sharing.
+//      exception: the __r*__ dunders synthesized by FillReflectedSlots
+//      carry a flipped closure (wrap_binaryfunc_r semantics) and have no
+//      slot field of their own — the reflection protocol lives inside the
+//      forward slot — so there is no delegate pair to share; hand-written
+//      R* overrides (FillReflectedView) are dict-only views the same way.
 //   B. Inherited construction delegates keep reference identity: FillNullWith
 //      bakes ancestor delegates into static types by reference, and the
 //      New/Init provider-copy rule re-wires runtime classes to the provider's
@@ -44,8 +44,9 @@ public sealed class SlotInvariantsTests
         && (name is PySpecialNames.SetAttr or PySpecialNames.DelAttr);
 
     // reflected dunders synthesized by FillReflectedSlots carry a flipped
-    // wrapper by design (see invariant A); they only have to be wired on
-    // both sides, not to share one delegate instance
+    // wrapper by design (see invariant A): the reflected names have no
+    // slot fields of their own, so there is no delegate pair to keep
+    // shared
     private static readonly HashSet<string> SynthesizedReflectedNames =
     [
         PySpecialNames.RAdd,

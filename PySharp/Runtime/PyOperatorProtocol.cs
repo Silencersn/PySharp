@@ -6,24 +6,18 @@ using System.Diagnostics;
 namespace PySharp.Runtime;
 
 // The operator-protocol skeleton: the runtime face of the slot layering
-// rework (docs/design/20261007/06 and 07). It centralizes the dispatch
-// knowledge PyOperators currently spreads across its two 18-arm switches —
-// the forward/reflected slot pairing, the comparison mirror (Lt<->Gt,
-// Le<->Ge), the operand-position swap, the sequence fallback and the
-// TypeError spellings — expressed against C-form slot accessors the way
-// CPython's binary_op1 consumes nb_* slots.
+// rework (docs/design/20261007/06 and 07; the stage log lives in 08).
+// PyOperators keeps the public entry surface and forwards every operator
+// here, where the dispatch knowledge is centralized: the forward slot
+// pairing, the comparison mirror (Lt<->Gt, Le<->Ge), the sequence
+// fallback and the TypeError spellings, expressed against C-form slot
+// accessors the way CPython's binary_op1 consumes nb_* slots — the
+// dispatcher only ever calls slots in the original operand order (see
+// GetForwardSlotAccessor).
 //
-// The accessor table is the adaptation view over the current slot store:
-// Forward(type) reads the type's forward slot (left-position pass-through
-// semantics), Reflected(type) reads the reflected slot (right-position
-// swapped semantics; the swap itself lives in EvalReflectiveOperator's
-// argument order, exactly where it lives today).
-//
-// This skeleton is a pure addition during the migration — nothing calls it
-// yet. The dispatcher switchover lands as a single revertible commit, and
-// the known divergences from CPython (the semantic type-equality check
-// below, the simplified divmod protocol kept in PySpecialMethods) are
-// carried over verbatim per the frozen-baseline principle.
+// The known divergences from CPython (the semantic type-equality check,
+// the simplified divmod protocol) are registered frozen-baseline items
+// (docs/design/20261007/08, section four).
 internal static class PyOperatorProtocol
 {
     private static string OperatorToString(PyOperatorTypes op)
@@ -357,7 +351,7 @@ internal static class PyOperatorProtocol
         // right-first order with PyType_IsSubtype on the operand types,
         // while this semantic equality check runs __eq__ through the full
         // comparison machinery — the known type-check hijack defect,
-        // carried over verbatim until the post-migration alignment pass
+        // a registered frozen-baseline item (docs/design/20261007/08)
         var eq = PyComparer.Eq(context, left.PyType, right.PyType);
         if (eq.IsError)
             return eq;
@@ -393,9 +387,9 @@ internal static class PyOperatorProtocol
     // order, the reflected spelling living inside the slot — then
     // TypeError; no subclass priority and no same-type omission (a known
     // divergence from CPython's PyNumber_Divmod, which shares binary_op;
-    // kept verbatim until the post-migration alignment pass). The
-    // identical-delegate skip mirrors binary_op1: a pair resolving to one
-    // shared slot is one resolution
+    // registered as a frozen-baseline item in docs/design/20261007/08).
+    // The identical-delegate skip mirrors binary_op1: a pair resolving to
+    // one shared slot is one resolution
     internal static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
         var slotv = left.PyType.Slots.DivMod;

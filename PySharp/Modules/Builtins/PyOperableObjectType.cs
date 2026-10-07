@@ -26,9 +26,11 @@ namespace PySharp.Modules.Builtins;
 /// implementation (forward guard, then the reflected fallback once the
 /// forward path declines), never in a separate r* surface.
 ///
-/// During the migration this class is not wired into the inheritance
-/// chain — pilot types adopt it in stage 3, and the reflected-slot
-/// synthesis (<c>FillReflectedSlots</c>) is only retired in stage 4.
+/// Wired into the inheritance chain between <see cref="PyTypeObject"/>
+/// and <see cref="PyTypeObject{TObject}"/>: every builtin's operator
+/// semantics ride these entries, and the surviving reflected synthesis
+/// (<c>FillReflectedSlots</c>) derives the __r*__ dict views from the
+/// forward slots.
 /// </remarks>
 /// <typeparam name="TObject">
 /// Retained for the layout pairing with <see cref="PyTypeObject{TObject}"/>;
@@ -179,17 +181,18 @@ public abstract partial class PyOperableObjectType<TObject> : PyTypeObject where
     // virtual entry for a TObject self, and — once that declines, or when
     // the self position carries a foreign object (the original-order call
     // of a right-side type, CPython binary_op1's third step) — falls back
-    // to the reflected virtual entry with the pair flipped back. The
-    // fallback is what keeps top-level R* overrides reachable once the
-    // reflected slot fields retire; while the adaptation view still
-    // dispatches, it simply never sees a foreign self.
+    // to the reflected virtual entry with the pair flipped back. With the
+    // reflected slot fields retired, that flipped fallback is what keeps
+    // top-level R* overrides reachable from binary dispatch.
     //
     // Frozen-baseline note: the same-layout omission below declines for
     // any TObject other, which is coarser than CPython's exact
-    // Py_TYPE(self) != Py_TYPE(other) do_other test; the dispatch orders
-    // that would expose the difference are unreachable under the current
-    // adaptation-view dispatcher, and the tightening belongs to the
-    // post-migration alignment pass.
+    // Py_TYPE(self) != Py_TYPE(other) do_other test. Observable when
+    // sibling subtypes share one inherited slot delegate and only the
+    // right one overrides R*: the identical-delegate skip folds the pair
+    // into the single forward call, where CPython would flip into the
+    // right subtype's __radd__ — a registered frozen-baseline divergence
+    // (docs/design/20261007/08).
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PyBinaryFunction BridgeBinarySlot(
         Func<PyCallContext, TObject, PyObject, PyResult> forward,

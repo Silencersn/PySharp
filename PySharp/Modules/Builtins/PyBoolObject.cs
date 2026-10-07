@@ -57,12 +57,12 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         return self;
     }
 
-    // stage-3 pilot of the C-form middle layer. The double-sided guard is
-    // load-bearing on the inheritance-sensitive path: when bool is the
-    // right operand of a subclass-ordered operation (e.g. `2 & True`), the
-    // reflected slot runs with the LEFT int operand in the self position,
-    // and declining with NotImplemented hands control to the left type's
-    // forward slot — the CPython slot convention expressed verbatim
+    // The double-sided guard is load-bearing on the inheritance-sensitive
+    // path: when bool is the right operand of a subclass-ordered operation
+    // (e.g. `2 & True`), the original-order third step runs with the LEFT
+    // int operand in the self position, and declining with NotImplemented
+    // hands control to the left type's forward slot — the CPython slot
+    // convention expressed verbatim
     protected internal override PyResult NbAnd(PyCallContext context, PyObject self, PyObject other)
     {
         if (self is not PyBoolObject boolSelf)

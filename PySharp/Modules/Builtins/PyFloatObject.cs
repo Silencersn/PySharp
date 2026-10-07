@@ -1729,11 +1729,9 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         return obj;
     }
 
-    // the stage-3 pilot rewiring this constructor carried (the forward
-    // slots moved onto SLOT1BINFULL-shaped bridges by hand) retired with
-    // the reflected slots: the generated FillSlots now wires the same
-    // shape straight from the sealed bridges, and FillReflectedSlots
-    // provides the __r*__ dict views over the hand-written R* overrides
-    // (float keeps the type-safe RSub/RTrueDiv/RFloorDiv/RDivMod/RMod/
-    // RPow semantics — the bridge's flipped fallback reaches them)
+    // the generated FillSlots wires the sealed SLOT1BINFULL-shaped bridges
+    // onto the forward slots, and the hand-written R* overrides expose
+    // their __r*__ dict views through FillReflectedView (float keeps the
+    // type-safe RSub/RTrueDiv/RFloorDiv/RDivMod/RMod/RPow semantics — the
+    // bridge's flipped fallback reaches them)
 }

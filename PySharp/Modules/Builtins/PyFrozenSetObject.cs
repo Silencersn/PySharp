@@ -284,12 +284,12 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         return unchecked((long)hash);
     }
 
-    // stage-3 pilot of the C-form middle layer: the set operators move from
-    // the type-safe virtual surface to the slot-shaped entries. Each entry
-    // guards both operands and declines with NotImplemented, which makes it
-    // order-agnostic — the same virtual method serves the forward slot,
-    // the reflected slot (the dispatcher already swapped the operands),
-    // and the original-order call of the CPython binary_op1 third step
+    // the C-form middle layer: the set operators as slot-shaped entries.
+    // Each entry guards both operands and declines with NotImplemented,
+    // which makes it order-agnostic — the same entry answers the forward
+    // slot, the synthesized __r*__ dict view (wrap_binaryfunc_r flips the
+    // pair before calling in), and the original-order call of the
+    // binary_op1 third step
     protected internal override PyResult NbSub(PyCallContext context, PyObject self, PyObject other)
     {
         if (self is not PyFrozenSetObject frozenSelf)

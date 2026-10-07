@@ -19,6 +19,7 @@
 | `5dbf98c5` | 4 | S3：R\* 槽字段退役——原序反射位、堆类型查名桥、FillReflectedSlots 缩减为视图合成 | 全量测试零 diff |
 | `5a71010c` | 4 | S4：镜像硬编码清理核查 + 本篇阶段 4 记录 + 参考文档同步 | 全量测试零 diff |
 | `7f61043f` | 4.1 | S5：覆写检测回归基类标记（外部扩展 R\* 覆写免标记接线修复） | 全量 +1 用例 |
+| `24abb631` | 4.1 | S6：中间层覆写（Nb\*/RichCompare）生成器接线，`PostConstruct` 手接退役 | 全量 +1 用例 |
 
 基线与每个验收点的全量结果一致：总计 1077 / 成功 1073 / 跳过 4 /
 失败 0。
@@ -91,6 +92,14 @@
   阶段 4.1 的复核把覆写检测全部收回到基类标记，库外覆写免标记。
 - 两处 P1 缺陷与已记录的语义偏差仍在冻结队列（类型相等检查走
   `__eq__` 的判型差异、`divmod` 简化协议），进入日常对齐节奏处理。
+- 复核回溯实测新增一项冻结偏差：兄弟静态子型共享继承的前向
+  delegate 且仅右型覆写 `R*` 时（CPython 经 `slot_nb_add` 的
+  do_other 翻转进右型 `__radd__` 得结果），同 delegate 省略把二元
+  解析折叠为单次前向调用、NI 即告终（`TypeError`）——sealed 桥的
+  同布局省略（`other is TObject` 粗于 `Py_TYPE` 精确比较）与
+  `Nb*` 直落（槽内无翻转步骤）同根因；库内静态类型无此形态、仅
+  外部扩展可构造（探针 `SameLayoutSibling` 钉住现状），对齐与
+  `divmod` 一并进日常节奏。
 - 中间层 C 形态（`Nb*`/`RichCompare` 的双侧守卫）是设计内的正式面；
   其接线已生成器化（S6），`PostConstruct` 手接退役。
 
@@ -212,3 +221,25 @@ bool/frozenset 的手接段与各自的 `ReflectedWrapper` 私有方法删除，
 （左操作数占 self 位、双侧守卫让位 → `TypeError`，CPython 静态槽
 同款）、合成反射视图的属性直调语义。验收：全量 1079/1075/4/0，
 `--no-incremental` 零警告。
+
+### S7 · 审查回溯修正（复核阶段 4.1 收尾）
+
+外部只读审查（`0f2cffe7..24abb631` 全区间，15 个提交）确认分发/
+桥接与 CPython 3.14 对位后，按报告回溯修正机制演进遗留的注释，
+根因集中在 `93c3acd2`（分发器切换）与 `5dbf98c5`（反射槽字段
+退役）之后的早期叙述未更新：
+
+- 协议骨架文件头与 DivMod/判型偏差段——适配视图、18-arm switch、
+  `EvalReflectiveOperator`、迁移承诺等过渡叙述改为终态机制与
+  已登记偏差陈述；
+- frozenset/bool 试点段——「分发器已交换」改为原序第三步措辞，
+  「stage-3 pilot」过程开头删除；
+- `PyOperableObjectType<T>` 的 XML remarks——「未接入继承链」
+  改为终态职责（`FillReflectedSlots` 存活为视图合成）；
+- sealed 桥注释——「不可达」断言经探针实测改写为登记偏差（见
+  §四新增项）；「once the reflected slot fields retire」改完成态；
+- float 类尾与 `SlotInvariantsTests` 不变式叙述——R\* 覆写经
+  `FillReflectedView` 字典视图接线、不再与槽字段共享 delegate。
+
+审查观察点同步：`Lt` 系与 `RichCompare` 同覆写时的生成顺序优先级
+（`RichCompare` 生效）补进 source-generators 参考文档。

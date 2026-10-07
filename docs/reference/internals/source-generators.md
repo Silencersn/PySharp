@@ -86,6 +86,10 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
   `[PySlot]` 经符号级继承检测发现，覆写侧一律免标记：`PySlotAttribute` 是
   `private protected`，消费程序集无法拼写它，继承查找是库外覆写接线的唯一路径
   （`ExternalTypeProtocolTests` 以探针类型钉住 R\* 与 `Nb*` 两个场景）。
+  四类特判的生成顺序决定一个优先级：同一类型同时覆写 `Lt` 系与
+  `RichCompare` 时，无参 `FillRichCompareSlot()`（比较六折叠）先生成、
+  `FillRichCompareSlot(delegate)`（`RichCompare` 直落）在后覆盖，
+  `RichCompare` 覆写生效，`Lt` 系覆写静默失效。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，
   与上一条的第 4 点互补。
 
