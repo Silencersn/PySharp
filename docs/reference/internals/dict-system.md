@@ -92,6 +92,11 @@ public PyObject this[string key] { get; set; }   // 读取未命中抛 KeyNotFou
 - 方法面：`items`、`keys`、`values`、`clear`、`get`、`setdefault`、`pop`（单参与双参两个重载）、
   `popitem`、`copy`、`update`、`fromkeys`（classmethod）。`Eq` 槽逐条目经 `PyComparer.Eq` 比较，
   `Bool`、`Len`、`Contains`（经 `IsKeyError` 判定）、`Iter`（迭代键）。
+- PEP 584 合并运算符，对齐 CPython 的 `dict_or` / `dict_ior`：`Or` 槽要求右操作数也是 dict
+  （含子类）否则 `NotImplemented`，结果是 `PyDict_Copy(self)` 再 `Update(other)`，因此子类参与
+  合并仍产出 plain dict；`IOr` 槽无类型门槛，直接走 `Update` 的 `dict_update_arg` 三分语义
+  （exact dict、带 `keys()` 的映射、二元组可迭代），原地更新并返回自身。`__or__`、`__ror__`、
+  `__ior__` 包装经生成器 `FillSlot` 与 `FillReflectedSlots` 自动可见。
 - `builtins` 模块经 `[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDictObjectType))]`
   把名字 `dict` 绑到类型单例，因此 `dict(...)` 即调用类型本身，走 `New` 槽。
 

@@ -101,6 +101,34 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         return PyIntObject.FromInteger(self.Count);
     }
 
+    // CPython dict_or: both operands must be dicts (subclasses included),
+    // anything else declines; the result is PyDict_Copy(self) updated with
+    // other, so a subclass operand still yields a plain dict
+    protected override PyResult Or(PyCallContext context, PyDictObject self, PyObject other)
+    {
+        if (other is not PyDictObject)
+            return PyNotImplementedObject.NotImplemented;
+
+        var merged = new PyDictObject(self);
+        var result = merged.Update(context, other);
+        if (result.IsError)
+            return result;
+
+        return merged;
+    }
+
+    // CPython dict_ior: no type gate — dict_update_arg semantics (exact
+    // dict, keys() mapping, or pairs iterable) mutate self, and the
+    // operator rebinds the same object
+    protected override PyResult IOr(PyCallContext context, PyDictObject self, PyObject other)
+    {
+        var result = self.Update(context, other);
+        if (result.IsError)
+            return result;
+
+        return self;
+    }
+
     [PyMethod("items")]
     [PyFunctionParameters()]
     private static PyResult Items(PyCallContext context, PyDictObject self, PyArguments arguments)
