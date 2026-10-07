@@ -151,8 +151,8 @@ partial class Parser
             return ParseFStringReplacementField(isRaw);
 
         var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
-        var str = isRaw ? literal : FromLiteralToString(literal, true);
-        var middle = Ast.Constant(str).With(CreateAstMetaInfo());
+        var str = isRaw ? Ast.Constant(literal) : Ast.Constant(FromLiteralToString(literal, noWrapper: true));
+        var middle = str.With(CreateAstMetaInfo());
         MoveNextToken();
         return middle;
     }
@@ -321,7 +321,6 @@ partial class Parser
 
         var constant = isBytes ? Ast.Constant(FromLiteralToBytes(literal))
             : Ast.Constant(FromLiteralToString(literal, noWrapper: false));
-
         MoveNextToken();
         return constant;
     }
@@ -339,8 +338,8 @@ partial class Parser
         }
 
         var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
-        var str = isRaw ? literal : FromLiteralToString(literal, true);
-        var middle = Ast.Constant(str).With(CreateAstMetaInfo());
+        var str = isRaw ? Ast.Constant(literal) : Ast.Constant(FromLiteralToString(literal, noWrapper: true));
+        var middle = str.With(CreateAstMetaInfo());
         MoveNextToken();
         values.Add(middle);
     }
@@ -582,15 +581,18 @@ partial class Parser
                 return Ast.Constant(PyBytesObject.MoveBytes(combined));
             }
 
-            var builder = SharedBuilder.Clear();
+            // CPython concatenates the code-point sequences of adjacent
+            // literals: a lone surrogate at one literal's end must not pair
+            // with one at the next literal's start
+            var concat = new PyStrConcatBuilder();
             foreach (var node in span)
             {
                 if (node.Value is not PyStrObject value)
                     throw SyntaxError();
-                builder.Append(value.Value);
+                concat.Append(value);
             }
 
-            return Ast.Constant(builder.ToString());
+            return Ast.Constant(concat.ToStr());
         }
 
         AstExprNode ConcatStrings(List<AstExprNode> nodes)
@@ -685,15 +687,16 @@ partial class Parser
         }
     }
 
-    string FromLiteralToString(ReadOnlySpan<char> literal, bool noWrapper)
+    PyStrObject FromLiteralToString(ReadOnlySpan<char> literal, bool noWrapper)
     {
         bool successful;
         string? str;
+        int[]? codePoints;
         PyStrConverter.ConvertErrorInfo info;
         if (noWrapper)
-            successful = PyStrConverter.TryFromTextToString(literal, out str, out info);
+            successful = PyStrConverter.TryFromTextToString(literal, out str, out codePoints, out info);
         else
-            successful = PyStrConverter.TryFromLiteralToString(literal, out str, out info);
+            successful = PyStrConverter.TryFromLiteralToString(literal, out str, out codePoints, out info);
 
         if (successful)
         {
@@ -711,7 +714,9 @@ partial class Parser
             }
 
             Debug.Assert(str is not null);
-            return str;
+            // escaped lone surrogates that ended up adjacent keep their
+            // code-point sequence: '"\\ud800\\udc00"' is two code points
+            return codePoints is null ? PyStrObject.FromString(str) : PyStrObject.FromCodePoints(codePoints);
         }
         else
         {

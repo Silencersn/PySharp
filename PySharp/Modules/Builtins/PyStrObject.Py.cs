@@ -1,6 +1,5 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
@@ -19,7 +18,9 @@ partial class PyStrObject
             return list;
         }
 
-        var builder = new StringBuilder();
+        // code-point semantics per segment: a boundary that pairs lone
+        // surrogates (segment/separator/segment) keeps them separate
+        var builder = new PyStrConcatBuilder();
         int index = 0;
         foreach (var item in list.Value)
         {
@@ -28,10 +29,10 @@ partial class PyStrObject
 
             if (index > 0)
                 builder.Append(Value);
-            builder.Append(strObj.Value);
+            builder.Append(strObj);
             index++;
         }
 
-        return FromString(builder.ToString());
+        return builder.ToStr();
     }
 }

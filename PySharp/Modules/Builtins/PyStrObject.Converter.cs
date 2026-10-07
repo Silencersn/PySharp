@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -38,9 +39,9 @@ internal static class PyStrConverter
         WrongFormat,
     }
 
-    private delegate bool InternalTryFromTo<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged;
+    private delegate bool InternalTryFromTo<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out List<int>? authoritativeCodePoints, out ConvertErrorInfo info) where T : unmanaged;
 
-    private static bool InternalTryFromTextToStringOrBytes<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged
+    private static bool InternalTryFromTextToStringOrBytes<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out List<int>? authoritativeCodePoints, out ConvertErrorInfo info) where T : unmanaged
     {
         Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
 
@@ -48,7 +49,59 @@ internal static class PyStrConverter
         var textLength = text.Length;
         var destLength = destination.Length;
         itemsWritten = 0;
+        authoritativeCodePoints = null;
         Span<char> cache = stackalloc char[2];
+
+        // CPython's str stores code points, so two adjacent escaped lone
+        // surrogates ('\ud800\udc00') are two code points even though the
+        // UTF-16 destination holds them as a legal-looking pair. Writes are
+        // tracked by intent — the two units of an astral \U escape form one
+        // deliberate pair — and once a lone high meets a lone low, the
+        // authoritative code-point sequence is collected alongside; the
+        // pending prefix stayed unambiguous, so its UTF-16 reading is its
+        // correct sequence. (The buffer is a parameter, not a capture:
+        // local functions cannot capture ref-like locals.)
+        List<int>? collected = null;
+        bool pendingLoneHigh = false;
+        char pendingPairHigh = default;
+        int written = 0;
+        bool rawPairFollows = false;
+
+        void NoteWrite(char c, bool paired, ReadOnlySpan<T> buffer)
+        {
+            if (typeof(T) != typeof(char))
+                return;
+
+            if (collected is null)
+            {
+                if (pendingLoneHigh && !paired && char.IsLowSurrogate(c))
+                {
+                    collected = new List<int>(written + 4);
+                    collected.AddRange(PyStrObject.ToCodePointArray(MemoryMarshal.Cast<T, char>(buffer)[..written]));
+                    collected.Add(c);
+                    pendingLoneHigh = false;
+                    return;
+                }
+                pendingLoneHigh = char.IsHighSurrogate(c) && !paired;
+                return;
+            }
+
+            if (paired)
+            {
+                // the deliberate pair of an astral escape: one code point
+                if (pendingPairHigh is default(char))
+                {
+                    pendingPairHigh = c;
+                }
+                else
+                {
+                    collected.Add(char.ConvertToUtf32(pendingPairHigh, c));
+                    pendingPairHigh = default;
+                }
+                return;
+            }
+            collected.Add(c);
+        }
 
         for (int i = 0; i < textLength; i++)
         {
@@ -294,15 +347,20 @@ internal static class PyStrConverter
                             break;
                     }
 
-                    if (!TryWrite(destination, ref itemsWritten, ref info, charToWrite))
+                    NoteWrite(charToWrite, hasSecond, destination);
+                    if (!TryWrite(destination, ref written, ref info, charToWrite))
                     {
                         info.Error = ConvertError.DestinationNotEnough;
                         return false;
                     }
-                    if (hasSecond && !TryWrite(destination, ref itemsWritten, ref info, charToWrite2))
+                    if (hasSecond)
                     {
-                        info.Error = ConvertError.DestinationNotEnough;
-                        return false;
+                        NoteWrite(charToWrite2, paired: true, destination);
+                        if (!TryWrite(destination, ref written, ref info, charToWrite2))
+                        {
+                            info.Error = ConvertError.DestinationNotEnough;
+                            return false;
+                        }
                     }
                     break;
 
@@ -318,15 +376,26 @@ internal static class PyStrConverter
                         return false;
                     }
 
-                    if (!TryWrite(destination, ref itemsWritten, ref info, text[i]))
+                    // source text decodes through UTF-8, so a high unit the
+                    // next unit completes is a deliberate astral pair, never
+                    // two escaped lone surrogates
+                    var raw = text[i];
+                    if (char.IsHighSurrogate(raw) && i + 1 < textLength && char.IsLowSurrogate(text[i + 1]))
+                        rawPairFollows = true;
+                    NoteWrite(raw, rawPairFollows, destination);
+                    if (!TryWrite(destination, ref written, ref info, raw))
                     {
                         info.Error = ConvertError.DestinationNotEnough;
                         return false;
                     }
+                    if (rawPairFollows && char.IsLowSurrogate(raw))
+                        rawPairFollows = false;
                     break;
             }
         }
 
+        itemsWritten = written;
+        authoritativeCodePoints = collected;
         return true;
 
         static bool AllAsciiHexDigit(ReadOnlySpan<char> chars)
@@ -366,11 +435,12 @@ internal static class PyStrConverter
         }
     }
 
-    private static bool InternalTryFromLiteralToStringOrBytes<T>(ReadOnlySpan<char> literal, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged
+    private static bool InternalTryFromLiteralToStringOrBytes<T>(ReadOnlySpan<char> literal, Span<T> destination, out int itemsWritten, out List<int>? authoritativeCodePoints, out ConvertErrorInfo info) where T : unmanaged
     {
         Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
 
         itemsWritten = 0;
+        authoritativeCodePoints = null;
         info = default;
         info.Error = ConvertError.WrongFormat;
 
@@ -468,10 +538,10 @@ internal static class PyStrConverter
             return true;
         }
 
-        return InternalTryFromTextToStringOrBytes(text, destination, out itemsWritten, out info);
+        return InternalTryFromTextToStringOrBytes(text, destination, out itemsWritten, out authoritativeCodePoints, out info);
     }
 
-    private static bool InternalTryToStringOrBytes<T>(InternalTryFromTo<T> tryFromTo, ReadOnlySpan<char> text, [NotNullWhen(true)] out object? obj, out ConvertErrorInfo info) where T : unmanaged
+    private static bool InternalTryToStringOrBytes<T>(InternalTryFromTo<T> tryFromTo, ReadOnlySpan<char> text, [NotNullWhen(true)] out object? obj, out List<int>? authoritativeCodePoints, out ConvertErrorInfo info) where T : unmanaged
     {
         Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
 
@@ -479,7 +549,7 @@ internal static class PyStrConverter
         T[]? rentedArray = null;
 
         Span<T> span = text.Length <= MaxStackLimit ? stackalloc T[text.Length] : (rentedArray = ArrayPool<T>.Shared.Rent(text.Length));
-        if (!tryFromTo(text, span, out var itemsWritten, out info))
+        if (!tryFromTo(text, span, out var itemsWritten, out authoritativeCodePoints, out info))
         {
             Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
             obj = null;
@@ -501,26 +571,51 @@ internal static class PyStrConverter
 
     public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
     {
+        return TryFromTextToString(text, out str, out _, out info);
+    }
+
+    /// <summary>
+    /// The text-to-string conversion that additionally reports the string's
+    /// authoritative code-point sequence: non-null exactly when escaped lone
+    /// surrogates ended up adjacent and must stay separate code points.
+    /// </summary>
+    public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out int[]? loneSurrogateCodePoints, out ConvertErrorInfo info)
+    {
         str = null;
-        if (!InternalTryToStringOrBytes<char>(InternalTryFromTextToStringOrBytes, text, out var obj, out info))
+        loneSurrogateCodePoints = null;
+        if (!InternalTryToStringOrBytes<char>(InternalTryFromTextToStringOrBytes, text, out var obj, out var collected, out info))
             return false;
         str = (string)obj;
+        loneSurrogateCodePoints = collected?.ToArray();
         return true;
     }
 
     public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
     {
+        return TryFromLiteralToString(literal, out str, out _, out info);
+    }
+
+    /// <summary>
+    /// The literal-to-string conversion that additionally reports the
+    /// string's authoritative code-point sequence: non-null exactly when
+    /// escaped lone surrogates ended up adjacent and must stay separate code
+    /// points.
+    /// </summary>
+    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, [NotNullWhen(true)] out string? str, out int[]? loneSurrogateCodePoints, out ConvertErrorInfo info)
+    {
         str = null;
-        if (!InternalTryToStringOrBytes<char>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out info))
+        loneSurrogateCodePoints = null;
+        if (!InternalTryToStringOrBytes<char>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out var collected, out info))
             return false;
         str = (string)obj;
+        loneSurrogateCodePoints = collected?.ToArray();
         return true;
     }
 
     public static bool TryFromLiteralToBytes(ReadOnlySpan<char> literal, [NotNullWhen(true)] out byte[]? bytes, out ConvertErrorInfo info)
     {
         bytes = null;
-        if (!InternalTryToStringOrBytes<byte>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out info))
+        if (!InternalTryToStringOrBytes<byte>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out _, out info))
             return false;
         bytes = (byte[])obj;
         return true;
@@ -528,16 +623,24 @@ internal static class PyStrConverter
 
     public static string FromStringToLiteral(ReadOnlySpan<char> str)
     {
-        return UnicodeRepr(str);
+        return UnicodeRepr(str, null);
     }
 
-    private static void ScanUnicodeForRepr(ReadOnlySpan<char> str, out int osize, out char quote)
+    // repr of a string with an authoritative code-point sequence: the plain
+    // UTF-16 reading would merge its adjacent lone surrogates into astral
+    // characters ('\ud800\udc00' must repr as two escapes, not as '\U010000')
+    internal static string FromStringToLiteral(ReadOnlySpan<char> str, int[]? codePoints)
+    {
+        return UnicodeRepr(str, codePoints);
+    }
+
+    private static void ScanUnicodeForRepr(ReadOnlySpan<char> str, int[]? codePoints, out int osize, out char quote)
     {
         int squote = 0;
         int dquote = 0;
         osize = 0;
 
-        var enumerator = new PyStrObject.CodePointEnumerator(str);
+        var enumerator = new PyStrObject.CodePointsViewEnumerator(str, codePoints);
         while (enumerator.MoveNext())
         {
             int ch = enumerator.Current;
@@ -587,69 +690,72 @@ internal static class PyStrConverter
         // quotes
         osize += 2;
     }
-    private static string UnicodeRepr(ReadOnlySpan<char> str)
+
+    private static string UnicodeRepr(ReadOnlySpan<char> str, int[]? codePoints)
     {
-        ScanUnicodeForRepr(str, out var osize, out var quote);
+        ScanUnicodeForRepr(str, codePoints, out var osize, out var quote);
 
         var builder = new StringBuilder(osize);
         builder.Append(quote);
 
         // code points, not runes: an unpaired surrogate must be escaped as
         // itself rather than replaced by U+FFFD
-        var enumerator = new PyStrObject.CodePointEnumerator(str);
+        var enumerator = new PyStrObject.CodePointsViewEnumerator(str, codePoints);
         while (enumerator.MoveNext())
-        {
-            int ch = enumerator.Current;
-            switch (ch)
-            {
-                case '\'':
-                    if (quote is '\'')
-                        builder.Append("\\'");
-                    else
-                        builder.Append('\'');
-                    break;
-
-                case '"':
-                    // if str contains dquote, quote must be squote
-                    builder.Append('"');
-                    break;
-
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-
-                default:
-                    if (ch < ' ' || ch is 0x7F)
-                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
-                    else if (ch < 0x7F)
-                        builder.Append((char)ch);
-                    else if (PyUnicodeData.IsPrintable(ch))
-                        PyStrObject.AppendCodePoint(builder, ch);
-                    else if (ch < 0x100)
-                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
-                    else if (ch < 0x10000)
-                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:x4}", ch);
-                    else
-                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\U{0:x8}", ch);
-                    break;
-            }
-        }
+            AppendReprCodePoint(builder, enumerator.Current, quote);
 
         builder.Append(quote);
 
         return builder.ToString();
+    }
+
+    private static void AppendReprCodePoint(StringBuilder builder, int ch, char quote)
+    {
+        switch (ch)
+        {
+            case '\'':
+                if (quote is '\'')
+                    builder.Append("\\'");
+                else
+                    builder.Append('\'');
+                break;
+
+            case '"':
+                // if str contains dquote, quote must be squote
+                builder.Append('"');
+                break;
+
+            case '\\':
+                builder.Append("\\\\");
+                break;
+
+            case '\t':
+                builder.Append("\\t");
+                break;
+
+            case '\r':
+                builder.Append("\\r");
+                break;
+
+            case '\n':
+                builder.Append("\\n");
+                break;
+
+            default:
+                if (ch < ' ' || ch is 0x7F)
+                    builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
+                else if (ch < 0x7F)
+                    builder.Append((char)ch);
+                else if (PyUnicodeData.IsPrintable(ch))
+                    PyStrObject.AppendCodePoint(builder, ch);
+                else if (ch < 0x100)
+                    builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
+                else if (ch < 0x10000)
+                    builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:x4}", ch);
+                else
+                    builder.AppendFormat(CultureInfo.InvariantCulture, "\\U{0:x8}", ch);
+                break;
+        }
     }
 
 

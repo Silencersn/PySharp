@@ -98,8 +98,11 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         ref var entry = ref _entries[index - 1];
         while (true)
         {
+            // the plain-string fast path only matches keys whose payload
+            // reading is their code-point sequence: a key carrying lone
+            // surrogates compares over that sequence instead
             if (entry.HashCode == hashCode &&
-                entry.Key is PyStrObject { Value: var entryKey } &&
+                entry.Key is PyStrObject { HasAmbiguousCodePoints: false, Value: var entryKey } &&
                 string.Equals(entryKey, key, StringComparison.Ordinal))
             {
                 value = entry.Value;
@@ -168,8 +171,10 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             {
                 ref var entry = ref _entries[index];
 
+                // same guard as TryGetValue: a key carrying lone surrogates
+                // is invisible to the plain-string fast path
                 if (entry.HashCode == hashCode &&
-                    entry.Key is PyStrObject { Value: var entryKey } &&
+                    entry.Key is PyStrObject { HasAmbiguousCodePoints: false, Value: var entryKey } &&
                     string.Equals(entryKey, key, StringComparison.Ordinal))
                 {
                     // set

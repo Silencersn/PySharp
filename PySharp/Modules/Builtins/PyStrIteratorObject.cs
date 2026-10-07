@@ -8,21 +8,32 @@ public class PyStrIteratorObject : PyObject
     // iterate in code units: System.Rune cannot represent an unpaired
     // surrogate, which a CPython str iterator yields as itself
     internal readonly string _value;
+    // the authoritative code-point view when the payload carries adjacent
+    // lone surrogates; null steps over the UTF-16 units as before
+    internal readonly int[]? _codePoints;
     internal int _index;
 
     public override PyTypeObject DefaultPyType { get; }
 
-    internal PyStrIteratorObject(string str, bool asciiOnly)
+    internal PyStrIteratorObject(string str, bool asciiOnly, int[]? codePoints = null)
     {
         // CPython picks the iterator type from the string's storage form:
         // a UCS-1 ascii string reports str_ascii_iterator, everything
         // else (any non-ascii kind) reports str_iterator
         DefaultPyType = asciiOnly ? PyStrAsciiIteratorObjectType.Shared : PyStrIteratorObjectType.Shared;
         _value = str;
+        _codePoints = codePoints;
     }
 
     internal PyResult Next()
     {
+        if (_codePoints is not null)
+        {
+            if (_index >= _codePoints.Length)
+                return PyResult.StopIteration();
+            return PyStrObject.FromCodePoint(_codePoints[_index++]);
+        }
+
         if (_index >= _value.Length)
             return PyResult.StopIteration();
 
