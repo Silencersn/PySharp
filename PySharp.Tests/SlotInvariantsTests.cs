@@ -78,6 +78,28 @@ public sealed class SlotInvariantsTests
         PySpecialNames.Ge,
     ];
 
+    // reflected dunder -> its forward twin: the reflected names resolve
+    // onto the forward slots (the reflection protocol lives inside the
+    // slot, CPython SLOT1BINFULL — never in dedicated r* slots), so the
+    // slot-member map follows the same convergence as RichCompare
+    private static readonly Dictionary<string, string> ReflectedDunderToForward = new()
+    {
+        [PySpecialNames.RAdd] = PySpecialNames.Add,
+        [PySpecialNames.RSub] = PySpecialNames.Sub,
+        [PySpecialNames.RMul] = PySpecialNames.Mul,
+        [PySpecialNames.RMatMul] = PySpecialNames.MatMul,
+        [PySpecialNames.RTrueDiv] = PySpecialNames.TrueDiv,
+        [PySpecialNames.RFloorDiv] = PySpecialNames.FloorDiv,
+        [PySpecialNames.RMod] = PySpecialNames.Mod,
+        [PySpecialNames.RDivMod] = PySpecialNames.DivMod,
+        [PySpecialNames.RPow] = PySpecialNames.Pow,
+        [PySpecialNames.RLShift] = PySpecialNames.LShift,
+        [PySpecialNames.RRShift] = PySpecialNames.RShift,
+        [PySpecialNames.RAnd] = PySpecialNames.And,
+        [PySpecialNames.RXor] = PySpecialNames.Xor,
+        [PySpecialNames.ROr] = PySpecialNames.Or,
+    };
+
     [TestMethod]
     public void BuiltinSlotWrappers_ShareSlotDelegate()
     {
@@ -264,7 +286,7 @@ public sealed class SlotInvariantsTests
                 continue;
             }
 
-            var members = constants.GetValueOrDefault(name, [])
+            var members = constants.GetValueOrDefault(ReflectedDunderToForward.GetValueOrDefault(name, name), [])
                 .Select(candidate => slotMembers.GetValueOrDefault(candidate))
                 .Where(member => member is not null)
                 .Cast<MemberInfo>()

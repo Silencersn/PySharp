@@ -38,6 +38,29 @@ public sealed class SlotNamesSyncTests
 
     private const string ConvergedComparisonField = "RichCompare";
 
+    // reflected dunder -> its forward twin: the reflected names resolve
+    // onto the forward slots (the reflection protocol lives inside the
+    // slot, CPython SLOT1BINFULL), so reachability runs through the
+    // forward constants — the same convergence the comparison names take
+    // through RichCompare
+    private static readonly Dictionary<string, string> ReflectedDunderToForward = new()
+    {
+        [PySpecialNames.RAdd] = PySpecialNames.Add,
+        [PySpecialNames.RSub] = PySpecialNames.Sub,
+        [PySpecialNames.RMul] = PySpecialNames.Mul,
+        [PySpecialNames.RMatMul] = PySpecialNames.MatMul,
+        [PySpecialNames.RTrueDiv] = PySpecialNames.TrueDiv,
+        [PySpecialNames.RFloorDiv] = PySpecialNames.FloorDiv,
+        [PySpecialNames.RMod] = PySpecialNames.Mod,
+        [PySpecialNames.RDivMod] = PySpecialNames.DivMod,
+        [PySpecialNames.RPow] = PySpecialNames.Pow,
+        [PySpecialNames.RLShift] = PySpecialNames.LShift,
+        [PySpecialNames.RRShift] = PySpecialNames.RShift,
+        [PySpecialNames.RAnd] = PySpecialNames.And,
+        [PySpecialNames.RXor] = PySpecialNames.Xor,
+        [PySpecialNames.ROr] = PySpecialNames.Or,
+    };
+
     [TestMethod]
     public void AllSlotNames_CoversEverySlotField()
     {
@@ -72,10 +95,11 @@ public sealed class SlotNamesSyncTests
         Assert.AreEqual(0, uncoveredFields.Count,
             $"slot fields without an AllSlotNames entry (mutations never propagate, deletions never clear): {string.Join(", ", uncoveredFields)}");
 
-        // every AllSlotNames entry reaches at least one slot field
+        // every AllSlotNames entry reaches at least one slot field — the
+        // reflected dunders through their forward twins' constants
         var orphanNames = allSlotNames
             .Where(name => !ConvergedComparisonNames.Contains(name))
-            .Where(name => !constantNamesByValue.GetValueOrDefault(name, []).Any(fieldNames.Contains))
+            .Where(name => !constantNamesByValue.GetValueOrDefault(ReflectedDunderToForward.GetValueOrDefault(name, name), []).Any(fieldNames.Contains))
             .ToList();
         Assert.AreEqual(0, orphanNames.Count,
             $"AllSlotNames entries resolving to no slot field: {string.Join(", ", orphanNames)}");

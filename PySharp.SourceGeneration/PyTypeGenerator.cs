@@ -15,6 +15,27 @@ namespace PySharp.SourceGeneration;
 [Generator]
 public class PyTypeGenerator : IIncrementalGenerator
 {
+    // the reflected virtual overrides: they own no slot fields (the
+    // reflection protocol lives inside the forward bridges), so a [PySlot]
+    // marked override exposes only its dict view (FillReflectedView)
+    private static readonly HashSet<string> ReflectedVirtualNames =
+    [
+        "RAdd",
+        "RSub",
+        "RMul",
+        "RMatMul",
+        "RTrueDiv",
+        "RFloorDiv",
+        "RMod",
+        "RDivMod",
+        "RPow",
+        "RLShift",
+        "RRShift",
+        "RAnd",
+        "RXor",
+        "ROr",
+    ];
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         static bool predicate(SyntaxNode syntaxNode, CancellationToken _) => syntaxNode is ClassDeclarationSyntax;
@@ -244,6 +265,12 @@ public class PyTypeGenerator : IIncrementalGenerator
                             if (slot.Name is "New")
                             {
                                 builder.AppendLine("FillNewSlot();");
+                            }
+                            else if (ReflectedVirtualNames.Contains(slot.Name))
+                            {
+                                // no slot field of its own — only the dict
+                                // view over the override
+                                builder.AppendLine($"FillReflectedView(PySpecialNames.{slot.Name}, {slot.Name});");
                             }
                             else if (slot.SlotsMember is not null)
                             {

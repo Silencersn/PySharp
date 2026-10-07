@@ -146,6 +146,7 @@ internal sealed partial class PyMappingProxyObjectType : PyTypeObject<PyMappingP
         return PyOperators.BitOr(context, self.Mapping, Unwrap(other));
     }
 
+    [PySlot]
     protected override PyResult ROr(PyCallContext context, PyMappingProxyObject self, PyObject other)
     {
         return PyOperators.BitOr(context, other, self.Mapping);

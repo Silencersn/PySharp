@@ -77,28 +77,32 @@ internal static class PyOperatorProtocol
         return op is PyOperatorTypes.Pow ? "** or pow()" : name;
     }
 
-    // The adaptation view proper: one accessor pair per binary operator.
-    // The comparison rows are gone — the six comparison dunders resolve
-    // onto the single RichCompare slot with _Py_SwappedOp mirroring (see
-    // SwapComparisonOp), and Eq/NotEq never dispatch through
-    // ReflectiveOperator (they go through their own two-sided entries), so
-    // no comparison row exists here.
-    private static (Func<PyTypeObject, PyBinaryFunction?> Forward, Func<PyTypeObject, PyBinaryFunction?> Reflected) GetBinarySlotAccessors(PyOperatorTypes op)
+    // The adaptation view: the single forward slot per binary operator.
+    // The reflected rows and the operand swap are gone — the reflection
+    // protocol lives inside the slot implementations (the sealed bridges'
+    // flipped fallback, the dict-driven lookups' three-step shape), so the
+    // dispatcher only ever calls slots in the original operand order, the
+    // way CPython's binary_op1 consumes nb_* slots. No comparison row
+    // exists either: the six comparison dunders resolve onto the single
+    // RichCompare slot (see SwapComparisonOp), and Eq/NotEq never dispatch
+    // through ReflectiveOperator (they go through their own two-sided
+    // entries).
+    private static Func<PyTypeObject, PyBinaryFunction?> GetForwardSlotAccessor(PyOperatorTypes op)
     {
         return op switch
         {
-            PyOperatorTypes.Add => (static t => t.Slots.Add, static t => t.Slots.RAdd),
-            PyOperatorTypes.Sub => (static t => t.Slots.Sub, static t => t.Slots.RSub),
-            PyOperatorTypes.Mult => (static t => t.Slots.Mul, static t => t.Slots.RMul),
-            PyOperatorTypes.MatMult => (static t => t.Slots.MatMul, static t => t.Slots.RMatMul),
-            PyOperatorTypes.TrueDiv => (static t => t.Slots.TrueDiv, static t => t.Slots.RTrueDiv),
-            PyOperatorTypes.FloorDiv => (static t => t.Slots.FloorDiv, static t => t.Slots.RFloorDiv),
-            PyOperatorTypes.Mod => (static t => t.Slots.Mod, static t => t.Slots.RMod),
-            PyOperatorTypes.LShift => (static t => t.Slots.LShift, static t => t.Slots.RLShift),
-            PyOperatorTypes.RShift => (static t => t.Slots.RShift, static t => t.Slots.RRShift),
-            PyOperatorTypes.BitAnd => (static t => t.Slots.And, static t => t.Slots.RAnd),
-            PyOperatorTypes.BitXor => (static t => t.Slots.Xor, static t => t.Slots.RXor),
-            PyOperatorTypes.BitOr => (static t => t.Slots.Or, static t => t.Slots.ROr),
+            PyOperatorTypes.Add => static t => t.Slots.Add,
+            PyOperatorTypes.Sub => static t => t.Slots.Sub,
+            PyOperatorTypes.Mult => static t => t.Slots.Mul,
+            PyOperatorTypes.MatMult => static t => t.Slots.MatMul,
+            PyOperatorTypes.TrueDiv => static t => t.Slots.TrueDiv,
+            PyOperatorTypes.FloorDiv => static t => t.Slots.FloorDiv,
+            PyOperatorTypes.Mod => static t => t.Slots.Mod,
+            PyOperatorTypes.LShift => static t => t.Slots.LShift,
+            PyOperatorTypes.RShift => static t => t.Slots.RShift,
+            PyOperatorTypes.BitAnd => static t => t.Slots.And,
+            PyOperatorTypes.BitXor => static t => t.Slots.Xor,
+            PyOperatorTypes.BitOr => static t => t.Slots.Or,
             _ => throw new UnreachableException(),
         };
     }
@@ -149,18 +153,41 @@ internal static class PyOperatorProtocol
         return EvalCompareSlot(context, left, right, op);
     }
 
-    internal static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
+    // CPython binary_op1 (Objects/abstract.c) over the forward slots: both
+    // slots are called in the ORIGINAL operand order — slotv(v, w) and
+    // slotw(v, w) — and differ only in which operand's type supplies the
+    // slot; the reflection protocol lives inside the slot itself (the
+    // bridges' flipped fallback, the lookups' reflected-name steps). The
+    // w-before-v try runs when w's type is a proper subclass of v's, and
+    // identical delegates on both sides resolve to the one slotv call
+    // (binary_op1's slotw == slotv)
+    private static PyResult EvalBinarySlots(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, bool rightFirst, bool allowReflected)
     {
-        if (selfFunc is not null)
+        var forward = GetForwardSlotAccessor(op);
+        var slotv = forward(left.PyType);
+        var slotw = allowReflected ? forward(right.PyType) : null;
+        if (ReferenceEquals(slotw, slotv))
+            slotw = null;
+
+        PyResult result;
+        if (slotv is not null && slotw is not null && rightFirst)
         {
-            var result = selfFunc(context, self, other);
+            result = slotw(context, left, right);
+            if (!result.IsNotImplemented)
+                // error or non-NotImplemented value
+                return result;
+            slotw = null;
+        }
+        if (slotv is not null)
+        {
+            result = slotv(context, left, right);
             if (!result.IsNotImplemented)
                 // error or non-NotImplemented value
                 return result;
         }
-        if (otherFunc is not null)
+        if (slotw is not null)
         {
-            var result = otherFunc(context, other, self);
+            result = slotw(context, left, right);
             if (!result.IsNotImplemented)
                 // error or non-NotImplemented value
                 return result;
@@ -168,20 +195,33 @@ internal static class PyOperatorProtocol
         return PyNotImplementedObject.NotImplemented;
     }
 
-    private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyObject third, PyTernaryFunction? selfFunc, PyTernaryFunction? otherFunc)
+    // binary_op1's ternary shape for pow: the modulo rides along to every
+    // call untouched
+    private static PyResult EvalPowSlot(PyCallContext context, PyObject left, PyObject right, PyObject modulo, bool rightFirst, bool allowReflected)
     {
-        if (selfFunc is not null)
+        var slotv = left.PyType.Slots.Pow;
+        var slotw = allowReflected ? right.PyType.Slots.Pow : null;
+        if (ReferenceEquals(slotw, slotv))
+            slotw = null;
+
+        PyResult result;
+        if (slotv is not null && slotw is not null && rightFirst)
         {
-            var result = selfFunc(context, self, other, third);
+            result = slotw(context, left, right, modulo);
             if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
+                return result;
+            slotw = null;
+        }
+        if (slotv is not null)
+        {
+            result = slotv(context, left, right, modulo);
+            if (!result.IsNotImplemented)
                 return result;
         }
-        if (otherFunc is not null)
+        if (slotw is not null)
         {
-            var result = otherFunc(context, other, self, third);
+            result = slotw(context, left, right, modulo);
             if (!result.IsNotImplemented)
-                // error or non-NotImplemented value
                 return result;
         }
         return PyNotImplementedObject.NotImplemented;
@@ -232,50 +272,10 @@ internal static class PyOperatorProtocol
         return result;
     }
 
-    private static PyResult EvalLeftFirst(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected, bool inPlace = false)
+    // the shared tail behind both orders: the abstract-layer sequence
+    // fallback, then the binop_type_error spelling
+    private static PyResult FinishBinary(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyResult result, bool inPlace)
     {
-        PyResult result;
-        var leftType = left.PyType;
-        var rightType = right.PyType;
-        if (op is PyOperatorTypes.Pow)
-        {
-            Debug.Assert(modulo is not null);
-            result = EvalReflectiveOperator(context, left, right, modulo, leftType.Slots.Pow, allowReflected ? rightType.Slots.RPow : null);
-        }
-        else
-        {
-            var (forward, reflected) = GetBinarySlotAccessors(op);
-            result = EvalReflectiveOperator(context, left, right, forward(leftType), allowReflected ? reflected(rightType) : null);
-        }
-
-        if (result.IsNotImplemented)
-            result = ApplySequenceFallback(context, op, left, right, result, inPlace);
-        if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.TpName, right.PyType.TpName);
-
-        return result;
-    }
-
-    private static PyResult EvalRightFirst(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool inPlace = false)
-    {
-        PyResult result;
-        var leftType = left.PyType;
-        var rightType = right.PyType;
-        if (op is PyOperatorTypes.Pow)
-        {
-            Debug.Assert(modulo is not null);
-            result = EvalReflectiveOperator(context, right, left, modulo, rightType.Slots.RPow, leftType.Slots.Pow);
-        }
-        else
-        {
-            var (forward, reflected) = GetBinarySlotAccessors(op);
-            // the operand positions swap as a whole: the right type's
-            // reflected slot runs as (right, left) and the left type's
-            // forward slot as (left, right), both via EvalReflective
-            // Operator's argument order
-            result = EvalReflectiveOperator(context, right, left, reflected(rightType), forward(leftType));
-        }
-
         if (result.IsNotImplemented)
             result = ApplySequenceFallback(context, op, left, right, result, inPlace);
         if (result.IsNotImplemented)
@@ -335,10 +335,10 @@ internal static class PyOperatorProtocol
                     return result;
             }
         }
-        var reflective = ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
-        if (reflective.IsNotImplemented)
-            reflective = ApplySequenceFallback(context, op, left, right, reflective, inPlace: true);
-        return reflective;
+        // the reflective pair runs the forward slots in the original
+        // operand order (binary_op1); the sequence fallback and the
+        // TypeError spelling live in the shared tail
+        return ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
     }
 
     internal static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
@@ -376,34 +376,42 @@ internal static class PyOperatorProtocol
                 : compared;
         }
 
-        // CPython binary_op1: identical operand types resolve to a single
-        // shared slot, so for arithmetic ops only the forward variant is
-        // tried and the reflected method never runs
+        // CPython binary_op1 over the forward slots, original operand
+        // order throughout: the reflected spelling lives inside the slot,
+        // identical operand types resolve to one shared slot (EvalBinary
+        // Slots' allowReflected), and a proper-subclass right operand
+        // tries its slot first
         var allowReflected = !eq.Value.BoolValue;
-        return rightFirst
-            ? EvalRightFirst(context, op, left, right, modulo, inPlace)
-            : EvalLeftFirst(context, op, left, right, modulo, allowReflected, inPlace);
+        PyResult result = op is PyOperatorTypes.Pow
+            ? EvalPowSlot(context, left, right, modulo!, rightFirst, allowReflected)
+            : EvalBinarySlots(context, op, left, right, rightFirst, allowReflected);
+        return FinishBinary(context, op, left, right, result, inPlace);
     }
 
     // The divmod entry frozen as baseline: the left type's forward slot,
-    // then the right type's reflected slot with swapped operands, then
-    // TypeError — no subclass priority and no same-type omission (a known
+    // then the right type's forward slot — both in the original operand
+    // order, the reflected spelling living inside the slot — then
+    // TypeError; no subclass priority and no same-type omission (a known
     // divergence from CPython's PyNumber_Divmod, which shares binary_op;
-    // kept verbatim until the post-migration alignment pass)
+    // kept verbatim until the post-migration alignment pass). The
+    // identical-delegate skip mirrors binary_op1: a pair resolving to one
+    // shared slot is one resolution
     internal static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
-        var func = left.PyType.Slots.DivMod;
-        if (func is not null)
+        var slotv = left.PyType.Slots.DivMod;
+        var slotw = right.PyType.Slots.DivMod;
+        if (ReferenceEquals(slotw, slotv))
+            slotw = null;
+
+        if (slotv is not null)
         {
-            var result = func(context, left, right);
+            var result = slotv(context, left, right);
             if (!result.IsNotImplemented)
                 return result;
         }
-
-        func = right.PyType.Slots.RDivMod;
-        if (func is not null)
+        if (slotw is not null)
         {
-            var result = func(context, right, left);
+            var result = slotw(context, left, right);
             if (!result.IsNotImplemented)
                 return result;
         }

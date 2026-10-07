@@ -225,6 +225,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     }
 
     [AIGenerated]
+    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyTupleObject self, PyObject other)
     {
         return Repeat(context, self, other);

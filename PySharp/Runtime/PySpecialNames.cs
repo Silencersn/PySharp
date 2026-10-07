@@ -16,6 +16,25 @@ public static partial class PySpecialNames
     public const string Gt = "__gt__";
     public const string Ge = "__ge__";
 
+    // reflected dunders: the names resolve onto the forward slots (the
+    // reflection protocol lives inside the slot implementations, like
+    // CPython's SLOT1BINFULL slot_nb_add), so they too left the
+    // declaration manifest and live here as plain constants
+    public const string RAdd = "__radd__";
+    public const string RSub = "__rsub__";
+    public const string RMul = "__rmul__";
+    public const string RMatMul = "__rmatmul__";
+    public const string RTrueDiv = "__rtruediv__";
+    public const string RFloorDiv = "__rfloordiv__";
+    public const string RMod = "__rmod__";
+    public const string RDivMod = "__rdivmod__";
+    public const string RPow = "__rpow__";
+    public const string RLShift = "__rlshift__";
+    public const string RRShift = "__rrshift__";
+    public const string RAnd = "__rand__";
+    public const string RXor = "__rxor__";
+    public const string ROr = "__ror__";
+
     // attributes
     public const string Bases = "__bases__";
     public const string Name = "__name__";

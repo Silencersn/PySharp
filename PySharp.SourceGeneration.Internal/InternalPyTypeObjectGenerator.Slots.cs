@@ -23,6 +23,53 @@ partial class InternalPyTypeObjectGenerator
         "__ge__",
     ];
 
+    // Forward dunder -> its reflected twin. The reflected dunders resolve
+    // onto the forward slot (CPython slotdefs map __radd__ onto nb_add's
+    // slot_nb_add, never onto a dedicated r* slot), so TrySetSlot/ClearSlot
+    // merge each reflected label onto its forward case and AllSlotNames
+    // keeps the names listed for UpdateSlot's gating.
+    private static readonly Dictionary<string, string> ReflectedDunderNames = new()
+    {
+        ["__add__"] = "__radd__",
+        ["__sub__"] = "__rsub__",
+        ["__mul__"] = "__rmul__",
+        ["__matmul__"] = "__rmatmul__",
+        ["__truediv__"] = "__rtruediv__",
+        ["__floordiv__"] = "__rfloordiv__",
+        ["__mod__"] = "__rmod__",
+        ["__divmod__"] = "__rdivmod__",
+        ["__pow__"] = "__rpow__",
+        ["__lshift__"] = "__rlshift__",
+        ["__rshift__"] = "__rrshift__",
+        ["__and__"] = "__rand__",
+        ["__xor__"] = "__rxor__",
+        ["__or__"] = "__ror__",
+    };
+
+    // The binary/ternary arithmetic dunders whose converted value is NOT
+    // captured: a dict definition installs the shared dict-driven lookup
+    // delegate (slot_nb_add's shape — the forward name, then the reflected
+    // name, resolved on the receiver's MRO at call time), so later dict
+    // mutations stay visible without re-resolution. Like the comparison
+    // convergence, the dict entry is the source of truth.
+    private static readonly HashSet<string> BinaryLookupDunders =
+    [
+        "__add__",
+        "__sub__",
+        "__mul__",
+        "__matmul__",
+        "__truediv__",
+        "__floordiv__",
+        "__mod__",
+        "__divmod__",
+        "__pow__",
+        "__lshift__",
+        "__rshift__",
+        "__and__",
+        "__xor__",
+        "__or__",
+    ];
+
     /// <summary>
     /// One slot field addressable by a dunder name. A dunder may map to
     /// several targets across protocol families (CPython slotdefs:
@@ -52,6 +99,13 @@ partial class InternalPyTypeObjectGenerator
         var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
         return (attributeData.GetConstructorArgument<string>(0), attributeData.GetConstructorArgument<INamedTypeSymbol>(1)?.Name);
     }
+
+    // the case labels for one dunder: a reflected twin rides its forward
+    // case (both names resolve onto the same forward slot)
+    private static string BuildCaseLabels(string specialName)
+        => ReflectedDunderNames.TryGetValue(specialName, out var reflected)
+            ? $"case \"{specialName}\": case \"{reflected}\": "
+            : $"case \"{specialName}\": ";
 
     /// <summary>
     /// Collects every slot target in declaration order: direct fields first,
@@ -202,18 +256,23 @@ partial class InternalPyTypeObjectGenerator
         // fills the first (number-side) slot with the converted value and
         // NULLs the rest — CPython heap types defining __add__/__mul__ keep
         // sq_concat/sq_repeat NULL and lean on the abstract-layer fallback
-        // (typeobject.c:11131)
+        // (typeobject.c:11131). The binary arithmetic dunders install the
+        // shared dict-driven lookup instead of capturing the value, and each
+        // reflected dunder shares its forward case (BuildCaseLabels)
         foreach (var nameGroup in CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes).GroupBy(t => t.SpecialName))
         {
-            builder.Append($"case \"{nameGroup.Key}\": ");
+            builder.Append(BuildCaseLabels(nameGroup.Key));
             var first = true;
             foreach (var target in nameGroup)
             {
                 if (first)
                 {
+                    var assignment = BinaryLookupDunders.Contains(nameGroup.Key)
+                        ? $"PyTypeObject.Lookup{target.MethodName}"
+                        : $"value.{target.ExtMethod}()";
                     builder.Append(target.FieldName is null
-                        ? $"{target.MethodName} = value.{target.ExtMethod}(); "
-                        : $"{target.FieldName} ??= new(); {target.FieldName}.{target.MethodName} = value.{target.ExtMethod}(); ");
+                        ? $"{target.MethodName} = {assignment}; "
+                        : $"{target.FieldName} ??= new(); {target.FieldName}.{target.MethodName} = {assignment}; ");
                     first = false;
                 }
                 else
@@ -229,15 +288,17 @@ partial class InternalPyTypeObjectGenerator
         // every slot dunder name, "__new__" included (declared manually on the
         // slots class); probed by the runtime re-resolution machinery.
         // Distinct: a dunder may map to slots in several families. The six
-        // comparison dunders stay listed although their slot fields retired:
-        // they resolve onto RichCompare and UpdateSlot/FixupAllSlots gate on
-        // this membership
+        // comparison dunders and the fourteen reflected dunders stay listed
+        // although their own slot fields retired: they resolve onto
+        // RichCompare / the forward slots and UpdateSlot/FixupAllSlots gate
+        // on this membership
         var allSlotNames = CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes)
             .Select(t => t.SpecialName)
             .Distinct()
             .ToList();
         allSlotNames.Insert(0, "__new__");
         allSlotNames.AddRange(ComparisonDunderNames);
+        allSlotNames.AddRange(ReflectedDunderNames.Values);
 
         builder
             .ExitBlock()   // switch (name)
@@ -262,7 +323,7 @@ partial class InternalPyTypeObjectGenerator
 
         foreach (var nameGroup in CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes).GroupBy(t => t.SpecialName))
         {
-            builder.Append($"case \"{nameGroup.Key}\": ");
+            builder.Append(BuildCaseLabels(nameGroup.Key));
             foreach (var target in nameGroup)
             {
                 builder.Append(target.FieldName is null

@@ -239,75 +239,71 @@ partial class PyTypeObject<TObject>
         return DefaultBinaryOperator(context, self, other);
     }
 
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RAdd(PyCallContext context, TObject self, PyObject other)
+    // reflected fallback entries carried inside the forward bridges (the
+    // reflection protocol lives in the slot implementation, CPython
+    // SLOT1BINFULL — never in dedicated r* slots). The bridge's flipped
+    // fallback is the only dispatch path here, and it hands the RIGHT
+    // operand over as self — exactly where CPython's order-agnostic
+    // static slots (CHECK_BINOP) also land after their internal swap —
+    // so the default simply runs the forward virtual in the given
+    // argument order; a hand-written override answers as written. The
+    // dict views (wrap_binaryfunc_r) are separate fixed-op wrappers, not
+    // these entries
+    protected virtual PyResult RAdd(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Add(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RSub(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RSub(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Sub(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RMul(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RMul(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Mul(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RMatMul(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RMatMul(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return MatMul(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RTrueDiv(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RTrueDiv(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return TrueDiv(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RFloorDiv(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RFloorDiv(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return FloorDiv(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RMod(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RMod(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Mod(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RDivMod(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RDivMod(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return DivMod(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
+    protected virtual PyResult RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Pow(context, self, other, modulo);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RLShift(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RLShift(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return LShift(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RRShift(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RRShift(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return RShift(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RAnd(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RAnd(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return And(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult RXor(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult RXor(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Xor(context, self, other);
     }
-    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
-    protected virtual partial PyResult ROr(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult ROr(PyCallContext context, TObject self, PyObject other)
     {
-        return DefaultBinaryOperator(context, self, other);
+        return Or(context, self, other);
     }
 
     // carried by the RichCompare slot through the default comparison bridge;

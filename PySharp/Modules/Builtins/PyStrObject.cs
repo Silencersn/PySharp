@@ -2893,6 +2893,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
         return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, count.Int32Value)));
     }
+    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
     {
         return Repeat(context, self, other);

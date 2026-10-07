@@ -105,7 +105,8 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
     // rewires the three bitwise slots onto the C-form entries; the
     // inherited arithmetic slots (Add/Sub/... off int) stay untouched, so
     // IsInheritedForwardSlot keeps skipping their synthesis and bool keeps
-    // picking int's reflected wrappers through the MRO
+    // picking int's reflected wrappers through the MRO. The reflected
+    // dict views keep the guarded flip (wrap_binaryfunc_r)
     protected override void PostConstruct()
     {
         base.PostConstruct();
@@ -113,15 +114,12 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         var number = Slots.Number!;
         PyBinaryFunction and = NbAnd;
         number.And = and;
-        number.RAnd = and;
         PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
         PyBinaryFunction xor = NbXor;
         number.Xor = xor;
-        number.RXor = xor;
         PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
         PyBinaryFunction or = NbOr;
         number.Or = or;
-        number.ROr = or;
         PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
 
         PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));

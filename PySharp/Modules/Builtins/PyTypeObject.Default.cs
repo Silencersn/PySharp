@@ -487,6 +487,22 @@ partial class PyTypeObject
             return;
         }
 
+        // CPython update_one_slot: no dict provider anywhere clears the
+        // slot — except that the reflected dunders share their forward
+        // twin's slot: a twin provider anywhere on the MRO re-wires the
+        // shared dict-driven lookup instead (either spelling installs it)
+        if (PyTypeSlots.GetConvergedTwinName(name) is { } twinName)
+        {
+            for (int i = 0; i < mro.Length; i++)
+            {
+                if (mro[i].PyAttributes.TryGetValue(twinName, out var twinValue))
+                {
+                    type.Slots.TrySetSlot(twinName, twinValue);
+                    return;
+                }
+            }
+        }
+
         // CPython update_one_slot: no dict provider anywhere clears the slot
         type.Slots.ClearSlot(name);
     }
@@ -668,10 +684,134 @@ partial class PyTypeObject
             _ => throw new UnreachableException(),
         };
 
-        foreach (var type in self.PyType.InternalMRO)
+        return CallDunder(context, self.PyType, name, self, other);
+    }
+
+    // slot_nb_add (SLOT1BINFULL, typeobject.c) for the arithmetic family:
+    // the shared dict-driven entries installed for runtime classes
+    // resolving an arithmetic dunder — either spelling (__add__ or
+    // __radd__) lands on the same delegate, so the binary_op1
+    // slotw == slotv skip keeps heap-type pairs on one resolution. Like
+    // LookupRichCompare, the receiver's MRO is walked at call time and the
+    // dict entry is the source of truth. The SLOT1BINFULL reflection steps
+    // ride inside: do_other asks whether the OTHER type resolves the same
+    // family through this very shared delegate (only such a type can carry
+    // the reflected method), the self side runs only for a self of that
+    // same shape, a proper-subclass other with a genuinely overloaded
+    // reflected method tries it first, and an identical-type pair never
+    // falls back to the reflected method
+    internal static readonly PyBinaryFunction LookupAdd = CreateBinaryLookup(static s => s.Add, PySpecialNames.Add, PySpecialNames.RAdd);
+    internal static readonly PyBinaryFunction LookupSub = CreateBinaryLookup(static s => s.Sub, PySpecialNames.Sub, PySpecialNames.RSub);
+    internal static readonly PyBinaryFunction LookupMul = CreateBinaryLookup(static s => s.Mul, PySpecialNames.Mul, PySpecialNames.RMul);
+    internal static readonly PyBinaryFunction LookupMatMul = CreateBinaryLookup(static s => s.MatMul, PySpecialNames.MatMul, PySpecialNames.RMatMul);
+    internal static readonly PyBinaryFunction LookupTrueDiv = CreateBinaryLookup(static s => s.TrueDiv, PySpecialNames.TrueDiv, PySpecialNames.RTrueDiv);
+    internal static readonly PyBinaryFunction LookupFloorDiv = CreateBinaryLookup(static s => s.FloorDiv, PySpecialNames.FloorDiv, PySpecialNames.RFloorDiv);
+    internal static readonly PyBinaryFunction LookupMod = CreateBinaryLookup(static s => s.Mod, PySpecialNames.Mod, PySpecialNames.RMod);
+    internal static readonly PyBinaryFunction LookupDivMod = CreateBinaryLookup(static s => s.DivMod, PySpecialNames.DivMod, PySpecialNames.RDivMod);
+    internal static readonly PyBinaryFunction LookupLShift = CreateBinaryLookup(static s => s.LShift, PySpecialNames.LShift, PySpecialNames.RLShift);
+    internal static readonly PyBinaryFunction LookupRShift = CreateBinaryLookup(static s => s.RShift, PySpecialNames.RShift, PySpecialNames.RRShift);
+    internal static readonly PyBinaryFunction LookupAnd = CreateBinaryLookup(static s => s.And, PySpecialNames.And, PySpecialNames.RAnd);
+    internal static readonly PyBinaryFunction LookupXor = CreateBinaryLookup(static s => s.Xor, PySpecialNames.Xor, PySpecialNames.RXor);
+    internal static readonly PyBinaryFunction LookupOr = CreateBinaryLookup(static s => s.Or, PySpecialNames.Or, PySpecialNames.ROr);
+
+    // slot_nb_power: a None modulus drops the third argument entirely
+    // (slot_nb_power_binary), a real one carries it to both spellings
+    internal static readonly PyTernaryFunction LookupPow = CreatePowLookup(PySpecialNames.Pow, PySpecialNames.RPow);
+
+    private static PyBinaryFunction CreateBinaryLookup(Func<PyTypeSlots, PyBinaryFunction?> forward, string name, string reflectedName)
+    {
+        PyBinaryFunction lookup = null!;
+        lookup = (context, self, other) =>
+        {
+            var selfType = self.PyType;
+            var otherType = other.PyType;
+            var doOther = !ReferenceEquals(selfType, otherType)
+                && ReferenceEquals(forward(otherType.Slots), lookup);
+
+            if (ReferenceEquals(forward(selfType.Slots), lookup))
+            {
+                if (doOther && otherType.IsSubclassOf(selfType) && IsReflectedOverloaded(selfType, otherType, reflectedName))
+                {
+                    var reflectedFirst = CallDunder(context, otherType, reflectedName, other, self);
+                    if (!reflectedFirst.IsNotImplemented)
+                        return reflectedFirst;
+                    // already tried once — the final step must not repeat it
+                    doOther = false;
+                }
+                var result = CallDunder(context, selfType, name, self, other);
+                if (!result.IsNotImplemented || ReferenceEquals(selfType, otherType))
+                    return result;
+            }
+            if (doOther)
+                return CallDunder(context, otherType, reflectedName, other, self);
+            return PyNotImplementedObject.NotImplemented;
+        };
+        return lookup;
+    }
+
+    private static PyTernaryFunction CreatePowLookup(string name, string reflectedName)
+    {
+        return (context, self, other, modulo) =>
+        {
+            var selfType = self.PyType;
+            var otherType = other.PyType;
+            var doOther = !ReferenceEquals(selfType, otherType)
+                && ReferenceEquals(otherType.Slots.Pow, LookupPow);
+
+            PyResult Call(PyTypeObject startType, string dunderName, PyObject first, PyObject second)
+                => modulo is PyNoneObject
+                    ? CallDunder(context, startType, dunderName, first, second)
+                    : CallTernaryDunder(context, startType, dunderName, first, second, modulo);
+
+            if (ReferenceEquals(selfType.Slots.Pow, LookupPow))
+            {
+                if (doOther && otherType.IsSubclassOf(selfType) && IsReflectedOverloaded(selfType, otherType, reflectedName))
+                {
+                    var reflectedFirst = Call(otherType, reflectedName, other, self);
+                    if (!reflectedFirst.IsNotImplemented)
+                        return reflectedFirst;
+                    doOther = false;
+                }
+                var result = Call(selfType, name, self, other);
+                if (!result.IsNotImplemented || ReferenceEquals(selfType, otherType))
+                    return result;
+            }
+            if (doOther)
+                return Call(otherType, reflectedName, other, self);
+            return PyNotImplementedObject.NotImplemented;
+        };
+    }
+
+    // method_is_overloaded (typeobject.c): the right type's reflected
+    // entry exists and differs from the left type's — only a genuine
+    // overload justifies the right-first try
+    private static bool IsReflectedOverloaded(PyTypeObject leftType, PyTypeObject rightType, string reflectedName)
+    {
+        if (!PyObject.TryLookupAttrInMro(rightType, reflectedName, out var rightEntry))
+            return false;
+        return !PyObject.TryLookupAttrInMro(leftType, reflectedName, out var leftEntry)
+            || !ReferenceEquals(leftEntry, rightEntry);
+    }
+
+    // the MRO walk behind the dict-driven lookups (vectorcall_maybe): the
+    // first own-dict hit on the start type's MRO answers, no hit declines
+    private static PyResult CallDunder(PyCallContext context, PyTypeObject startType, string name, PyObject self, PyObject other)
+    {
+        foreach (var type in startType.InternalMRO)
         {
             if (type.PyAttributes.TryGetValue(name, out var value))
                 return value.Call(context, [self, other]);
+        }
+
+        return PyNotImplementedObject.NotImplemented;
+    }
+
+    private static PyResult CallTernaryDunder(PyCallContext context, PyTypeObject startType, string name, PyObject self, PyObject other, PyObject modulo)
+    {
+        foreach (var type in startType.InternalMRO)
+        {
+            if (type.PyAttributes.TryGetValue(name, out var value))
+                return value.Call(context, [self, other, modulo]);
         }
 
         return PyNotImplementedObject.NotImplemented;

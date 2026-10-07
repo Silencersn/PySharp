@@ -177,47 +177,13 @@ partial class PyTypeObject
         [PySpecialMethod("__or__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Or(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__radd__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RAdd(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rsub__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RSub(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RMul(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rmatmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RMatMul(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rtruediv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RTrueDiv(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rfloordiv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RFloorDiv(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rmod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RMod(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rdivmod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RDivMod(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rpow__", typeof(PyTernaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo);
-
-        [PySpecialMethod("__rlshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RLShift(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rrshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RRShift(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rand__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RAnd(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__rxor__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void RXor(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__ror__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
-        static partial void ROr(PyCallContext context, TObject self, PyObject other);
+        // The reflected arithmetic dunders (__radd__ .. __ror__) left this
+        // manifest in the slot layering rework: like CPython's SLOT1BINFULL
+        // slot_nb_add, the reflection protocol lives inside the forward
+        // slot's bridge (forward guard, then the reflected fallback with
+        // the pair flipped), never in dedicated r* slot fields. The
+        // type-safe R* virtual methods stay on PyTypeObject<TObject> as
+        // plain virtuals (no [PySpecialMethod], no generated bridges).
 
         [PySpecialMethod("__missing__", typeof(PyBinaryFunction))]
         static partial void Missing(PyCallContext context, TObject self, PyObject key);

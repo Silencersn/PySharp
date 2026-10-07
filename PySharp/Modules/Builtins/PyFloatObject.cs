@@ -602,10 +602,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             [PyIntObject.FromInteger(34), PyStrObject.FromString("Result too large")]);
         return PyResult.FromException(exception);
     }
+    [PySlot]
     protected override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Add(context, self, other);
     }
+    [PySlot]
     protected override PyResult RSub(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
@@ -615,10 +617,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RSub(context, self, other),
         };
     }
+    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Mul(context, self, other);
     }
+    [PySlot]
     protected override PyResult RTrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -631,6 +635,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RTrueDiv(context, self, other),
         };
     }
+    [PySlot]
     protected override PyResult RFloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -650,6 +655,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         }
         return base.RFloorDiv(context, self, other);
     }
+    [PySlot]
     protected override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -669,6 +675,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                 return base.RDivMod(context, self, other);
         }
     }
+    [PySlot]
     protected override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -681,6 +688,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RMod(context, self, other),
         };
     }
+    [PySlot]
     protected override PyResult RPow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
@@ -1729,42 +1737,11 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         return obj;
     }
 
-    // stage-3 pilot of the reflected-fallback bridge: the forward binary
-    // slots move off the sealed bridges (whose foreign-self guard is a hard
-    // TypeError) onto the SLOT1BINFULL-shaped bridge — forward guard, then
-    // the reflected fallback with the pair flipped back, ready for the
-    // original-order third step while the adaptation view still dispatches
-    // through the kept reflected slots. The hand-written R* overrides stay
-    // on the type-safe surface; the bridge is what makes them reachable
-    // from the C form.
-    protected override void PostConstruct()
-    {
-        base.PostConstruct();
-
-        var number = Slots.Number!;
-        PyBinaryFunction add = BridgeBinarySlot(Add, RAdd);
-        number.Add = add;
-        PyAttributes[PySpecialNames.Add] = new PyWrapperDescriptorObject(add);
-        PyBinaryFunction sub = BridgeBinarySlot(Sub, RSub);
-        number.Sub = sub;
-        PyAttributes[PySpecialNames.Sub] = new PyWrapperDescriptorObject(sub);
-        PyBinaryFunction mul = BridgeBinarySlot(Mul, RMul);
-        number.Mul = mul;
-        PyAttributes[PySpecialNames.Mul] = new PyWrapperDescriptorObject(mul);
-        PyBinaryFunction trueDiv = BridgeBinarySlot(TrueDiv, RTrueDiv);
-        number.TrueDiv = trueDiv;
-        PyAttributes[PySpecialNames.TrueDiv] = new PyWrapperDescriptorObject(trueDiv);
-        PyBinaryFunction floorDiv = BridgeBinarySlot(FloorDiv, RFloorDiv);
-        number.FloorDiv = floorDiv;
-        PyAttributes[PySpecialNames.FloorDiv] = new PyWrapperDescriptorObject(floorDiv);
-        PyBinaryFunction divMod = BridgeBinarySlot(DivMod, RDivMod);
-        number.DivMod = divMod;
-        PyAttributes[PySpecialNames.DivMod] = new PyWrapperDescriptorObject(divMod);
-        PyBinaryFunction mod = BridgeBinarySlot(Mod, RMod);
-        number.Mod = mod;
-        PyAttributes[PySpecialNames.Mod] = new PyWrapperDescriptorObject(mod);
-        PyTernaryFunction pow = BridgeTernarySlot(Pow, RPow);
-        number.Pow = pow;
-        PyAttributes[PySpecialNames.Pow] = new PyWrapperDescriptorObject(pow);
-    }
+    // the stage-3 pilot rewiring this constructor carried (the forward
+    // slots moved onto SLOT1BINFULL-shaped bridges by hand) retired with
+    // the reflected slots: the generated FillSlots now wires the same
+    // shape straight from the sealed bridges, and FillReflectedSlots
+    // provides the __r*__ dict views over the hand-written R* overrides
+    // (float keeps the type-safe RSub/RTrueDiv/RFloorDiv/RDivMod/RMod/
+    // RPow semantics — the bridge's flipped fallback reaches them)
 }

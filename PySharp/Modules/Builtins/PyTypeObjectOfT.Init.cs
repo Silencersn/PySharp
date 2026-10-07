@@ -68,16 +68,15 @@ partial class PyTypeObject<TObject>
     }
 
     // CPython add_operators: every non-null as_number slot exposes a
-    // reflected view of the forward slot. The slot field mirrors
-    // SLOT1BIN's dispatch step — PyOperators already swaps the operands,
-    // so __r*(self=right operand, other=left operand) forwards as
-    // (self, other) — while the own-dict wrapper mirrors
-    // wrap_binaryfunc_r / wrap_ternaryfunc_r and flips them, because
-    // attribute-level x.__rop__(y) means y op x. A hand-written R*
-    // override keeps its slot, and a static builtin whose forward slot
-    // is inherited from a base (slot_inherited) skips the own-dict
-    // wrapper so attribute lookup resolves to the base's wrapper — bool
-    // has no __radd__ of its own and picks up int's through the MRO.
+    // reflected dict view (wrap_binaryfunc_r / wrap_ternaryfunc_r) — the
+    // view flips the pair and hands it to the forward slot, running only
+    // when the other operand carries this layout (a sealed bridge needs a
+    // TObject self). A hand-written R* override instead exposes its own
+    // dict view directly (FillReflectedView); a static builtin whose
+    // forward slot is inherited from a base (slot_inherited) skips the
+    // own-dict wrapper so attribute lookup resolves to the base's
+    // wrapper — bool has no __radd__ of its own and picks up int's
+    // through the MRO.
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void FillReflectedSlots()
     {
@@ -85,39 +84,43 @@ partial class PyTypeObject<TObject>
         if (number is null)
             return;
 
-        FillReflectedSlot(number, PySpecialNames.RAdd, static n => n.Add, static n => n.RAdd, static (n, f) => n.RAdd = f);
-        FillReflectedSlot(number, PySpecialNames.RMul, static n => n.Mul, static n => n.RMul, static (n, f) => n.RMul = f);
-        FillReflectedSlot(number, PySpecialNames.RSub, static n => n.Sub, static n => n.RSub, static (n, f) => n.RSub = f);
-        FillReflectedSlot(number, PySpecialNames.RMatMul, static n => n.MatMul, static n => n.RMatMul, static (n, f) => n.RMatMul = f);
-        FillReflectedSlot(number, PySpecialNames.RTrueDiv, static n => n.TrueDiv, static n => n.RTrueDiv, static (n, f) => n.RTrueDiv = f);
-        FillReflectedSlot(number, PySpecialNames.RFloorDiv, static n => n.FloorDiv, static n => n.RFloorDiv, static (n, f) => n.RFloorDiv = f);
-        FillReflectedSlot(number, PySpecialNames.RMod, static n => n.Mod, static n => n.RMod, static (n, f) => n.RMod = f);
-        FillReflectedSlot(number, PySpecialNames.RDivMod, static n => n.DivMod, static n => n.RDivMod, static (n, f) => n.RDivMod = f);
-        FillReflectedSlot(number, PySpecialNames.RLShift, static n => n.LShift, static n => n.RLShift, static (n, f) => n.RLShift = f);
-        FillReflectedSlot(number, PySpecialNames.RRShift, static n => n.RShift, static n => n.RRShift, static (n, f) => n.RRShift = f);
-        FillReflectedSlot(number, PySpecialNames.RAnd, static n => n.And, static n => n.RAnd, static (n, f) => n.RAnd = f);
-        FillReflectedSlot(number, PySpecialNames.RXor, static n => n.Xor, static n => n.RXor, static (n, f) => n.RXor = f);
-        FillReflectedSlot(number, PySpecialNames.ROr, static n => n.Or, static n => n.ROr, static (n, f) => n.ROr = f);
+        FillReflectedSlot(number, PySpecialNames.RAdd, static n => n.Add);
+        FillReflectedSlot(number, PySpecialNames.RMul, static n => n.Mul);
+        FillReflectedSlot(number, PySpecialNames.RSub, static n => n.Sub);
+        FillReflectedSlot(number, PySpecialNames.RMatMul, static n => n.MatMul);
+        FillReflectedSlot(number, PySpecialNames.RTrueDiv, static n => n.TrueDiv);
+        FillReflectedSlot(number, PySpecialNames.RFloorDiv, static n => n.FloorDiv);
+        FillReflectedSlot(number, PySpecialNames.RMod, static n => n.Mod);
+        FillReflectedSlot(number, PySpecialNames.RDivMod, static n => n.DivMod);
+        FillReflectedSlot(number, PySpecialNames.RLShift, static n => n.LShift);
+        FillReflectedSlot(number, PySpecialNames.RRShift, static n => n.RShift);
+        FillReflectedSlot(number, PySpecialNames.RAnd, static n => n.And);
+        FillReflectedSlot(number, PySpecialNames.RXor, static n => n.Xor);
+        FillReflectedSlot(number, PySpecialNames.ROr, static n => n.Or);
 
-
-        if (number.RPow is null && number.Pow is not null && !IsInheritedPowSlot(number))
+        // same hand-written-override and inheritance yields as the binary
+        // views (see FillReflectedSlot)
+        if (number.Pow is not null
+            && !PyAttributes.ContainsKey(PySpecialNames.RPow)
+            && !IsInheritedPowSlot(number))
         {
             PyTernaryFunction powFunc = number.Pow;
-            // same slot/wrapper split as the binary views: the dispatch
-            // path swaps the operands, the attribute wrapper flips them
-            PyResult Slot(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
-                => self is TObject ? powFunc(context, self, other, modulo) : PyNotImplementedObject.NotImplemented;
+            // same flip as the binary views; the modulo rides along
+            // untouched
             PyResult Attribute(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
-                => other is TObject ? powFunc(context, other, self, modulo) : PyNotImplementedObject.NotImplemented;
-            number.RPow = Slot;
+                => other is TObject otherOfT ? powFunc(context, otherOfT, self, modulo) : PyNotImplementedObject.NotImplemented;
             PyAttributes[PySpecialNames.RPow] = new PyWrapperDescriptorObject((PyTernaryFunction)Attribute);
         }
     }
 
-    private void FillReflectedSlot(PyTypeSlots.PyNumberMethods number, string reflectedName, Func<PyTypeSlots.PyNumberMethods, PyBinaryFunction?> forward, Func<PyTypeSlots.PyNumberMethods, PyBinaryFunction?> reflectedGet, Action<PyTypeSlots.PyNumberMethods, PyBinaryFunction> setReflected)
+    private void FillReflectedSlot(PyTypeSlots.PyNumberMethods number, string reflectedName, Func<PyTypeSlots.PyNumberMethods, PyBinaryFunction?> forward)
     {
-        // a hand-written override already wired the slot and its wrapper
-        if (reflectedGet(number) is not null)
+        // a hand-written override already wired its own dict view
+        // (FillReflectedView runs earlier in FillSlots)
+        if (PyAttributes.ContainsKey(reflectedName))
+            return;
+        // no forward slot, no synthesized view
+        if (forward(number) is null)
             return;
         // a static builtin inheriting the forward slot resolves the
         // reflected attribute through the base's dict (CPython
@@ -125,27 +128,32 @@ partial class PyTypeObject<TObject>
         if (IsInheritedForwardSlot(number, forward))
             return;
 
-        var func = forward(number);
-        if (func is null)
-            return;
-
-        PyBinaryFunction forwardFunc = func;
-        // the dispatch path already swapped the operands, so the slot's
-        // self is a right-side instance and forwards as (self, other);
-        // the guard lets an inherited slot decline with NotImplemented
-        // instead of letting the sealed bridge raise on a foreign self
-        PyResult Slot(PyCallContext context, PyObject self, PyObject other)
-            => self is TObject ? forwardFunc(context, self, other) : PyNotImplementedObject.NotImplemented;
-        // CPython's forward C slot is order-agnostic (CHECK_BINOP checks
-        // both operands), so wrap_binaryfunc_r can hand it the flipped
-        // pair; the sealed bridge only accepts a TObject self, so the
-        // flipped forwarding self is the caller's other
+        PyBinaryFunction forwardFunc = forward(number)!;
         PyResult Attribute(PyCallContext context, PyObject self, PyObject other)
-            => other is TObject ? forwardFunc(context, other, self) : PyNotImplementedObject.NotImplemented;
-        setReflected(number, Slot);
-        // a method group's natural type is the matching System.Func, so
-        // the wrapper delegate kind must be spelled out explicitly
+            => other is TObject otherOfT ? forwardFunc(context, otherOfT, self) : PyNotImplementedObject.NotImplemented;
         PyAttributes[reflectedName] = new PyWrapperDescriptorObject((PyBinaryFunction)Attribute);
+    }
+
+    // The dict view for a hand-written R* override: x.__r*(y) answers the
+    // override's own (x, y) directly — the dispatch path reaches the same
+    // body through the forward bridge's flipped fallback, so both faces
+    // stay one implementation. Generated into FillSlots for every [PySlot]
+    // marked R* override (the reflected names have no slot fields of
+    // their own).
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillReflectedView(string name, Func<PyCallContext, TObject, PyObject, PyResult> reflectedVirtual)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, PyObject other)
+            => self is TObject selfOfT ? reflectedVirtual(context, selfOfT, other) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyBinaryFunction)Attribute);
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillReflectedView(string name, Func<PyCallContext, TObject, PyObject, PyObject, PyResult> reflectedVirtual)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
+            => self is TObject selfOfT ? reflectedVirtual(context, selfOfT, other, modulo) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyTernaryFunction)Attribute);
     }
 
     // the forward delegate is inherited when the first MRO base with a

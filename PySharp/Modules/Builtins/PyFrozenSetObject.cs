@@ -400,22 +400,18 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         var number = Slots.Number!;
         PyBinaryFunction sub = NbSub;
         number.Sub = sub;
-        number.RSub = sub;
         PyAttributes[PySpecialNames.Sub] = new PyWrapperDescriptorObject(sub);
         PyBinaryFunction and = NbAnd;
         number.And = and;
-        number.RAnd = and;
         PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
         PyBinaryFunction xor = NbXor;
         number.Xor = xor;
-        number.RXor = xor;
         PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
         PyBinaryFunction or = NbOr;
         number.Or = or;
-        number.ROr = or;
         PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
-        // the reflected wrappers keep the synthesizer's guarded flip: a
-        // direct x.__r*(y) call only runs when y carries this layout
+        // the reflected wrappers keep the guarded flip (wrap_binaryfunc_r):
+        // a direct x.__r*(y) call only runs when y carries this layout
         PyAttributes[PySpecialNames.RSub] = new PyWrapperDescriptorObject(ReflectedWrapper(NbSub));
         PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));
         PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
