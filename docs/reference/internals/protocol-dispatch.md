@@ -139,6 +139,28 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 float 的手写重接已由生成的桥形态取代。已知语义判型差异（类型相等检查走 `__eq__`）
 与 `divmod` 简化协议仍以 `frozen-baseline` 注释显式冻结，留给迁移后的日常对齐节奏。
 
+## 宽槽位与 CPython 查名路径的已知差异
+
+`PyTypeSlots` 的槽面比 CPython 的 slotdefs 宽：`__complex__`、`__missing__`、
+`__set_name__`、`__format__`、`__enter__`、`__exit__`、`__aenter__`、`__aexit__`、
+`__reversed__`、`__round__`、`__trunc__`、`__floor__`、`__ceil__` 这十三个 dunder
+在 CPython 中不是槽，由各协议入口（`format()`、`complex()`、`math.floor`、
+`round()`、`reversed()`、with 语句等）经 `_PyObject_LookupSpecial` 实时查名；
+PySharp 把它们提升为槽字段（MRO 引用合并 + `TrySetSlot` 显式更新）。运行语义
+与 CPython 一致——两侧都只看类型、绕过实例字典与 `__getattribute__` 覆写，
+None 赋值语义、运行期增删后的回落（如 `reversed()` 回落序列协议）、
+`__set_name__` 仅类创建时触发、`__missing__` 仅 dict 消费、`int()` 不回落
+`__trunc__` 等边界均经 CPython 3.14 差分运行验证一致。已知差异只有一处：
+
+- **绑定的时机与描述符协议**：CPython 的绑定发生在查找时——查到的对象有
+  `tp_descr_get` 才绑定，非描述符原样返回；PySharp 的绑定发生在接线时——
+  `TrySetSlot` 与构造期同路，把赋入值统一转换为携带 self 的槽 delegate。
+- **差异场景**：把非描述符可调用对象（内建函数等）或 `staticmethod` 赋给这些
+  dunder 时，CPython 的调用不带 self（`C.__format__ = print` 后 `format(C(), "X")`
+  调 `print("X")`），PySharp 把 self 焊进调用形态（调 `print(self, "X")`）。
+  普通 `def`/`lambda` 是描述符，两侧绑定结果一致，method descriptor（如
+  `str.upper`）的绑定校验也一致。
+
 ## 比较器
 
 `Runtime/Comparison/` 下的类型：
