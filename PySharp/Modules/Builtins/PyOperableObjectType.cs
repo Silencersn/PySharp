@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace PySharp.Modules.Builtins;
 
@@ -134,4 +135,72 @@ public abstract partial class PyOperableObjectType<TObject> : PyTypeObject where
     // the skeleton and the public entries, not in per-op slots
     protected internal virtual PyResult RichCompare(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op)
         => PyNotImplementedObject.NotImplemented;
+
+    // The SLOT1BINFULL-shaped bridge factory (typeobject.c slot_nb_add is
+    // the reference): a slot implementation that runs the type-safe forward
+    // virtual entry for a TObject self, and — once that declines, or when
+    // the self position carries a foreign object (the original-order call
+    // of a right-side type, CPython binary_op1's third step) — falls back
+    // to the reflected virtual entry with the pair flipped back. The
+    // fallback is what keeps top-level R* overrides reachable once the
+    // reflected slot fields retire; while the adaptation view still
+    // dispatches, it simply never sees a foreign self.
+    //
+    // Frozen-baseline note: the same-layout omission below declines for
+    // any TObject other, which is coarser than CPython's exact
+    // Py_TYPE(self) != Py_TYPE(other) do_other test; the dispatch orders
+    // that would expose the difference are unreachable under the current
+    // adaptation-view dispatcher, and the tightening belongs to the
+    // post-migration alignment pass.
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected PyBinaryFunction BridgeBinarySlot(
+        Func<PyCallContext, TObject, PyObject, PyResult> forward,
+        Func<PyCallContext, TObject, PyObject, PyResult> reflected)
+    {
+        return (context, self, other) =>
+        {
+            if (self is TObject typedSelf)
+            {
+                var result = forward(context, typedSelf, other);
+                if (!result.IsNotImplemented)
+                    return result;
+                // binary_op1: identical operand types resolve to a single
+                // shared slot — the reflected method never runs
+                if (other is TObject)
+                    return PyNotImplementedObject.NotImplemented;
+            }
+            if (other is TObject typedOther)
+            {
+                var result = reflected(context, typedOther, self);
+                if (!result.IsNotImplemented)
+                    return result;
+            }
+            return PyNotImplementedObject.NotImplemented;
+        };
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected PyTernaryFunction BridgeTernarySlot(
+        Func<PyCallContext, TObject, PyObject, PyObject, PyResult> forward,
+        Func<PyCallContext, TObject, PyObject, PyObject, PyResult> reflected)
+    {
+        return (context, self, other, third) =>
+        {
+            if (self is TObject typedSelf)
+            {
+                var result = forward(context, typedSelf, other, third);
+                if (!result.IsNotImplemented)
+                    return result;
+                if (other is TObject)
+                    return PyNotImplementedObject.NotImplemented;
+            }
+            if (other is TObject typedOther)
+            {
+                var result = reflected(context, typedOther, self, third);
+                if (!result.IsNotImplemented)
+                    return result;
+            }
+            return PyNotImplementedObject.NotImplemented;
+        };
+    }
 }

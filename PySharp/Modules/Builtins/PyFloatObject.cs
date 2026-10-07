@@ -1728,4 +1728,43 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         }
         return obj;
     }
+
+    // stage-3 pilot of the reflected-fallback bridge: the forward binary
+    // slots move off the sealed bridges (whose foreign-self guard is a hard
+    // TypeError) onto the SLOT1BINFULL-shaped bridge — forward guard, then
+    // the reflected fallback with the pair flipped back, ready for the
+    // original-order third step while the adaptation view still dispatches
+    // through the kept reflected slots. The hand-written R* overrides stay
+    // on the type-safe surface; the bridge is what makes them reachable
+    // from the C form.
+    protected override void PostConstruct()
+    {
+        base.PostConstruct();
+
+        var number = Slots.Number!;
+        PyBinaryFunction add = BridgeBinarySlot(Add, RAdd);
+        number.Add = add;
+        PyAttributes[PySpecialNames.Add] = new PyWrapperDescriptorObject(add);
+        PyBinaryFunction sub = BridgeBinarySlot(Sub, RSub);
+        number.Sub = sub;
+        PyAttributes[PySpecialNames.Sub] = new PyWrapperDescriptorObject(sub);
+        PyBinaryFunction mul = BridgeBinarySlot(Mul, RMul);
+        number.Mul = mul;
+        PyAttributes[PySpecialNames.Mul] = new PyWrapperDescriptorObject(mul);
+        PyBinaryFunction trueDiv = BridgeBinarySlot(TrueDiv, RTrueDiv);
+        number.TrueDiv = trueDiv;
+        PyAttributes[PySpecialNames.TrueDiv] = new PyWrapperDescriptorObject(trueDiv);
+        PyBinaryFunction floorDiv = BridgeBinarySlot(FloorDiv, RFloorDiv);
+        number.FloorDiv = floorDiv;
+        PyAttributes[PySpecialNames.FloorDiv] = new PyWrapperDescriptorObject(floorDiv);
+        PyBinaryFunction divMod = BridgeBinarySlot(DivMod, RDivMod);
+        number.DivMod = divMod;
+        PyAttributes[PySpecialNames.DivMod] = new PyWrapperDescriptorObject(divMod);
+        PyBinaryFunction mod = BridgeBinarySlot(Mod, RMod);
+        number.Mod = mod;
+        PyAttributes[PySpecialNames.Mod] = new PyWrapperDescriptorObject(mod);
+        PyTernaryFunction pow = BridgeTernarySlot(Pow, RPow);
+        number.Pow = pow;
+        PyAttributes[PySpecialNames.Pow] = new PyWrapperDescriptorObject(pow);
+    }
 }
