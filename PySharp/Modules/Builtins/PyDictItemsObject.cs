@@ -110,6 +110,35 @@ public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObje
         return CompareView(context, self, other, PyOperatorTypes.GtE);
     }
 
+    // CPython dictviews_as_number: the four set operations on dict_items
+    protected override PyResult Sub(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return ViewDifference(context, self, other);
+    }
+
+    protected override PyResult And(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return ViewIntersection(context, self, other);
+    }
+
+    protected override PyResult Xor(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return ViewSymmetricDifference(context, self, other);
+    }
+
+    protected override PyResult Or(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return ViewUnion(context, self, other);
+    }
+
+    // hand-written because the synthesized slot would compute
+    // view - other, while CPython's slotw(v, w) keeps the left operand
+    // as the minuend (see ViewLeftDifference)
+    protected override PyResult RSub(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return ViewLeftDifference(context, other, self);
+    }
+
     // CPython dictitems_contains: only a 2-tuple can match; the pair key
     // is looked up in the source dict (unhashable keys raise) and the
     // stored value is compared with ==.
@@ -238,6 +267,165 @@ public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObje
         }
 
         return ContainsItem(context, view, element);
+    }
+
+    // ---- set operations (CPython dictviews_as_number) ----
+
+    // CPython dictviews_to_set: materialize the view into a fresh table;
+    // keys hash straight from the source dict, items as pair tuples. The
+    // entry snapshot keeps a rehashing callback from invalidating the walk.
+    private static PySetOps.TableResult ViewToTable(PyCallContext context, PyDictItemsObject self)
+    {
+        var table = new PySetTable();
+        var asItems = self.DefaultPyType is PyDictItemsObjectType;
+        foreach (var entry in self._dict.Entries.ToArray())
+        {
+            var element = asItems
+                ? PyTupleObject.CreateTuple(entry.Key, entry.Value)
+                : entry.Key;
+
+            var hash = PySetOps.ElementHash(context, element);
+            if (hash.IsError)
+                return hash.ExceptionResult;
+
+            var added = table.Add(context, element, (long)hash.Value.Value);
+            if (added.IsError)
+                return added.ExceptionResult;
+        }
+
+        return table;
+    }
+
+    private static PyResult ViewToSetResult(PyCallContext context, PyDictItemsObject self, PyObject other, Func<PyCallContext, PySetTable, PyObject, PyResult> apply)
+    {
+        var table = ViewToTable(context, self);
+        if (table.IsError)
+            return PyResult.FromException(table.Error!);
+
+        var result = apply(context, table.Table, other);
+        if (result.IsError)
+            return result;
+
+        return new PySetObject(table.Table);
+    }
+
+    // CPython dictviews_or: set(self), then fold other's elements in
+    internal static PyResult ViewUnion(PyCallContext context, PyDictItemsObject self, PyObject other)
+        => ViewToSetResult(context, self, other, static (context, table, other) => PySetOps.Update(context, table, other));
+
+    // CPython dictviews_sub: set(self), then discard other's elements
+    internal static PyResult ViewDifference(PyCallContext context, PyDictItemsObject self, PyObject other)
+        => ViewToSetResult(context, self, other, static (context, table, other) => PySetOps.DifferenceUpdate(context, table, other));
+
+    // CPython binary_op1's reflected try calls the right type's slot with
+    // the ORIGINAL operand order, so dictviews_sub materializes v — the
+    // operand left of `-` — and subtracts the view's elements: set -
+    // view keeps the left side's contents, not the view's
+    internal static PyResult ViewLeftDifference(PyCallContext context, PyObject left, PyDictItemsObject right)
+    {
+        var table = new PySetTable();
+        var updated = PySetOps.Update(context, table, left);
+        if (updated.IsError)
+            return updated;
+
+        var removed = PySetOps.DifferenceUpdate(context, table, right);
+        if (removed.IsError)
+            return removed;
+
+        return new PySetObject(table);
+    }
+
+    // CPython _PyDictView_Intersect: iterate other's elements probing the
+    // view's contents — IntersectionTableOfIterable walks other the same way
+    internal static PyResult ViewIntersection(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        var table = ViewToTable(context, self);
+        if (table.IsError)
+            return PyResult.FromException(table.Error!);
+
+        var intersection = PySetOps.IntersectionTableOfIterable(context, table.Table, other);
+        if (intersection.IsError)
+            return PyResult.FromException(intersection.Error!);
+
+        return new PySetObject(intersection.Table);
+    }
+
+    // CPython dictviews_xor: two items views take the key-indexed path
+    // that drops equal-valued pairs before any set add; everything else
+    // materializes self first and symmetric-differences with other
+    internal static PyResult ViewSymmetricDifference(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        if (self.DefaultPyType is PyDictItemsObjectType && other is PyDictItemsObject { DefaultPyType: PyDictItemsObjectType } otherItems)
+            return ItemsSymmetricDifference(context, self, otherItems);
+
+        return ViewToSetResult(context, self, other, static (context, table, other) =>
+        {
+            var otherTable = PySetOps.SetTableOf(other);
+            if (otherTable is null)
+            {
+                // CPython delegates to set.symmetric_difference_update, which
+                // materializes a non-set argument into a temporary set first
+                var temp = new PySetTable();
+                var updated = PySetOps.Update(context, temp, other);
+                if (updated.IsError)
+                    return updated;
+
+                otherTable = temp;
+            }
+
+            return PySetOps.SymmetricDifferenceUpdate(context, table, otherTable);
+        });
+    }
+
+    // CPython dictitems_xor_lock_held: pair up by key, delete the entries
+    // whose values compare equal, and only the survivors get hashed into
+    // the result set — an equal-but-unhashable value never reaches a set
+    // add, while a differing one fails hashing exactly as CPython does
+    private static PyResult ItemsSymmetricDifference(PyCallContext context, PyDictItemsObject self, PyDictItemsObject other)
+    {
+        var remaining = new PyDictObject(self._dict);
+        var result = new PySetObject();
+
+        foreach (var entry in other._dict.Entries.ToArray())
+        {
+            var found = remaining.GetItem(context, entry.Key);
+            if (found.IsKeyError)
+            {
+                var added = result.PyAdd(context, PyTupleObject.CreateTuple(entry.Key, entry.Value));
+                if (added.IsError)
+                    return added;
+                continue;
+            }
+
+            if (found.IsError)
+                return found;
+
+            var equal = PyComparer.Eq(context, found.Value, entry.Value);
+            if (equal.IsError)
+                return equal;
+
+            if (equal.Value.BoolValue)
+            {
+                var removed = remaining.DelItem(context, entry.Key);
+                if (removed.IsError)
+                    return removed;
+            }
+            else
+            {
+                var added = result.PyAdd(context, PyTupleObject.CreateTuple(entry.Key, entry.Value));
+                if (added.IsError)
+                    return added;
+            }
+        }
+
+        foreach (var entry in remaining.Entries.ToArray())
+        {
+            var added = result.PyAdd(context, PyTupleObject.CreateTuple(entry.Key, entry.Value));
+            if (added.IsError)
+                return added;
+        }
+
+        return result;
     }
 }
 
@@ -411,6 +599,34 @@ public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObjec
     protected override PyResult Ge(PyCallContext context, PyDictItemsObject self, PyObject other)
     {
         return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.GtE);
+    }
+
+    // CPython dictviews_as_number: the four set operations on dict_keys
+    protected override PyResult Sub(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.ViewDifference(context, self, other);
+    }
+
+    protected override PyResult And(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.ViewIntersection(context, self, other);
+    }
+
+    protected override PyResult Xor(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.ViewSymmetricDifference(context, self, other);
+    }
+
+    protected override PyResult Or(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.ViewUnion(context, self, other);
+    }
+
+    // hand-written for the same reason as dict_items: the left operand of
+    // `-` stays the minuend (see ViewLeftDifference)
+    protected override PyResult RSub(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.ViewLeftDifference(context, other, self);
     }
 }
 

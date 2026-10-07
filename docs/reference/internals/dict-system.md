@@ -180,6 +180,20 @@ dict 的三个消费场景（对象属性、帧 locals、全局名字空间）�
   正向一致。
 - 尺寸变更检测：迭代器创建时快照 `_count`，每次 `Next` 对照当前 `dict.Count`，不一致即报
   `RuntimeError("dictionary changed size during iteration")`。
+- 视图集合运算，对齐 CPython 的 `dictviews_as_number`：`dict_keys` 与 `dict_items` 各接线
+  `Sub`/`And`/`Xor`/`Or` 四槽（`dict_values` 无），共享实现集中在 `PyDictItemsObjectType`。
+  `|`、`-`、`^` 先把视图物化进 `PySetTable`（`ViewToTable`，条目快照防中途重哈希失效）再用
+  `PySetOps` 的对应批量操作折入右操作数（可为任意可迭代）；`&` 走
+  `IntersectionTableOfIterable`（遍历右操作数探测视图内容，即 CPython
+  `_PyDictView_Intersect` 的方向）。四个操作均返回新 `set`。
+- 视图的反射槽：`&`/`|`/`^` 满足交换律，由 `FillReflectedSlots` 通用合成即可等价；`-` 不满足，
+  手写 `RSub`——CPython `binary_op1` 的反射尝试以原序 `slotw(v, w)` 调用右类型槽，
+  `dictviews_sub` 的 self 位收到的是 `-` 左侧的操作数，`set - view` 保留左侧内容，因此
+  `ViewLeftDifference` 先物化左操作数再减去视图元素，而非反向。
+- items 视图间的 `^` 走 `ItemsSymmetricDifference` 特化（CPython `dictitems_xor`）：按 key
+  索引配对、值相等（经 `PyComparer.Eq`）的对直接剔除，只有幸存者才进入结果集参与哈希——
+  相等但不可哈希的值不会触达 set 插入，`d.items() ^ d.items()` 互相抵消的边界得以工作；
+  幸存对中的不可哈希值仍在 set 插入时报 TypeError，与 CPython 一致。
 
 ## 性能与并发
 
