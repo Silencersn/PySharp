@@ -56,7 +56,39 @@ public sealed partial class ProbeValueObjectType : PyTypeObject<ProbeValueObject
             : PyNotImplementedObject.NotImplemented;
 }
 
+public sealed class ProbeMirrorObject : PyObject
+{
+    public int Value { get; }
+
+    public ProbeMirrorObject(int value) => Value = value;
+
+    public override PyTypeObject DefaultPyType => ProbeMirrorObjectType.Shared;
+}
+
+[PyType("ProbeMirror", Module = "probetypes")]
+public sealed partial class ProbeMirrorObjectType : PyTypeObject<ProbeMirrorObject>
+{
+    protected override PyResult New(PyCallContext context, PyTypeObject cls,
+        IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is not 1 || args[0] is not PyIntObject value || !value.IsInt32)
+            return PyResult.TypeError("ProbeMirror() expects a single int argument");
+
+        return new ProbeMirrorObject(value.Int32Value) { _pyType = cls };
+    }
+
+    // no [PySlot] on this override on purpose: a consumer assembly cannot
+    // spell the private protected attribute, so the base declaration's
+    // marker plus the generator's symbol-level inherit lookup is the only
+    // wiring path (FillReflectedView over the override)
+    protected override PyResult RAdd(PyCallContext context, ProbeMirrorObject self, PyObject other)
+        => other is PyIntObject number && number.IsInt32
+            ? PyIntObject.FromInteger(number.Int32Value * 100 + self.Value)
+            : PyNotImplementedObject.NotImplemented;
+}
+
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbeValueObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(ProbeMirrorObjectType))]
 internal sealed partial class ProbeTypesModule : PyModuleObject
 {
     public ProbeTypesModule() : base("probetypes") { }
@@ -143,6 +175,37 @@ public sealed class ExternalTypeProtocolTests
                     raise AssertionError(f"{left!r} + ProbeValue must stay a TypeError")
             assert hasattr(type(v), "__radd__")
             """);
+    }
+
+    [TestMethod]
+    public void ReflectedOverride_WithoutMarker_WiresOutsidePySharp()
+    {
+        using var environment = NewEnvironment();
+
+        var main = Run(environment, """
+            from probetypes import ProbeMirror
+            m = ProbeMirror(7)
+            # the dict view over the RAdd override must exist without any
+            # [PySlot] on the override — consumer assemblies cannot spell
+            # the private protected attribute, so only the base
+            # declaration's marker plus the generator's inherit lookup can
+            # wire it
+            assert hasattr(ProbeMirror, "__radd__")
+            # a direct attribute call lands in the override (the
+            # identifiable arithmetic proves the override body ran), with
+            # the receiver as the RIGHT operand
+            assert m.__radd__(4) == 407
+            # a Python subclass picks the same wrapper up through the MRO;
+            # its instances still satisfy the layout guard
+            class SubMirror(ProbeMirror):
+                pass
+            s = SubMirror(3)
+            assert hasattr(SubMirror, "__radd__")
+            assert s.__radd__(4) == 403
+            RESULT = m.__radd__(10)
+            """);
+
+        Assert.AreEqual(1007, ((PyIntObject)GetAttr(main, "RESULT")).Int32Value);
     }
 
     [TestMethod]

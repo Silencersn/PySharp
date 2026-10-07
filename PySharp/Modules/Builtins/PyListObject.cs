@@ -277,7 +277,6 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return self.PyMul((int)result.Value.Value);
     }
 
-    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyListObject self, PyObject other)
     {
         return Repeat(context, self, other);

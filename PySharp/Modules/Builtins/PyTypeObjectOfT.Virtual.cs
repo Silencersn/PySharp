@@ -248,59 +248,78 @@ partial class PyTypeObject<TObject>
     // so the default simply runs the forward virtual in the given
     // argument order; a hand-written override answers as written. The
     // dict views (wrap_binaryfunc_r) are separate fixed-op wrappers, not
-    // these entries
+    // these entries.
+    // [PySlot] is an override-detection marker only, like the comparison
+    // six: the generator's symbol-level inherit lookup wires any override
+    // — consumer assemblies included, which cannot spell the private
+    // protected attribute themselves — to its dict view
+    // (FillReflectedView); no slot field backs these methods
+    [PySlot]
     protected virtual PyResult RAdd(PyCallContext context, TObject self, PyObject other)
     {
         return Add(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RSub(PyCallContext context, TObject self, PyObject other)
     {
         return Sub(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RMul(PyCallContext context, TObject self, PyObject other)
     {
         return Mul(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RMatMul(PyCallContext context, TObject self, PyObject other)
     {
         return MatMul(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RTrueDiv(PyCallContext context, TObject self, PyObject other)
     {
         return TrueDiv(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RFloorDiv(PyCallContext context, TObject self, PyObject other)
     {
         return FloorDiv(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RMod(PyCallContext context, TObject self, PyObject other)
     {
         return Mod(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RDivMod(PyCallContext context, TObject self, PyObject other)
     {
         return DivMod(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
     {
         return Pow(context, self, other, modulo);
     }
+    [PySlot]
     protected virtual PyResult RLShift(PyCallContext context, TObject self, PyObject other)
     {
         return LShift(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RRShift(PyCallContext context, TObject self, PyObject other)
     {
         return RShift(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RAnd(PyCallContext context, TObject self, PyObject other)
     {
         return And(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult RXor(PyCallContext context, TObject self, PyObject other)
     {
         return Xor(context, self, other);
     }
+    [PySlot]
     protected virtual PyResult ROr(PyCallContext context, TObject self, PyObject other)
     {
         return Or(context, self, other);

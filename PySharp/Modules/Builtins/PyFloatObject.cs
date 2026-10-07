@@ -602,12 +602,10 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             [PyIntObject.FromInteger(34), PyStrObject.FromString("Result too large")]);
         return PyResult.FromException(exception);
     }
-    [PySlot]
     protected override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Add(context, self, other);
     }
-    [PySlot]
     protected override PyResult RSub(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
@@ -617,12 +615,10 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RSub(context, self, other),
         };
     }
-    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Mul(context, self, other);
     }
-    [PySlot]
     protected override PyResult RTrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -635,7 +631,6 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RTrueDiv(context, self, other),
         };
     }
-    [PySlot]
     protected override PyResult RFloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -655,7 +650,6 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         }
         return base.RFloorDiv(context, self, other);
     }
-    [PySlot]
     protected override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -675,7 +669,6 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                 return base.RDivMod(context, self, other);
         }
     }
-    [PySlot]
     protected override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
@@ -688,7 +681,6 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.RMod(context, self, other),
         };
     }
-    [PySlot]
     protected override PyResult RPow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)

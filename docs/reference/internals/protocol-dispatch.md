@@ -71,8 +71,9 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 - 反射视图合成（`PyTypeObjectOfT.Init.cs` 的 `FillReflectedSlots`，对齐 CPython
   `add_operators`）：只负责类型字典里的 `__r*__` wrapper（`wrap_binaryfunc_r`）——
   属性层 `x.__rop__(y)` 语义为 `y op x`，翻转后转发给前向槽 delegate，守卫落在翻转后
-  的 self 位（调用方的 other）。手写 `R*` 覆写（覆写处显式 `[PySlot]` 标记）改为生成
-  直连覆写的 wrapper（`FillReflectedView`）；继承的正向槽（`slot_inherited`）跳过合成，
+  的 self 位（调用方的 other）。手写 `R*` 覆写（基类声明的 `[PySlot]` 经符号级继承检测，
+  库外覆写免标记自动接线）生成直连覆写的 wrapper（`FillReflectedView`）；继承的正向槽
+  （`slot_inherited`）跳过合成，
   属性查找沿 MRO 落到基类的 wrapper（bool 没有自己的 `__radd__`，用 int 的）。
 - 协议族回退（nb → sq）：Number 组槽都放弃后，`ApplySequenceFallback` 对齐 abstract.c 的
   abstract 层回退。`+` 只试左操作数的 `sq_concat`；`*` 先试左 `sq_repeat`，左侧没有才试右侧
@@ -84,7 +85,7 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
   序列类型（str/bytes/bytearray/list/tuple）只填 Sequence 侧；删除覆盖后按 wrapper 委托与
   Sequence 槽的引用相等甄别族别并恢复（`PyWrapperDescrObject.d_base->wrapper` 签名匹配的等价物）。
   原生序列类型因此没有 `__radd__`（sq_concat 无反射变体），`__rmul__` 由手写 RMul 覆写
-  （非换序的 wrap_indexargfunc 语义，覆写处 `[PySlot]` 标记后由 `FillReflectedView`
+  （非换序的 wrap_indexargfunc 语义，覆写经继承检测后由 `FillReflectedView`
   暴露）提供。
 - match 语句的 sequence/mapping 判定与槽位无关：纯类型 flag（`PyTypeFlags.Sequence/Mapping`，
   对齐 `Py_TPFLAGS_*` 的位值），构造期查静态表并沿 MRO 继承；str/bytes/bytearray 与自带
@@ -94,7 +95,7 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
   `SwapComparisonOp` 数据表，对齐 CPython `do_richcompare` 的「交换参数加交换操作码」：
   左类型槽以 `(left, right, op)` 运行，`NotImplemented` 后右类型槽以
   `(right, left, swapped)` 运行；与算术不同，不受同类型省略的影响。类型上的六比较
-  虚方法保留（默认桥折叠进槽，覆写处 `[PySlot]` 标记触发接线）；堆类型解析任一比较
+  虚方法保留（默认桥折叠进槽，基类 `[PySlot]` 声明经继承检测触发覆写接线）；堆类型解析任一比较
   dunder 都安装共享查名桥 `LookupRichCompare`（`slot_tp_richcompare` 形态，运行时按
   op 查名）。`Eq` 是特例，反射查询两侧都查 `__eq__`，均返回 `NotImplemented` 时退化
   为引用相等。
@@ -152,8 +153,8 @@ float 的手写重接已由生成的桥形态取代。已知语义判型差异�
 ## 修改协议行为的位置
 
 - 给内建类型加协议：在元类型上覆写 `protected virtual` 方法，或 `FillSlot`，见
-  [对象模型](./object-model.md)；反射算术语义覆写 `R*` 虚方法并在覆写处加 `[PySlot]`
-  标记（生成 `FillReflectedView` 字典视图），运算协议也可改覆写中间层
+  [对象模型](./object-model.md)；反射算术语义直接覆写 `R*` 虚方法（免标记，经继承检测生成
+  `FillReflectedView` 字典视图），运算协议也可改覆写中间层
   `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`，
   见[槽位分层](#槽位分层与中间层)）。
 - 用户定义类的 `__repr__` 等在类体中定义，由类型创建路径把它们登记进类型属性与槽。

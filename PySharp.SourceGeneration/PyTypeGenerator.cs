@@ -15,9 +15,12 @@ namespace PySharp.SourceGeneration;
 [Generator]
 public class PyTypeGenerator : IIncrementalGenerator
 {
-    // the reflected virtual overrides: they own no slot fields (the
-    // reflection protocol lives inside the forward bridges), so a [PySlot]
-    // marked override exposes only its dict view (FillReflectedView)
+    // the reflected virtuals: their base declarations carry [PySlot] purely
+    // as an override-detection marker, so the symbol-level inherit lookup
+    // finds overrides in consumer assemblies too (which cannot spell the
+    // private protected attribute themselves); an override owns no slot
+    // field (the reflection protocol lives inside the forward bridges) and
+    // wires only its dict view (FillReflectedView)
     private static readonly HashSet<string> ReflectedVirtualNames =
     [
         "RAdd",

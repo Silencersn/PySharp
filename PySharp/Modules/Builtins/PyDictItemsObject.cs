@@ -134,7 +134,6 @@ public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObje
     // hand-written because the synthesized slot would compute
     // view - other, while CPython's slotw(v, w) keeps the left operand
     // as the minuend (see ViewLeftDifference)
-    [PySlot]
     protected override PyResult RSub(PyCallContext context, PyDictItemsObject self, PyObject other)
     {
         return ViewLeftDifference(context, other, self);
@@ -625,7 +624,6 @@ public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObjec
 
     // hand-written for the same reason as dict_items: the left operand of
     // `-` stays the minuend (see ViewLeftDifference)
-    [PySlot]
     protected override PyResult RSub(PyCallContext context, PyDictItemsObject self, PyObject other)
     {
         return PyDictItemsObjectType.ViewLeftDifference(context, other, self);

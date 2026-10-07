@@ -347,7 +347,6 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return PyBytesObject.FromBytes(result);
     }
 
-    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyBytesObject self, PyObject other)
     {
         return Repeat(context, self, other);

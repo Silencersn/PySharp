@@ -217,13 +217,11 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             return PyResult.ValueError(PySR.Runtime_Complex_Modulo);
         return ComplexPower(self.Value, exponent);
     }
-    [PySlot]
     protected override PyResult RAdd(PyCallContext context, PyComplexObject self, PyObject other)
     {
         // Addition is commutative, so the reflected form reuses Add.
         return Add(context, self, other);
     }
-    [PySlot]
     protected override PyResult RSub(PyCallContext context, PyComplexObject self, PyObject other)
     {
         // CPython complex_rsub computes other - self.
@@ -231,13 +229,11 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             return error ?? base.RSub(context, self, other);
         return PyComplexObject.FromComplex(value - self.Value);
     }
-    [PySlot]
     protected override PyResult RMul(PyCallContext context, PyComplexObject self, PyObject other)
     {
         // Multiplication is commutative, so the reflected form reuses Mul.
         return Mul(context, self, other);
     }
-    [PySlot]
     protected override PyResult RTrueDiv(PyCallContext context, PyComplexObject self, PyObject other)
     {
         // CPython complex_rdiv computes other / self: the zero check applies
@@ -250,7 +246,6 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             return PyComplexObject.FromComplex(ComplexQuot(numerator, self.Value));
         return PyComplexObject.FromComplex(ComplexRcQuot(numerator.Real, self.Value));
     }
-    [PySlot]
     protected override PyResult RPow(PyCallContext context, PyComplexObject self, PyObject other, PyObject modulo)
     {
         // CPython complex_rpow delegates to complex_pow(other, self): the

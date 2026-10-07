@@ -123,8 +123,8 @@ protected override PyResult GetItem(PyCallContext context, PyQueueObject self, P
 `RichCompare` 等）：接收者无类型承诺，实现方双侧守卫并以 NotImplemented 回退，签名对标
 CPython 的 `nb_*` 槽（语义与接线细节见
 [协议分发](../internals/protocol-dispatch.md)）；扩展作者一般用本层的类型安全覆写即可。
-覆写 `R*` 反射算术（如 `RSub`）时在覆写处加 `[PySlot]` 标记，类型字典的 `__rsub__`
-视图即自动生成。
+所有覆写（含 `R*` 反射算术，如 `RSub`）都免标记：基类协议声明上的 `[PySlot]` 经生成器的
+符号级继承检测发现任意程序集里的覆写，类型字典的 `__rsub__` 视图等接线自动生成。
 
 方式二，填充槽。解释器内建类型在构造函数中用 `FillSlot` 把委托挂到槽上，适合复用已有实现或
 使用非虚委托：

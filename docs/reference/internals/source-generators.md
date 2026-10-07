@@ -77,10 +77,12 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 
   槽位分层（见[协议分发](./protocol-dispatch.md)）在以上链路之外引入中间层
   `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`）与反射回退桥工厂
-  （手写接线的备选面）。外层 `PyTypeGenerator` 对两类标记做特判：比较虚方法覆写
-  （基类 `[PySlot]` 继承检测）触发 `FillRichCompareSlot()` 接线；R\* 虚方法覆写
-  （覆写处显式 `[PySlot]` 标记）生成 `FillReflectedView()`——只暴露直连覆写的字典
-  wrapper，不接槽字段（反射算术无槽字段）。
+  （手写接线的备选面）。外层 `PyTypeGenerator` 对两类覆写做特判：比较虚方法覆写触发
+  `FillRichCompareSlot()` 接线、R\* 虚方法覆写生成 `FillReflectedView()`——只暴露直连
+  覆写的字典 wrapper，不接槽字段（反射算术无槽字段）。两者都由基类协议声明上的
+  `[PySlot]` 经符号级继承检测发现，覆写侧一律免标记：`PySlotAttribute` 是
+  `private protected`，消费程序集无法拼写它，继承查找是库外覆写接线的唯一路径
+  （`ExternalTypeProtocolTests` 以探针类型钉住该场景）。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，
   与上一条的第 4 点互补。
 

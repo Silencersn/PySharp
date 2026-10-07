@@ -17,6 +17,7 @@
 | `ddcd11d0` | 4 | S1：sealed 桥升级 SLOT1BINFULL（生成器按配对表生成反射回退形态） | 全量测试零 diff |
 | `8ccc98f7` | 4 | S2：比较六槽收敛单一 RichCompare（手写槽字段 + LookupRichCompare 查名桥 + SwapComparisonOp 镜像表） | 全量测试零 diff |
 | `5dbf98c5` | 4 | S3：R\* 槽字段退役——原序反射位、堆类型查名桥、FillReflectedSlots 缩减为视图合成 | 全量测试零 diff |
+| `5a71010c` | 4 | S4：镜像硬编码清理核查 + 本篇阶段 4 记录 + 参考文档同步 | 全量测试零 diff |
 
 基线与每个验收点的全量结果一致：总计 1077 / 成功 1073 / 跳过 4 /
 失败 0。
@@ -145,9 +146,10 @@ self 时回落 R\* 虚方法（交换回传）。此前 float 的 PostConstruct 
   `A() + B()` 的 B.`__radd__` 槽被 `__add__` 名的 MRO 清空吞掉）。
 - **字典视图三分工**：未覆写类型由 `FillReflectedSlots` 合成翻转视图
   （`wrap_binaryfunc_r`：`x.__rop__(y)` = `y op x`，守卫落在翻转后的
-  self 位）；手写 R\* 覆写（覆写处显式 `[PySlot]` 标记，float/complex/
-  dict 视图/序列 RMul 等 21 处）由 `PyTypeGenerator` 生成
-  `FillReflectedView` 直连覆写；继承正向槽（slot_inherited）跳过合成
+  self 位）；手写 R\* 覆写（float/complex/dict 视图/序列 RMul 等
+  21 处）由 `PyTypeGenerator` 生成 `FillReflectedView` 直连覆写——
+  检测经基类声明的 `[PySlot]` 符号级继承查找，覆写侧免标记（S5
+  修复，见下）；继承正向槽（slot_inherited）跳过合成
   沿 MRO 捡拾基类 wrapper（bool 无自己的 `__radd__`，用 int 的）。
   默认 R\* 虚方法**不**承载属性语义（属性路径的翻转语义与分發路径
   的原序语义不同向，非交换运算下直连默认会颠倒 `x.__rsub__(y)`）——
@@ -164,3 +166,21 @@ self 时回落 R\* 虚方法（交换回传）。此前 float 的 PostConstruct 
 3. `x.__rsub__(y)` 的属性直调语义（视图合成与 FillReflectedView 的
    三分工）与 `(3.0).__rpow__(2)` 的三元让位（`ContainsKey` 检查
    漏在三元合成段）。
+
+### S5 · 覆写检测回归基类标记（复核修复）
+
+S3 删除基类 R\* 声明的 `[PySlot]`（随槽字段一起退役）后，覆写检测
+的继承查找落空，当时以 21 处覆写侧手动标记补偿。复核确认这是对
+`PyTypeObject<T>`「覆写即接线、零标记」承诺的回归：`PySlotAttribute`
+是 `private protected`，消费程序集无法拼写它——库外类型覆写 `RAdd`
+既不能自动接线（基类无标记）、也不能手动标记（不可访问），覆写
+静默失效，而用户指南仍承诺 `RAdd` 可覆写。
+
+修复回到比较族（S2）的同款形态：基类 14 个 R\* 声明恢复 `[PySlot]`
+（纯检测标记，不代表槽字段存在），`PyTypeGenerator` 的
+`ReflectedVirtualNames` 特判把命中的覆写分派到 `FillReflectedView`；
+21 处手动标记全部删除。`ExternalTypeProtocolTests` 新增
+`ProbeMirror` 探针类型——在 PySharp 之外的程序集覆写 `RAdd` 且不带
+任何标记——钉住库外免标记接线（`hasattr`、属性直调、Python 子类
+经 MRO 捡拾三条路径）。验收：全量 1078/1074/4/0（基线 + 该新用例），
+`--no-incremental` 零警告。
