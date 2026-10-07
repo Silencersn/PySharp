@@ -57,36 +57,82 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         return self;
     }
 
-    // CPython boolobject.c: bitwise ops keep bool only when both operands
-    // are bool; otherwise they fall through to the int slots (int), so the
-    // int slot's body is inlined for the non-bool case (base.And would be
-    // the generic NotImplemented fallback, not int's implementation).
-    protected override PyResult And(PyCallContext context, PyBoolObject self, PyObject other)
+    // stage-3 pilot of the C-form middle layer. The double-sided guard is
+    // load-bearing on the inheritance-sensitive path: when bool is the
+    // right operand of a subclass-ordered operation (e.g. `2 & True`), the
+    // reflected slot runs with the LEFT int operand in the self position,
+    // and declining with NotImplemented hands control to the left type's
+    // forward slot — the CPython slot convention expressed verbatim
+    protected internal override PyResult NbAnd(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyBoolObject boolSelf)
+            return PyNotImplementedObject.NotImplemented;
+
+        // CPython boolobject.c: bitwise ops keep bool only when both operands
+        // are bool; otherwise they fall through to the int slots (int), so the
+        // int slot's body is inlined for the non-bool case.
         if (other is PyBoolObject otherBool)
-            return PyBoolObject.FromBoolean(self.BoolValue & otherBool.BoolValue);
+            return PyBoolObject.FromBoolean(boolSelf.BoolValue & otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitAnd, self, intObj);
-        return base.And(context, self, other);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitAnd, boolSelf, intObj);
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    protected override PyResult Xor(PyCallContext context, PyBoolObject self, PyObject other)
+    protected internal override PyResult NbXor(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyBoolObject boolSelf)
+            return PyNotImplementedObject.NotImplemented;
+
         if (other is PyBoolObject otherBool)
-            return PyBoolObject.FromBoolean(self.BoolValue ^ otherBool.BoolValue);
+            return PyBoolObject.FromBoolean(boolSelf.BoolValue ^ otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitXor, self, intObj);
-        return base.Xor(context, self, other);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitXor, boolSelf, intObj);
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    protected override PyResult Or(PyCallContext context, PyBoolObject self, PyObject other)
+    protected internal override PyResult NbOr(PyCallContext context, PyObject self, PyObject other)
     {
+        if (self is not PyBoolObject boolSelf)
+            return PyNotImplementedObject.NotImplemented;
+
         if (other is PyBoolObject otherBool)
-            return PyBoolObject.FromBoolean(self.BoolValue | otherBool.BoolValue);
+            return PyBoolObject.FromBoolean(boolSelf.BoolValue | otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitOr, self, intObj);
-        return base.Or(context, self, other);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitOr, boolSelf, intObj);
+        return PyNotImplementedObject.NotImplemented;
     }
+
+    // rewires the three bitwise slots onto the C-form entries; the
+    // inherited arithmetic slots (Add/Sub/... off int) stay untouched, so
+    // IsInheritedForwardSlot keeps skipping their synthesis and bool keeps
+    // picking int's reflected wrappers through the MRO
+    protected override void PostConstruct()
+    {
+        base.PostConstruct();
+
+        var number = Slots.Number!;
+        PyBinaryFunction and = NbAnd;
+        number.And = and;
+        number.RAnd = and;
+        PyAttributes[PySpecialNames.And] = new PyWrapperDescriptorObject(and);
+        PyBinaryFunction xor = NbXor;
+        number.Xor = xor;
+        number.RXor = xor;
+        PyAttributes[PySpecialNames.Xor] = new PyWrapperDescriptorObject(xor);
+        PyBinaryFunction or = NbOr;
+        number.Or = or;
+        number.ROr = or;
+        PyAttributes[PySpecialNames.Or] = new PyWrapperDescriptorObject(or);
+
+        PyAttributes[PySpecialNames.RAnd] = new PyWrapperDescriptorObject(ReflectedWrapper(NbAnd));
+        PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
+        PyAttributes[PySpecialNames.ROr] = new PyWrapperDescriptorObject(ReflectedWrapper(NbOr));
+    }
+
+    private static PyBinaryFunction ReflectedWrapper(PyBinaryFunction entry)
+        => (context, self, other) => other is PyBoolObject
+            ? entry(context, other, self)
+            : PyNotImplementedObject.NotImplemented;
 
     // CPython bool has no nb_positive of its own: the inherited int slot
     // returns its exact receiver, which for bool upgrades to int 1/0.
