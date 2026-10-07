@@ -64,6 +64,20 @@ public sealed class SlotInvariantsTests
         PySpecialNames.RPow,
     ];
 
+    // the six comparison dunders resolve onto the single RichCompare slot;
+    // their dict wrappers are fixed-op views over the slot delegate
+    // (wrap_richcmpfunc), so — like the synthesized reflected views — both
+    // sides only have to be wired
+    private static readonly HashSet<string> ConvergedComparisonNames =
+    [
+        PySpecialNames.Lt,
+        PySpecialNames.Le,
+        PySpecialNames.Eq,
+        PySpecialNames.Ne,
+        PySpecialNames.Gt,
+        PySpecialNames.Ge,
+    ];
+
     [TestMethod]
     public void BuiltinSlotWrappers_ShareSlotDelegate()
     {
@@ -107,11 +121,11 @@ public sealed class SlotInvariantsTests
                 if (!slotValues.Any(slot => slot is not null && ReferenceEquals(slot, wrapper._func)))
                 {
                     // hand-written R* overrides (FillSlot) keep sharing; the
-                    // FillReflectedSlots synthesis is the one exception —
-                    // the slot and the dict wrapper are two views (dispatch
-                    // path swaps, attribute path flips), so both sides just
-                    // have to be wired
-                    if (SynthesizedReflectedNames.Contains(name) && slotValues.Any(slot => slot is not null))
+                    // FillReflectedSlots synthesis and the comparison views
+                    // are the exceptions — the slot and the dict wrapper are
+                    // two views, so both sides just have to be wired
+                    if ((SynthesizedReflectedNames.Contains(name) || ConvergedComparisonNames.Contains(name))
+                        && slotValues.Any(slot => slot is not null))
                         continue;
                     violations.Add($"{type.TpName}.{name}: slot delegate and wrapper._func must be one shared instance");
                 }
@@ -230,8 +244,26 @@ public sealed class SlotInvariantsTests
             .ToDictionary(g => g.Key, g => g.Select(p => p.Name).ToArray(), StringComparer.Ordinal);
 
         var map = new Dictionary<string, List<MemberInfo>>(StringComparer.Ordinal);
+        MemberInfo? richCompareField = null;
         foreach (var name in PyTypeObject.PyTypeSlots.AllSlotNames)
         {
+            // the six comparison dunders share one slot field
+            if (ConvergedComparisonNames.Contains(name))
+            {
+                richCompareField ??= slotMembers.GetValueOrDefault("RichCompare")
+                    ?? slotsType.GetField("RichCompare", all);
+                if (richCompareField is null)
+                {
+                    errors.Add("slot name " + name + ": the RichCompare field was not found on PyTypeSlots");
+                    map[name] = [];
+                }
+                else
+                {
+                    map[name] = [richCompareField];
+                }
+                continue;
+            }
+
             var members = constants.GetValueOrDefault(name, [])
                 .Select(candidate => slotMembers.GetValueOrDefault(candidate))
                 .Where(member => member is not null)

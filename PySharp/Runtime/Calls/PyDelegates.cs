@@ -18,6 +18,10 @@ public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
 public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
 public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third);
 public delegate PyResult PyQuaternaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third, PyObject fourth);
+
+// tp_richcompare: the single comparison slot — the op carries the operator
+// spelling, the mirrored/identity fallbacks live in the dispatch skeleton
+public delegate PyResult PyRichCompareFunction(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op);
 public delegate PyResult PySelfArgsKwargsFunction(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 public delegate PyResult PyClsArgsKwargsFunction(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 

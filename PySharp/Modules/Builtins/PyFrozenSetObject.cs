@@ -353,6 +353,7 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
                 : PySetOps.IsSuperset(context, frozenSelf._table, otherTable),
             PyOperatorTypes.GtE => PySetOps.IsSuperset(context, frozenSelf._table, otherTable),
             PyOperatorTypes.Eq => EqCore(context, frozenSelf, other, otherTable),
+            PyOperatorTypes.NotEq => NotEqCore(context, frozenSelf, other, otherTable),
             _ => PyNotImplementedObject.NotImplemented,
         };
     }
@@ -370,6 +371,17 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
             return PyBoolObject.False;
 
         return PySetOps.IsSubset(context, self._table, otherTable);
+    }
+
+    // object's DefaultNe face over the same-core Eq: negate the value,
+    // pass error/NotImplemented through untouched
+    private static PyResult NotEqCore(PyCallContext context, PyFrozenSetObject self, PyObject other, PySetTable otherTable)
+    {
+        var eq = EqCore(context, self, other, otherTable);
+        if (eq.IsError || eq.IsNotImplemented)
+            return eq;
+
+        return PyOperators.Not(context, (PyBoolObject)eq.Value);
     }
 
     // rewires the operator and comparison slots off the generated bridges
@@ -409,30 +421,24 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         PyAttributes[PySpecialNames.RXor] = new PyWrapperDescriptorObject(ReflectedWrapper(NbXor));
         PyAttributes[PySpecialNames.ROr] = new PyWrapperDescriptorObject(ReflectedWrapper(NbOr));
 
-        var lt = ComparisonEntry(PyOperatorTypes.Lt);
-        Slots.Lt = lt;
-        PyAttributes[PySpecialNames.Lt] = new PyWrapperDescriptorObject(lt);
-        var le = ComparisonEntry(PyOperatorTypes.LtE);
-        Slots.Le = le;
-        PyAttributes[PySpecialNames.Le] = new PyWrapperDescriptorObject(le);
-        var gt = ComparisonEntry(PyOperatorTypes.Gt);
-        Slots.Gt = gt;
-        PyAttributes[PySpecialNames.Gt] = new PyWrapperDescriptorObject(gt);
-        var ge = ComparisonEntry(PyOperatorTypes.GtE);
-        Slots.Ge = ge;
-        PyAttributes[PySpecialNames.Ge] = new PyWrapperDescriptorObject(ge);
-        var eq = ComparisonEntry(PyOperatorTypes.Eq);
-        Slots.Eq = eq;
-        PyAttributes[PySpecialNames.Eq] = new PyWrapperDescriptorObject(eq);
+        // the six-slot comparison wiring collapses onto the single
+        // RichCompare slot over the C-form entry above; the dict wrappers
+        // are fixed-op views over the shared delegate (a bare method group
+        // would also bind as its natural Func type)
+        PyRichCompareFunction richCompare = RichCompare;
+        Slots.RichCompare = richCompare;
+        FillComparisonWrapper(PySpecialNames.Lt, richCompare, PyOperatorTypes.Lt);
+        FillComparisonWrapper(PySpecialNames.Le, richCompare, PyOperatorTypes.LtE);
+        FillComparisonWrapper(PySpecialNames.Eq, richCompare, PyOperatorTypes.Eq);
+        FillComparisonWrapper(PySpecialNames.Ne, richCompare, PyOperatorTypes.NotEq);
+        FillComparisonWrapper(PySpecialNames.Gt, richCompare, PyOperatorTypes.Gt);
+        FillComparisonWrapper(PySpecialNames.Ge, richCompare, PyOperatorTypes.GtE);
     }
 
     private static PyBinaryFunction ReflectedWrapper(PyBinaryFunction entry)
         => (context, self, other) => other is PyFrozenSetObject
             ? entry(context, other, self)
             : PyNotImplementedObject.NotImplemented;
-
-    private PyBinaryFunction ComparisonEntry(PyOperatorTypes op)
-        => (context, self, other) => RichCompare(context, self, other, op);
 
     [PyMethod("copy")]
     [PyFunctionParameters()]

@@ -158,7 +158,8 @@ public static class PyOperators
 
     public static PyResult Eq(PyCallContext context, PyObject left, PyObject right)
     {
-        var result = PyOperatorProtocol.EvalReflectiveOperator(context, left, right, left.PyType.Slots.Eq, right.PyType.Slots.Eq);
+        // both sides spell the op as itself (_Py_SwappedOp[Py_EQ] is Py_EQ)
+        var result = PyOperatorProtocol.EvalCompare(context, left, right, PyOperatorTypes.Eq);
         if (!result.IsNotImplemented)
             // error or non-NotImplemented value
             return result;
@@ -167,7 +168,7 @@ public static class PyOperators
     }
     public static PyResult NotEq(PyCallContext context, PyObject left, PyObject right)
     {
-        var neResult = PyOperatorProtocol.EvalReflectiveOperator(context, left, right, left.PyType.Slots.Ne, right.PyType.Slots.Ne);
+        var neResult = PyOperatorProtocol.EvalCompare(context, left, right, PyOperatorTypes.NotEq);
         if (!neResult.IsNotImplemented)
             // error or non-NotImplemented value
             return neResult;

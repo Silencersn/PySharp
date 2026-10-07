@@ -233,31 +233,40 @@ public class PyTypeGenerator : IIncrementalGenerator
                             .ExitBlock()
                             .AppendLine($"public static {pyType.Name} Shared {{ get; }} = new {pyType.Name}();");
                     })
-                    .If(pyType.Slots.Count > 0, builder => builder
-                        .AppendLine("protected override void FillSlots()")
-                        .EnterBlock()
-                            .ForEach(pyType.Slots, static (builder, slot) =>
+                    // FillSlots is generated unconditionally so the
+                    // family-wide wiring (the reflected synthesis) runs for
+                    // every type; the per-override FillSlot lines and the
+                    // comparison wiring stay conditional
+                    .AppendLine("protected override void FillSlots()")
+                    .EnterBlock()
+                        .ForEach(pyType.Slots.Where(static slot => slot.Name is not ("Lt" or "Le" or "Eq" or "Ne" or "Gt" or "Ge")), static (builder, slot) =>
+                        {
+                            if (slot.Name is "New")
                             {
-                                if (slot.Name is "New")
-                                {
-                                    builder.AppendLine("FillNewSlot();");
-                                }
-                                else if (slot.SlotsMember is not null)
-                                {
-                                    // the group struct is only pre-seeded by
-                                    // FillNullWith when a base already carries
-                                    // one — a type filling the first slot of a
-                                    // family must create it itself
-                                    builder.AppendLine($"Slots.{slot.SlotsMember} ??= new();");
-                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name}Bridge);");
-                                }
-                                else
-                                {
-                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name}Bridge);");
-                                }
-                            })
-                            .AppendLine("FillReflectedSlots();")
-                        .ExitBlock())
+                                builder.AppendLine("FillNewSlot();");
+                            }
+                            else if (slot.SlotsMember is not null)
+                            {
+                                // the group struct is only pre-seeded by
+                                // FillNullWith when a base already carries
+                                // one — a type filling the first slot of a
+                                // family must create it itself
+                                builder.AppendLine($"Slots.{slot.SlotsMember} ??= new();");
+                                builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name}Bridge);");
+                            }
+                            else
+                            {
+                                builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name}Bridge);");
+                            }
+                        })
+                        .If(pyType.Slots.Any(static slot => slot.Name is "Lt" or "Le" or "Eq" or "Ne" or "Gt" or "Ge"), static builder =>
+                            // the six comparison overrides share one slot
+                            // entry: a type overriding any of them wires its
+                            // own bridge; a type overriding none keeps the
+                            // MRO-merged base bridge
+                            builder.AppendLine("FillRichCompareSlot();"))
+                        .AppendLine("FillReflectedSlots();")
+                    .ExitBlock()
 
                     .If(methods.Count > 0 || classMethods.Count > 0 || staticMethods.Count > 0, builder => builder
                         .AppendLine("protected override void RegisterMethods()")

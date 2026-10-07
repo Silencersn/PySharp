@@ -6,6 +6,16 @@ public static partial class PySpecialNames
     public const string New = "__new__";
     public const string InitSubclass = "__init_subclass__";
 
+    // comparison dunders: the six names resolve onto the single
+    // RichCompare slot, so they left the generator's declaration manifest
+    // and live here as plain constants
+    public const string Lt = "__lt__";
+    public const string Le = "__le__";
+    public const string Eq = "__eq__";
+    public const string Ne = "__ne__";
+    public const string Gt = "__gt__";
+    public const string Ge = "__ge__";
+
     // attributes
     public const string Bases = "__bases__";
     public const string Name = "__name__";

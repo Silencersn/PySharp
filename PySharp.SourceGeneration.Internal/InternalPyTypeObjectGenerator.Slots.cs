@@ -10,6 +10,19 @@ namespace PySharp.SourceGeneration.Internal;
 
 partial class InternalPyTypeObjectGenerator
 {
+    // The comparison dunders that resolve onto the single RichCompare slot
+    // instead of owning slot fields. They stay slot-name-visible for
+    // UpdateSlot's gating and FixupAllSlots' walk.
+    private static readonly string[] ComparisonDunderNames =
+    [
+        "__lt__",
+        "__le__",
+        "__eq__",
+        "__ne__",
+        "__gt__",
+        "__ge__",
+    ];
+
     /// <summary>
     /// One slot field addressable by a dunder name. A dunder may map to
     /// several targets across protocol families (CPython slotdefs:
@@ -171,7 +184,18 @@ partial class InternalPyTypeObjectGenerator
             .EnterBlock()
                 .AppendLine("switch (name)")
                 .EnterBlock()
-                    .AppendLine("case \"__new__\": New = value.ToClsArgsKwargsFunction(); break;");
+                    .AppendLine("case \"__new__\": New = value.ToClsArgsKwargsFunction(); break;")
+                    // the six comparison dunders collapse onto the single
+                    // RichCompare slot: the shared dict-driven delegate looks
+                    // the op's own dunder up on the receiver's MRO at call
+                    // time (slot_tp_richcompare), so the converted value is
+                    // not captured — the dict entry is the source of truth
+                    .AppendLine("case \"__lt__\":")
+                    .AppendLine("case \"__le__\":")
+                    .AppendLine("case \"__eq__\":")
+                    .AppendLine("case \"__ne__\":")
+                    .AppendLine("case \"__gt__\":")
+                    .AppendLine("case \"__ge__\": RichCompare = PyTypeObject.LookupRichCompare; break;");
 
         // TrySetSlot: one case per dunder name. A name mapping to slots in
         // several protocol families (e.g. __add__ -> nb_add + sq_concat)
@@ -204,12 +228,16 @@ partial class InternalPyTypeObjectGenerator
 
         // every slot dunder name, "__new__" included (declared manually on the
         // slots class); probed by the runtime re-resolution machinery.
-        // Distinct: a dunder may map to slots in several families
+        // Distinct: a dunder may map to slots in several families. The six
+        // comparison dunders stay listed although their slot fields retired:
+        // they resolve onto RichCompare and UpdateSlot/FixupAllSlots gate on
+        // this membership
         var allSlotNames = CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes)
             .Select(t => t.SpecialName)
             .Distinct()
             .ToList();
         allSlotNames.Insert(0, "__new__");
+        allSlotNames.AddRange(ComparisonDunderNames);
 
         builder
             .ExitBlock()   // switch (name)

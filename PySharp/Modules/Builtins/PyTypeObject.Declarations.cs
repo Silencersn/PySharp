@@ -219,24 +219,6 @@ partial class PyTypeObject
         [PySpecialMethod("__ror__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void ROr(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__lt__", typeof(PyBinaryFunction))]
-        static partial void Lt(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__le__", typeof(PyBinaryFunction))]
-        static partial void Le(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__eq__", typeof(PyBinaryFunction))]
-        static partial void Eq(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__ne__", typeof(PyBinaryFunction))]
-        static partial void Ne(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__gt__", typeof(PyBinaryFunction))]
-        static partial void Gt(PyCallContext context, TObject self, PyObject other);
-
-        [PySpecialMethod("__ge__", typeof(PyBinaryFunction))]
-        static partial void Ge(PyCallContext context, TObject self, PyObject other);
-
         [PySpecialMethod("__missing__", typeof(PyBinaryFunction))]
         static partial void Missing(PyCallContext context, TObject self, PyObject key);
 

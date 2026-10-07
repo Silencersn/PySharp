@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -646,6 +647,36 @@ partial class PyTypeObject
 
         return PyNoneObject.None;
     }
+    // slot_tp_richcompare: the dict-driven comparison entry installed for
+    // runtime classes resolving a comparison dunder. The shared delegate
+    // looks the op's own dunder up on the receiver's MRO at call time, so
+    // later dict mutations stay visible without re-resolution — the
+    // converted value is deliberately not captured (the TrySetSlot switch
+    // routes every one of the six names here).
+    internal static readonly PyRichCompareFunction LookupRichCompare = LookupRichCompareCore;
+
+    private static PyResult LookupRichCompareCore(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op)
+    {
+        var name = op switch
+        {
+            PyOperatorTypes.Lt => PySpecialNames.Lt,
+            PyOperatorTypes.LtE => PySpecialNames.Le,
+            PyOperatorTypes.Eq => PySpecialNames.Eq,
+            PyOperatorTypes.NotEq => PySpecialNames.Ne,
+            PyOperatorTypes.Gt => PySpecialNames.Gt,
+            PyOperatorTypes.GtE => PySpecialNames.Ge,
+            _ => throw new UnreachableException(),
+        };
+
+        foreach (var type in self.PyType.InternalMRO)
+        {
+            if (type.PyAttributes.TryGetValue(name, out var value))
+                return value.Call(context, [self, other]);
+        }
+
+        return PyNotImplementedObject.NotImplemented;
+    }
+
     internal static PyResult DefaultBinaryOperator(PyCallContext context, PyObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;

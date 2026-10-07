@@ -103,12 +103,6 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         FillSlot(PySpecialNames.Repr, ref Slots.Repr, DefaultRepr);
         FillSlot(PySpecialNames.Str, ref Slots.Str, DefaultStr);
         FillSlot(PySpecialNames.Hash, ref Slots.Hash, DefaultHash);
-        FillSlot(PySpecialNames.Eq, ref Slots.Eq, DefaultEq);
-        FillSlot(PySpecialNames.Ne, ref Slots.Ne, DefaultNe);
-        FillSlot(PySpecialNames.Lt, ref Slots.Lt, DefaultBinaryOperator);
-        FillSlot(PySpecialNames.Le, ref Slots.Le, DefaultBinaryOperator);
-        FillSlot(PySpecialNames.Gt, ref Slots.Gt, DefaultBinaryOperator);
-        FillSlot(PySpecialNames.Ge, ref Slots.Ge, DefaultBinaryOperator);
         FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GenericGetAttribute);
         FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, DefaultSetAttr);
         FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DefaultDelAttr);
@@ -119,6 +113,11 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)HackCheckedSetAttr);
         PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)HackCheckedDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
+
+        // the root comparison bridge: every type without its own override
+        // resolves here through the MRO merge (DefaultEq/DefaultNe/NI order
+        // comparisons — the pre-convergence FillSlot wiring of object)
+        FillRichCompareSlot();
 
         // CPython object_getsets (Objects/typeobject.c): __class__ is a
         // getset on object's dict, so every object and class resolves it

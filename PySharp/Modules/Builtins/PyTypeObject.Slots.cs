@@ -15,6 +15,12 @@ partial class PyTypeObject
         internal PyNumberMethods? Number;
         internal PySequenceMethods? Sequence;
 
+        // tp_richcompare: the single comparison entry behind __lt__ ..
+        // __ge__ (not a dunder-addressed field, so it is managed manually
+        // like New — merged in Create, never a TrySetSlot switch case of
+        // its own)
+        internal PyRichCompareFunction? RichCompare;
+
         internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)
         {
             var slots = new PyTypeSlots();
@@ -22,6 +28,7 @@ partial class PyTypeObject
             {
                 slots.FillNullWith(type.Slots);
                 slots.New ??= type.Slots.New;
+                slots.RichCompare ??= type.Slots.RichCompare;
             }
             return slots;
         }

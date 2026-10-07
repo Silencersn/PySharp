@@ -310,33 +310,51 @@ partial class PyTypeObject<TObject>
         return DefaultBinaryOperator(context, self, other);
     }
 
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Lt(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Lt(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Le(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Le(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Eq(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Eq(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultEq(context, self, other);
     }
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Ne(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Ne(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultNe(context, self, other);
     }
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Gt(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Gt(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
+    // carried by the RichCompare slot through the default comparison bridge;
+    // the [PySlot] marker makes an override trigger that slot's wiring — a
+    // type without one inherits the base bridge through the MRO merge
     [PySlot]
-    protected virtual partial PyResult Ge(PyCallContext context, TObject self, PyObject other)
+    protected virtual PyResult Ge(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }

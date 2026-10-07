@@ -21,6 +21,23 @@ public sealed class SlotNamesSyncTests
     // name may map to several slot fields (__add__ -> Number.Add +
     // Sequence.Concat), so a bare count no longer pins the sync — coverage
     // in both directions does.
+    // The six comparison dunders resolve onto the manually managed
+    // RichCompare field (their TrySetSlot cases install the shared
+    // dict-driven delegate). The field is reachable through any of the
+    // six names instead of a same-named constant, and the names reach no
+    // same-named field — the convergence is asserted explicitly below.
+    private static readonly HashSet<string> ConvergedComparisonNames =
+    [
+        PySpecialNames.Lt,
+        PySpecialNames.Le,
+        PySpecialNames.Eq,
+        PySpecialNames.Ne,
+        PySpecialNames.Gt,
+        PySpecialNames.Ge,
+    ];
+
+    private const string ConvergedComparisonField = "RichCompare";
+
     [TestMethod]
     public void AllSlotNames_CoversEverySlotField()
     {
@@ -40,8 +57,16 @@ public sealed class SlotNamesSyncTests
 
         var allSlotNames = PyTypeObject.PyTypeSlots.AllSlotNames;
 
+        // the convergence stays paired: the shared field exists and every
+        // one of its six names is listed
+        Assert.IsTrue(fieldNames.Contains(ConvergedComparisonField),
+            $"{ConvergedComparisonField} field missing while comparison dunders are slot names");
+        CollectionAssert.IsSubsetOf(ConvergedComparisonNames.ToList(), allSlotNames.ToList(),
+            "comparison dunders must stay in AllSlotNames or mutations stop propagating");
+
         // every slot field is reachable from some AllSlotNames entry
         var uncoveredFields = fieldNames
+            .Where(field => field is not ConvergedComparisonField)
             .Where(field => !allSlotNames.Any(name => constantNamesByValue.GetValueOrDefault(name, []).Contains(field)))
             .ToList();
         Assert.AreEqual(0, uncoveredFields.Count,
@@ -49,6 +74,7 @@ public sealed class SlotNamesSyncTests
 
         // every AllSlotNames entry reaches at least one slot field
         var orphanNames = allSlotNames
+            .Where(name => !ConvergedComparisonNames.Contains(name))
             .Where(name => !constantNamesByValue.GetValueOrDefault(name, []).Any(fieldNames.Contains))
             .ToList();
         Assert.AreEqual(0, orphanNames.Count,

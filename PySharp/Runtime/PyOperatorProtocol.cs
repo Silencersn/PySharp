@@ -78,10 +78,11 @@ internal static class PyOperatorProtocol
     }
 
     // The adaptation view proper: one accessor pair per binary operator.
-    // The comparison rows carry CPython's _Py_SwappedOp mirror as table
-    // data — the right-side view of < is the left-side view of >. Eq and
-    // NotEq never dispatch through ReflectiveOperator (they go through
-    // their own two-sided entries), so they have no row here.
+    // The comparison rows are gone — the six comparison dunders resolve
+    // onto the single RichCompare slot with _Py_SwappedOp mirroring (see
+    // SwapComparisonOp), and Eq/NotEq never dispatch through
+    // ReflectiveOperator (they go through their own two-sided entries), so
+    // no comparison row exists here.
     private static (Func<PyTypeObject, PyBinaryFunction?> Forward, Func<PyTypeObject, PyBinaryFunction?> Reflected) GetBinarySlotAccessors(PyOperatorTypes op)
     {
         return op switch
@@ -98,12 +99,54 @@ internal static class PyOperatorProtocol
             PyOperatorTypes.BitAnd => (static t => t.Slots.And, static t => t.Slots.RAnd),
             PyOperatorTypes.BitXor => (static t => t.Slots.Xor, static t => t.Slots.RXor),
             PyOperatorTypes.BitOr => (static t => t.Slots.Or, static t => t.Slots.ROr),
-            PyOperatorTypes.Lt => (static t => t.Slots.Lt, static t => t.Slots.Gt),
-            PyOperatorTypes.LtE => (static t => t.Slots.Le, static t => t.Slots.Ge),
-            PyOperatorTypes.Gt => (static t => t.Slots.Gt, static t => t.Slots.Lt),
-            PyOperatorTypes.GtE => (static t => t.Slots.Ge, static t => t.Slots.Le),
             _ => throw new UnreachableException(),
         };
+    }
+
+    // _Py_SwappedOp as table data: the right-side view of < is the
+    // left-side view of >, and equality mirrors onto itself
+    private static PyOperatorTypes SwapComparisonOp(PyOperatorTypes op)
+    {
+        return op switch
+        {
+            PyOperatorTypes.Lt => PyOperatorTypes.Gt,
+            PyOperatorTypes.LtE => PyOperatorTypes.GtE,
+            PyOperatorTypes.Gt => PyOperatorTypes.Lt,
+            PyOperatorTypes.GtE => PyOperatorTypes.LtE,
+            PyOperatorTypes.Eq or PyOperatorTypes.NotEq => op,
+            _ => throw new UnreachableException(),
+        };
+    }
+
+    // one side of CPython do_richcmp: the receiver type's single
+    // comparison slot with its own operand order and op spelling
+    private static PyResult EvalCompareSlot(PyCallContext context, PyObject self, PyObject other, PyOperatorTypes op)
+    {
+        var func = self.PyType.Slots.RichCompare;
+        if (func is null)
+            return PyNotImplementedObject.NotImplemented;
+        return func(context, self, other, op);
+    }
+
+    // do_richcmp: the left type's slot as (left, right, op), then — still
+    // NotImplemented — the right type's slot with the swapped operands and
+    // the mirrored op; comparisons always try both directions
+    internal static PyResult EvalCompare(PyCallContext context, PyObject left, PyObject right, PyOperatorTypes op)
+    {
+        var result = EvalCompareSlot(context, left, right, op);
+        if (!result.IsNotImplemented)
+            return result;
+        return EvalCompareSlot(context, right, left, SwapComparisonOp(op));
+    }
+
+    // the right-first order: the right type's slot as (right, left,
+    // mirrored op) runs before the left type's forward spelling
+    private static PyResult EvalCompareRightFirst(PyCallContext context, PyObject left, PyObject right, PyOperatorTypes op)
+    {
+        var result = EvalCompareSlot(context, right, left, SwapComparisonOp(op));
+        if (!result.IsNotImplemented)
+            return result;
+        return EvalCompareSlot(context, left, right, op);
     }
 
     internal static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
@@ -319,15 +362,27 @@ internal static class PyOperatorProtocol
         if (eq.IsError)
             return eq;
 
-        if (!eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType))
-            return EvalRightFirst(context, op, left, right, modulo, inPlace);
+        var rightFirst = !eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType);
+
+        // comparisons route through the single RichCompare slot with the
+        // swapped-op mirror — always both directions, no same-type omission
+        if (IsComparisonOp(op))
+        {
+            var compared = rightFirst
+                ? EvalCompareRightFirst(context, left, right, op)
+                : EvalCompare(context, left, right, op);
+            return compared.IsNotImplemented
+                ? PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace: false), left.PyType.TpName, right.PyType.TpName)
+                : compared;
+        }
 
         // CPython binary_op1: identical operand types resolve to a single
         // shared slot, so for arithmetic ops only the forward variant is
-        // tried and the reflected method never runs; comparisons keep both
-        // directions.
-        var allowReflected = !eq.Value.BoolValue || IsComparisonOp(op);
-        return EvalLeftFirst(context, op, left, right, modulo, allowReflected, inPlace);
+        // tried and the reflected method never runs
+        var allowReflected = !eq.Value.BoolValue;
+        return rightFirst
+            ? EvalRightFirst(context, op, left, right, modulo, inPlace)
+            : EvalLeftFirst(context, op, left, right, modulo, allowReflected, inPlace);
     }
 
     // The divmod entry frozen as baseline: the left type's forward slot,
