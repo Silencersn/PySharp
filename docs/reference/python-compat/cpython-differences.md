@@ -36,11 +36,11 @@ CPython 3.14 下可编译，PySharp 在 `compile()` 阶段即报错。以 CPytho
 升至完整 `expression`，对齐 CPython `starred_expression` 规则，显示与 `return` 位置的
 `bitwise_or` 层级保留）、推导式的 `async` 上下文（genexp 入口漏识别 `async for`；`await`
 报文与上下文豁免对齐 CPython 的隐式异步生成器语义——genexp 内任意上下文合法，内联推导式
-统一报 `asynchronous comprehension outside of an asynchronous function`）四类已修复，
-余下两类：
+统一报 `asynchronous comprehension outside of an asynchronous function`）、f-string 的
+高级形态（表达式内三引号字面量的扫描状态恢复、format spec 内嵌套替换字段自带 spec 的深度
+判定、raw 与非 raw 的 `\{`/`\}` 花括号回退，及未闭合字段读入结束引号时的
+`f-string: expecting '}'` 报文）五类已修复，余下一类：
 
-- f-string 的部分高级形态：表达式内三引号字面量（`f"{'''x'''}"`）、多行表达式含注释、
-  format spec 内多个嵌套替换字段（`{value:{w:0}.{p:1}}`）、raw f-string 的 `\{{` 转义。
 - 函数内推导式中的 `yield`：`def g(): [x for x in [(yield 1)]]`。
 
 ## 运行时与语言细节

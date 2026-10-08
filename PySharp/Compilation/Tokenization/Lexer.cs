@@ -80,6 +80,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private bool _needIndentation;
 
     private int _stringStartOffset;
+    // a multiline string scanned from within an f-string expression must
+    // return there instead of the top level once it closes
+    private LexerState _stateBeforeMultilineString;
 
     private readonly Stack<(char Bracket, int Offset)> _bracketStack;
     private int ParenLevel => _bracketStack.Count;
@@ -143,7 +146,22 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             throw UnterminatedStringError(_stringStartOffset, isTriple: false);
 
         if (CurrentState is LexerState.TokenizingTripleString)
+        {
+            // CPython: a triple-quoted scan that fails inside an f-string
+            // expression while its quotes match the f-string's own is a
+            // missing '}' — the f-string's closing quotes were read as the
+            // start of an expression string (lexer.c)
+            if (_stateBeforeMultilineString is LexerState.FStringDefault
+                && CurrentFStringInfo.IsTriple
+                && _wrapper == CurrentFStringInfo.WrapperChar)
+            {
+                throw SyntaxError(CurrentFStringInfo.IsTemplate
+                    ? PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBrace
+                    : PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBrace);
+            }
+
             throw UnterminatedStringError(_stringStartOffset, isTriple: true);
+        }
 
         // the innermost unclosed opener wins, exactly like CPython reading
         // parenstack[level-1] on EOF; CPython reports the opener column with
@@ -212,12 +230,15 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     }
                     else
                     {
-                        if (lastToken.Type is TokenType.Colon or TokenType.ColonEqual && ParenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
+                        if (lastToken.Type is TokenType.Colon or TokenType.ColonEqual && ParenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1 + CurrentFStringInfo.FormatSpec.Count)
                         {
-                            // A bare colon (fused ':=' included) at the replacement
+                            // A bare colon (fused ':=' included) at a replacement
                             // field's top level ends the expression; the spec's first
-                            // literal character is the '=' of the fused token.
-                            // TODO: too deep
+                            // literal character is the '=' of the fused token. Each
+                            // open format spec shifts the field's brace one level
+                            // deeper, so a nested field's own spec starts at
+                            // ParenLevelWhenEntering + 1 + <open specs> — exactly
+                            // CPython's `cursor == curly_bracket_expr_start_depth`.
 
                             CurrentState = LexerState.FStringMiddle;
                             CurrentFStringInfo.FormatSpec.Push(ParenLevel);
@@ -243,16 +264,23 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
                             if (c is '\\')
                             {
+                                // CPython's tokenizer backs a brace up into its
+                                // scan loop: the escape never consumes it, so
+                                // "\{{" still escapes the brace and a raw "\{"
+                                // opens a replacement field (lexer.c)
+                                if (i + 1 < content.Length && content[i + 1] is '{' or '}')
+                                    continue;
+
                                 i++;
                                 // CPython's f-string tokenizer keeps a
                                 // non-raw \N{...} inside the literal part:
                                 // its braces never open a replacement field
-                                if (!info.IsRaw && i + 2 < content.Length
+                                if (!info.IsRaw && i + 1 < content.Length
                                     && content[i] is 'N' && content[i + 1] is '{')
                                 {
-                                    var close = content[(i + 2)..].IndexOf('}');
+                                    var close = content[(i + 1)..].IndexOf('}');
                                     if (close >= 0)
-                                        i = i + 2 + close;
+                                        i = i + 1 + close;
                                     else
                                         i = content.Length;
                                 }
@@ -451,12 +479,29 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private void TokenizeMultiLineString(ReadOnlySpan<char> content, Regex wrapper, bool isTriple)
     {
         if (!TryMatch(wrapper, content, _offset, out var m))
+        {
+            // CPython: a triple-quoted scan that fails inside an f-string
+            // expression while its quotes match the f-string's own is a
+            // missing '}' — the f-string's closing quotes were read as the
+            // start of an expression string (lexer.c)
+            if (isTriple
+                && _stateBeforeMultilineString is LexerState.FStringDefault
+                && CurrentFStringInfo.IsTriple
+                && _wrapper == CurrentFStringInfo.WrapperChar)
+            {
+                throw SyntaxError(CurrentFStringInfo.IsTemplate
+                    ? PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBrace
+                    : PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBrace);
+            }
+
             throw UnterminatedStringError(_stringStartOffset, isTriple);
+        }
 
         var endOffset = m.Index + m.Length;
         AppendToken(TokenType.String, new CodeTextSpan(_stringStartOffset, endOffset - _stringStartOffset));
         _offset = endOffset;
-        CurrentState = LexerState.Default;
+        CurrentState = _stateBeforeMultilineString;
+        _stateBeforeMultilineString = LexerState.Default;
     }
 
     private void TokenizeMultiLineSingleOrDoubleString(ReadOnlySpan<char> content)
@@ -611,6 +656,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             }
 
             _stringStartOffset = _offset;
+            _stateBeforeMultilineString = CurrentState;
             CurrentState = LexerState.TokenizingTripleString;
         }
     }
@@ -736,6 +782,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
         {
             _stringStartOffset = _offset;
+            _stateBeforeMultilineString = CurrentState;
             CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
         }
         else
@@ -925,14 +972,32 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             case '\'':
             case '"':
                 if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithPseudoExtras, out group))
+                {
                     TokenizePseudoExtras(group);
+                }
                 else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithContStr, out group))
+                {
                     TokenizeContStr(ref group);
+                }
+                else if (CurrentFStringInfo.State is LexerState.FStringDefault
+                    && c == CurrentFStringInfo.WrapperChar
+                    && (!CurrentFStringInfo.IsTriple || content[_offset..].StartsWith([c, c, c])))
+                {
+                    // CPython: a string scan that fails inside an f-string
+                    // expression while its quote and size match the f-string's
+                    // own is a missing '}': the f-string's closing quotes were
+                    // read as the start of an expression string (lexer.c)
+                    throw SyntaxError(CurrentFStringInfo.IsTemplate
+                        ? PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBrace
+                        : PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBrace);
+                }
                 else
+                {
                     // a quote that neither closes on its line nor continues
                     // with a backslash never reaches the parser: the
                     // tokenizer raises the unterminated-literal sentence
                     throw UnterminatedStringError(_offset, isTriple: false);
+                }
                 break;
 
             case 'b':
