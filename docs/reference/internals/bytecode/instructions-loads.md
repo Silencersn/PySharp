@@ -27,9 +27,9 @@
 
 ### `LoadSpecial` — 加载 with 语句特殊方法
 
-- **Arg**：`LoadSpecialMethods` 枚举值：`0 = Enter`（`__enter__`）、`1 = Exit`（`__exit__`）、`2 = AEnter`（`__aenter__`）、`3 = AExit`（`__aexit__`）；**栈效应**`(obj → descriptor)`。
-- 取栈顶对象的类型，把对应槽包装为 `PyWrapperDescriptorObject` 压栈（槽不存在则报错）。这是 `with` / `async with` 语句的进入序列之一。
-- **错误**：槽缺失时 `TypeError`，消息形如
+- **Arg**：`LoadSpecialMethods` 枚举值：`0 = Enter`（`__enter__`）、`1 = Exit`（`__exit__`）、`2 = AEnter`（`__aenter__`）、`3 = AExit`（`__aexit__`）；**栈效应**`(obj → bound_method)`。
+- 弹出上下文管理器，在其**类型**的 MRO 上查名并按描述符协议绑定（`PyUtils.TryLookupSpecial`，等价 CPython 的 `_PyObject_LookupSpecialMethod`），把**已绑定的可调用对象**压栈——普通 `def` 绑定后 self 内置；非描述符（如 `C.__enter__ = print`）原样压栈，后续调用因此**不带实例参数**。发射端（`EmitWith`/`EmitAsyncWith`）以 `Copy 1; LoadSpecial Exit; Swap 2; LoadSpecial Enter; Call 0` 的序列进入 with（exit 先于 enter 探测），exit 以异常三元组 `Call 3` 调用。这是 `with` / `async with` 语句的进入序列之一。
+- **错误**：MRO 全无该名时 `TypeError`，消息形如
   `'<T>' object does not support the context manager protocol (missed __exit__ method)`
   （异步为 `asynchronous context manager protocol` 与 `__aenter__` / `__aexit__`），即缺失的槽
   与 with / async with 都体现在消息里。

@@ -100,7 +100,8 @@ public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject
    - 名为 `__init_subclass__` 或 `__class_getitem__` 的函数自动包一层 `PyClassMethodObject`。
    - `Slots.TrySetSlot(attr, value)` 把 dunder 名直接接线到协议槽（object 默认的 `__new__`/
      `__init__` 条目除外，由后续 `FixupAllSlots` 重接 object 自身的槽位委托），这是用户类协议
-     方法生效的地方，见[源生成器](./source-generators.md)。
+     方法生效的地方，见[源生成器](./source-generators.md)。十三个宽槽 dunder 不在其中——
+     它们只进字典，由协议入口调用点查名（见[协议分发](./protocol-dispatch.md)）。
    - 类体隐式键与 `__qualname__` 的去向，对齐 CPython 的 `codegen_class_body` 与
      `type_new_set_ht_name`：类体前导注入三键 `__module__`、`__qualname__`、
      `__firstlineno__`（类体 `locals()` 可见，`__firstlineno__` 取类语句首行，带装饰器时取首个
@@ -111,7 +112,9 @@ public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject
      见[路线图](../contributing/roadmap.md)。
 5. `__class_getitem__` 自动注入：命名空间含 `__type_params__` 且 MRO 中无 `__class_getitem__`
    时，注入默认实现（返回 `GenericAlias`）。
-6. `__set_name__`：遍历新类型的全部属性，对有 `__set_name__` 槽的逐个调用 `(owner, name)`。
+6. `__set_name__`：遍历新类型的全部属性，对成员自身类型的 MRO 查名到 `__set_name__`
+   的逐个绑定调用 `(owner, name)`（与其它宽槽 dunder 同为调用点查名，见
+   [协议分发](./protocol-dispatch.md)）。
 7. `__init_subclass__` 协作链：按 CPython 的 `type_new_init_subclass` 模式调用
    `super(type, type).__init_subclass__(**kwargs)`，沿 MRO 触发各基类实现。
 

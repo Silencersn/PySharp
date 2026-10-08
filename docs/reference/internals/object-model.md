@@ -85,7 +85,8 @@ public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, 
 
 三种描述符对象支撑属性机制：`PyMemberDescriptorObject`（成员 get、set、del）、
 `PyMethodDescriptorObject`（把非托管到托管的签名包装为方法绑定）、`PyWrapperDescriptorObject`
-（把槽包装成可调用对象，如 `with` 语句经 `LoadSpecial` 取出的 `__enter__` 与 `__exit__`）。
+（把槽委托包装成可调用对象，内建类型的协议方法在类型字典里即以此形态暴露——含
+`object.__format__` 与 `float.__round__` 等宽槽 dunder 的字典视图）。
 `PyPropertyObject`、`PyStaticMethodObject`、`PyClassMethodObject` 与 `PySuperObject` 在此基础上
 实现 `property`、`staticmethod`、`classmethod` 与 `super`。
 

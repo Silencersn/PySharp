@@ -77,16 +77,19 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 
   槽位分层（见[协议分发](./protocol-dispatch.md)）在以上链路之外引入中间层
   `PyOperableObjectType<T>` 的 C 风格入口（`Nb*`/`RichCompare`）与反射回退桥工厂
-  （手写接线的备选面）。外层 `PyTypeGenerator` 对四类覆写做特判：比较虚方法覆写触发
+  （手写接线的备选面）。外层 `PyTypeGenerator` 对五类覆写做特判：比较虚方法覆写触发
   `FillRichCompareSlot()` 接线；R\* 虚方法覆写生成 `FillReflectedView()`——只暴露
   直连覆写的字典 wrapper，不接槽字段（反射算术无槽字段）；`Nb*` 覆写把裸方法组直落
   前向槽（`FillSlot`，C 形态条目即槽实现，反射视图由合成器顺带产出，就地名映射
   `NbInplace{X}` → `I{X}`）；`RichCompare` 覆写经 `FillRichCompareSlot(delegate)`
-  重载接槽与六个固定 op 视图。四者都由基类协议声明上的
+  重载接槽与六个固定 op 视图；十三个宽槽 dunder 覆写生成 `FillWideDictView()`——
+  只暴露字典 wrapper 不落槽（这些名字无 slotdef，协议入口调用点查名，见
+  [协议分发](./protocol-dispatch.md)），`__round__` 因 `round(x)` 的无参调用分派
+  单独走 0/1 参自适应视图 `FillRoundDictView()`。五者都由基类协议声明上的
   `[PySlot]` 经符号级继承检测发现，覆写侧一律免标记：`PySlotAttribute` 是
   `private protected`，消费程序集无法拼写它，继承查找是库外覆写接线的唯一路径
   （`ExternalTypeProtocolTests` 以探针类型钉住 R\* 与 `Nb*` 两个场景）。
-  四类特判的生成顺序决定一个优先级：同一类型同时覆写 `Lt` 系与
+  五类特判的生成顺序决定一个优先级：同一类型同时覆写 `Lt` 系与
   `RichCompare` 时，无参 `FillRichCompareSlot()`（比较六折叠）先生成、
   `FillRichCompareSlot(delegate)`（`RichCompare` 直落）在后覆盖，
   `RichCompare` 覆写生效，`Lt` 系覆写静默失效。
