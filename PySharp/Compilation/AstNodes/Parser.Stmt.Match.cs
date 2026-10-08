@@ -110,9 +110,16 @@ partial class Parser
     [GrammarSyntaxRule("star_pattern")]
     private MatchStarNode ParseStarPattern()
     {
+        // star_pattern: '*' capture_target | '*' '_'; the underscore belongs
+        // to the grammar itself and must be consumed, unlike a capture target
         EnsureTokenTypeThenMove(TokenType.Star);
-        var name = IsCurrentKeyword("_") ? null : ParsePatternCaptureTarget();
-        return Ast.MatchStar(name);
+        if (IsCurrentKeyword("_"))
+        {
+            MoveNextToken();
+            return Ast.MatchStar(name: null);
+        }
+
+        return Ast.MatchStar(ParsePatternCaptureTarget());
     }
 
     [GrammarSyntaxRule("maybe_star_pattern")]
