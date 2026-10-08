@@ -934,7 +934,9 @@ partial class Parser
                     }
 
                     _ = ParseNamedExpression();
-                    return IsCurrentKeyword("for");
+                    // "f(x async for x in it)": async for starts a generator
+                    // expression just like a plain for clause does
+                    return IsCurrentKeyword("for") || IsCurrentKeyword("async");
                 }
             }
             else if (CurrentTokenType is TokenType.LeftSquareBracket)

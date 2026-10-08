@@ -34,16 +34,21 @@ CPython 3.14 下可编译，PySharp 在 `compile()` 阶段即报错。以 CPytho
 归为六类缺口；其中类基类列表的 `*`/`**` 解包、序列模式的匿名 starred（`*_`，解析时漏消费
 `_`，有名 starred 任意位置本就可编译）、调用实参与下标中 `*` 后的表达式层级（`bitwise_or`
 升至完整 `expression`，对齐 CPython `starred_expression` 规则，显示与 `return` 位置的
-`bitwise_or` 层级保留）三类已修复，余下三类：
+`bitwise_or` 层级保留）、推导式的 `async` 上下文（genexp 入口漏识别 `async for`；`await`
+报文与上下文豁免对齐 CPython 的隐式异步生成器语义——genexp 内任意上下文合法，内联推导式
+统一报 `asynchronous comprehension outside of an asynchronous function`）四类已修复，
+余下两类：
 
 - f-string 的部分高级形态：表达式内三引号字面量（`f"{'''x'''}"`）、多行表达式含注释、
   format spec 内多个嵌套替换字段（`{value:{w:0}.{p:1}}`）、raw f-string 的 `\{{` 转义。
-- 推导式与生成器表达式内的 `async` 上下文误判：genexp 中的 `async for`、genexp 过滤条件里的
-  `await`（后者在 async 函数内合法，PySharp 误报 `'await' outside async function`）。
 - 函数内推导式中的 `yield`：`def g(): [x for x in [(yield 1)]]`。
 
 ## 运行时与语言细节
 
+- 含 `await` 的生成器表达式不升级为异步生成器：CPython 将其编译为隐式 async 生成器
+  （类型为 `async_generator`，同步迭代报 `'async_generator' object is not iterable`），
+  PySharp 保持同步生成器语义，`list(await g(x) for x in it)` 直接求值成功。正确的
+  `async for` 迭代方式两侧一致。
 - 错误消息文本：异常类型与层级与 CPython 一致。消息措辞为独立实现（资源串集中在 `PySR`），
   以 CPython 为基准持续对齐，已完成运算符报文、str 方法族 `TypeError`、容器构造参数校验、异常链
   属性删除报文、int 转换位数限制提示、super 与 isinstance 族分支报文、复合语句头部缺冒号的

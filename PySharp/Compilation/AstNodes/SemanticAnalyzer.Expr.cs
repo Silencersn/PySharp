@@ -290,14 +290,16 @@ partial class SemanticAnalyzer
 
     // CPython: an async comprehension only runs inside an async function.
     // Comprehension scopes are transparent for this check (an async listcomp
-    // nested in another comprehension still belongs to the enclosing async
-    // function), while a lambda or plain function scope stops the walk.
+    // nested in another comprehension belongs to the enclosing function),
+    // while a lambda or plain function scope stops the walk. A generator
+    // expression is a valid host: its async content makes the genexp an
+    // implicit async generator, legal to create in any context.
     private static bool IsWithinAsyncFunction(VariableScope scope)
     {
         var parent = scope.Parent;
-        while (parent is ComprehensionVariableScope or GeneratorExpVariableScope)
+        while (parent is ComprehensionVariableScope)
             parent = parent.Parent;
-        return parent is AsyncFunctionVariableScope;
+        return parent is AsyncFunctionVariableScope or GeneratorExpVariableScope;
     }
 
     private void VisitGeneratorExp(GeneratorExpNode node)
@@ -722,19 +724,26 @@ partial class SemanticAnalyzer
         // (symtable_raise_if_annotation_block precedes the function-like check)
         CheckRestrictedExpr(node);
 
-        // inlined comprehension scopes are transparent: an await inside a
-        // comprehension belongs to the enclosing async function
-        var scope = _currentScopeStats.Scope;
+        // CPython compiles a genexp containing await into an implicit async
+        // generator, legal to create in any context; an inlined comprehension
+        // instead becomes async as a whole and must sit in an async function
+        var original = _currentScopeStats.Scope;
+        var scope = original;
+        var inGenExp = false;
         while (scope is ComprehensionVariableScope or GeneratorExpVariableScope)
-            scope = scope.Parent;
-
-        if (scope is not AsyncFunctionVariableScope)
         {
-            // symtable.c distinguishes the module/class level ("outside
-            // function") from a synchronous function ("outside async function")
-            throw SyntaxError(scope is FunctionVariableScope
-                ? PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc
-                : PySR.InvalidSyntax_Semantic_AwaitOutsideFunction);
+            inGenExp |= scope is GeneratorExpVariableScope;
+            scope = scope.Parent;
+        }
+
+        if (scope is not AsyncFunctionVariableScope && !inGenExp)
+        {
+            // the comprehension report covers every enclosing context
+            throw SyntaxError(original is ComprehensionVariableScope
+                ? PySR.InvalidSyntax_Semantic_AsyncCompOutsideAsyncFunc
+                : scope is FunctionVariableScope
+                    ? PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc
+                    : PySR.InvalidSyntax_Semantic_AwaitOutsideFunction);
         }
 
         VisitNode(node.Value);
