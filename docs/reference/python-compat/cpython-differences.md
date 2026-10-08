@@ -32,9 +32,10 @@ CPython 3.14 下可编译，PySharp 在 `compile()` 阶段即报错。以 CPytho
 不执行的扫描：标准库 `Lib` 根层 153 个模块全部通过；`Lib/test` 顶层 448 个测试文件中 438 个通过，
 失败的 10 个文件拆成语句级片段（CPython 合法片段共 13,627 个）后有 92 个被 PySharp 拒绝，
 归为六类缺口；其中类基类列表的 `*`/`**` 解包、序列模式的匿名 starred（`*_`，解析时漏消费
-`_`，有名 starred 任意位置本就可编译）两类已修复，余下四类：
+`_`，有名 starred 任意位置本就可编译）、调用实参与下标中 `*` 后的表达式层级（`bitwise_or`
+升至完整 `expression`，对齐 CPython `starred_expression` 规则，显示与 `return` 位置的
+`bitwise_or` 层级保留）三类已修复，余下三类：
 
-- 调用实参中 `*`/`**` 后跟复合表达式：`f(*() or (), **{} or {})`。
 - f-string 的部分高级形态：表达式内三引号字面量（`f"{'''x'''}"`）、多行表达式含注释、
   format spec 内多个嵌套替换字段（`{value:{w:0}.{p:1}}`）、raw f-string 的 `\{{` 转义。
 - 推导式与生成器表达式内的 `async` 上下文误判：genexp 中的 `async for`、genexp 过滤条件里的

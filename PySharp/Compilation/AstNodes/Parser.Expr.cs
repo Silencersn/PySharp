@@ -1289,7 +1289,11 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Star)
             return ParseExpression();
 
-        return ParseStarredExpression();
+        // star_expression keeps the starred form at bitwise_or: it feeds
+        // displays and return/yield, where CPython still rejects "*a or b"
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        return Ast.Starred(ParseBitwiseOr()).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("star_expressions")]
@@ -1299,12 +1303,15 @@ partial class Parser
         return UnwrapOrMakeTuple(list, endsWithComma);
     }
 
+    // CPython splits the two levels after '*': arguments and subscripts take
+    // a starred_expression (a full expression, so "f(*a or b)" is legal),
+    // while displays and return keep the bitwise_or level in ParseStarExpression
     [GrammarSyntaxRule("starred_expression")]
     private StarredNode ParseStarredExpression()
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureTokenTypeThenMove(TokenType.Star);
-        var value = ParseBitwiseOr();
+        var value = ParseExpression();
         return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
     }
 
