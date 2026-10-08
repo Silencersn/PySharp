@@ -372,10 +372,14 @@ internal static partial class BytecodeVirtualMachine
         // the call sequence keeps the callable below its argument list, and
         // CPython reports every clash of the merge against it
         // (_PyEval_FormatKwargsError). The build-class sequence carries no
-        // callable at all — CPython's stack there holds __build_class__, so a
-        // null callable resolves to that same name.
+        // callable at all — CPython's stack there holds __build_class__, so
+        // that is the name this layout resolves to. The name is resolved
+        // here, at the only place that knows the layout, and the report
+        // helpers below take it as plain text.
         var callableDepth = instructionArg + 2;
-        var callable = stack.Count >= callableDepth ? stack[-callableDepth] : null;
+        var callableName = stack.Count >= callableDepth
+            ? PyCallableName.Get(context, stack[-callableDepth])
+            : "__build_class__()";
 
         if (map is PyDictObject dictSource)
         {
@@ -384,7 +388,7 @@ internal static partial class BytecodeVirtualMachine
             {
                 var contains = dict.GetItem(context, pair.Key);
                 if (contains.IsSuccessful)
-                    throw MultipleKeywordError(context, callable, pair.Key);
+                    throw MultipleKeywordError(context, callableName, pair.Key);
 
                 if (!contains.IsKeyError)
                     _ = contains.PyUnwrap(context);
@@ -404,54 +408,56 @@ internal static partial class BytecodeVirtualMachine
         // everything else propagates unchanged.
         var keysMethod = PyOperators.GetAttr(context, map, "keys");
         if (!keysMethod.IsSuccessful)
-            throw FormatKwargsError(context, callable, map, keysMethod.Exception);
+            throw FormatKwargsError(context, callableName, map, keysMethod.Exception);
 
         var keysCall = keysMethod.Value.Call(context);
         if (keysCall.IsError)
-            throw FormatKwargsError(context, callable, map, keysCall.Exception);
+            throw FormatKwargsError(context, callableName, map, keysCall.Exception);
 
         var keys = PyUtils.IterableToList(context, keysCall.Value);
         if (keys.IsError)
-            throw FormatKwargsError(context, callable, map, keys.Exception);
+            throw FormatKwargsError(context, callableName, map, keys.Exception);
 
         foreach (var key in keys.Value)
         {
             var contains = dict.GetItem(context, key);
             if (contains.IsSuccessful)
-                throw MultipleKeywordError(context, callable, key);
+                throw MultipleKeywordError(context, callableName, key);
 
             if (!contains.IsKeyError)
                 _ = contains.PyUnwrap(context);
 
             var value = PySpecialMethods.GetItem(context, map, key);
             if (value.IsError)
-                throw FormatKwargsError(context, callable, map, value.Exception);
+                throw FormatKwargsError(context, callableName, map, value.Exception);
 
             var set = dict.SetItem(context, key, value.Value);
             if (set.IsError)
-                throw FormatKwargsError(context, callable, map, set.Exception);
+                throw FormatKwargsError(context, callableName, map, set.Exception);
         }
     }
 
-    // CPython _PyEval_FormatKwargsError lens over the whole DICT_MERGE.
-    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject? callable, PyObject update, PyExceptionObject exception)
+    // CPython _PyEval_FormatKwargsError lens over the whole DICT_MERGE. The
+    // callable's name is resolved by InternalDictMerge, at the only place
+    // that knows the stack layout the merge runs in.
+    private static PyRuntimeException FormatKwargsError(PyCallContext context, string callableName, PyObject update, PyExceptionObject exception)
     {
         if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
-            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, PyCallableName.Get(context, callable), update.PyType.TpName);
+            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, callableName, update.PyType.TpName);
 
         if (PyKeyErrorObjectType.Shared.IsInstance(exception) && exception.Args.Count is 1)
-            return MultipleKeywordError(context, callable, exception.Args[0]);
+            return MultipleKeywordError(context, callableName, exception.Args[0]);
 
         return new PyRuntimeException(context, exception);
     }
 
     // "%U got multiple values for keyword argument '%S'": the callable is named
     // in full, and the keyword keeps its own text rather than an object repr
-    private static PyRuntimeException MultipleKeywordError(PyCallContext context, PyObject? callable, PyObject keyword)
+    private static PyRuntimeException MultipleKeywordError(PyCallContext context, string callableName, PyObject keyword)
     {
         return context.TypeError(
             PySR.Runtime_Arguments_MultipleKeywords,
-            PyCallableName.Get(context, callable),
+            callableName,
             KeywordText(context, keyword));
     }
 
