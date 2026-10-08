@@ -25,6 +25,24 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 - 无字节码缓存：不产生也不读取 `.pyc`，每次 import 都重新编译。
 - `multiprocessing`、`subprocess` 等进程级模块未实现。
 
+## 编译前端
+
+编译前端（词法、语法、语义分析、字节码发射）对 CPython 合法程序存在少量拒绝性差异：以下语法在
+CPython 3.14 下可编译，PySharp 在 `compile()` 阶段即报错。以 CPython 3.14.6 真实源码做过只编译
+不执行的扫描：标准库 `Lib` 根层 153 个模块全部通过；`Lib/test` 顶层 448 个测试文件中 438 个通过，
+失败的 10 个文件拆成语句级片段（CPython 合法片段共 13,627 个）后有 92 个被 PySharp 拒绝，
+归为六类缺口：
+
+- 类定义基类列表的 `*`/`**` 解包：`class C(*bases, **kwds): ...`、`class C1[T](*()): ...`。
+- `match` 序列模式中 starred 模式不在末尾：`case [x, *_, y]:`、`case [*_]:`
+  （CPython 3.11 起允许出现在任意位置）。
+- 调用实参中 `*`/`**` 后跟复合表达式：`f(*() or (), **{} or {})`。
+- f-string 的部分高级形态：表达式内三引号字面量（`f"{'''x'''}"`）、多行表达式含注释、
+  format spec 内多个嵌套替换字段（`{value:{w:0}.{p:1}}`）、raw f-string 的 `\{{` 转义。
+- 推导式与生成器表达式内的 `async` 上下文误判：genexp 中的 `async for`、genexp 过滤条件里的
+  `await`（后者在 async 函数内合法，PySharp 误报 `'await' outside async function`）。
+- 函数内推导式中的 `yield`：`def g(): [x for x in [(yield 1)]]`。
+
 ## 运行时与语言细节
 
 - 错误消息文本：异常类型与层级与 CPython 一致。消息措辞为独立实现（资源串集中在 `PySR`），
