@@ -24,7 +24,10 @@ namespace PySharp.Tests;
 ///
 /// When no CPython 3.14 can be located the comparison tests are inconclusive,
 /// never failures: the layer is an opt-in-by-environment check, not a hard
-/// dependency (docs/reference/contributing/test-corpus.md).
+/// dependency (docs/reference/contributing/test-corpus.md). A fixture may
+/// also declare the CPython range its contract holds for via :cpython-min: /
+/// :cpython-max: in its docstring; when the probed interpreter falls outside
+/// that range the comparison is inconclusive for the same reason.
 /// </summary>
 internal static class PyCpythonDiffRunner
 {
@@ -44,6 +47,9 @@ internal static class PyCpythonDiffRunner
 
     private static readonly Regex AddressRegex = new("0x[0-9a-fA-F]+", RegexOptions.Compiled);
 
+    /// <summary>Matches the "Python 3.14.2" head of a --version answer.</summary>
+    private static readonly Regex CpythonVersionRegex = new(@"^Python (\d+)\.(\d+)(?:\.(\d+))?", RegexOptions.Compiled);
+
     private static readonly Regex WindowsPathRegex = new(@"[A-Za-z]:[/\\][^\s'""<>]*", RegexOptions.Compiled);
 
     /// <summary>
@@ -56,7 +62,7 @@ internal static class PyCpythonDiffRunner
 
     private sealed record RunResult(int ExitCode, string StdOut, string StdErr, bool TimedOut);
 
-    private sealed record Cpython(string ExePath, string Version);
+    private sealed record Cpython(string ExePath, string Version, System.Version ParsedVersion);
 
     /// <summary>
     /// Locates the PySharp.Console build output by walking up from the test
@@ -90,7 +96,13 @@ internal static class PyCpythonDiffRunner
         return interpreter?.ExePath;
     }
 
-    internal static void Run(string fileName)
+    /// <summary>
+    /// Runs one fixture comparison. <paramref name="cpythonMin"/> and
+    /// <paramref name="cpythonMax"/> carry the fixture-declared :cpython-min:
+    /// / :cpython-max: bounds (major.minor[.patch]); the comparison runs only
+    /// when the probed CPython sits inside the range.
+    /// </summary>
+    internal static void Run(string fileName, string? cpythonMin = null, string? cpythonMax = null)
     {
         var consoleExe = ConsoleExeCache.Value;
         if (consoleExe is null)
@@ -103,6 +115,17 @@ internal static class PyCpythonDiffRunner
                 "CPython 3.14 not found, fixture output comparison skipped " +
                 $"(probed: {probeLog}). Set PYSHARP_CPYTHON to a Python 3.14 " +
                 "executable to enable it.");
+        }
+
+        if (!SatisfiesRange(cpython.ParsedVersion, cpythonMin, cpythonMax))
+        {
+            var range = cpythonMin is null
+                ? cpythonMax
+                : cpythonMax is null ? cpythonMin : $"{cpythonMin} .. {cpythonMax}";
+            Assert.Inconclusive(
+                $"fixture declares CPython range {range} but the probed " +
+                $"interpreter is {cpython.Version}; comparison skipped " +
+                "(adjust :cpython-min:/:cpython-max: in the fixture docstring or point PYSHARP_CPYTHON at a matching interpreter)");
         }
 
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "test_pyfiles", fileName);
@@ -253,6 +276,33 @@ internal static class PyCpythonDiffRunner
             timedOut);
     }
 
+    /// <summary>
+    /// True when <paramref name="probe"/> sits inside the declared bounds.
+    /// The lower bound is inclusive (<c>3.11.4</c> means ≥ 3.11.4). A patchless
+    /// upper bound covers the whole minor series (<c>3.14</c> means &lt; 3.15);
+    /// with a patch it is an inclusive ceiling (<c>3.14.2</c> means ≤ 3.14.2).
+    /// The generator guarantees both values parse.
+    /// </summary>
+    private static bool SatisfiesRange(System.Version probe, string? cpythonMin, string? cpythonMax)
+    {
+        if (cpythonMin is not null && probe < System.Version.Parse(cpythonMin))
+            return false;
+        if (cpythonMax is not null)
+        {
+            var max = System.Version.Parse(cpythonMax);
+            if (max.Build < 0)
+            {
+                if (probe >= new System.Version(max.Major, max.Minor + 1, 0))
+                    return false;
+            }
+            else if (probe > max)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static (Cpython?, string) FindCpythonCore()
     {
         var probes = new List<(string Description, string? ExePath, string[] Args)>
@@ -292,8 +342,9 @@ internal static class PyCpythonDiffRunner
                 }
 
                 version = version.Trim();
-                if (process.ExitCode is 0 && version.StartsWith("Python 3.14", StringComparison.Ordinal))
-                    return (new Cpython(exePath, version), log.ToString());
+                if (process.ExitCode is 0 && TryParseCpythonVersion(version, out var parsed)
+                    && parsed.Major is 3 && parsed.Minor is 14)
+                    return (new Cpython(exePath, version, parsed), log.ToString());
                 log.Append(description).Append(": ").Append(version).Append("; ");
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
@@ -303,5 +354,27 @@ internal static class PyCpythonDiffRunner
         }
 
         return (null, log.ToString().TrimEnd(';', ' '));
+    }
+
+    /// <summary>
+    /// Parses "Python 3.14.2" (rc suffixes tolerated) into a three-part
+    /// version, defaulting the patch to 0. Anything that does not match the
+    /// shape is rejected, so the caller re-checks major/minor for the 3.14.x
+    /// pin.
+    /// </summary>
+    private static bool TryParseCpythonVersion(string text, out System.Version parsed)
+    {
+        var match = CpythonVersionRegex.Match(text);
+        if (!match.Success)
+        {
+            parsed = null!;
+            return false;
+        }
+
+        parsed = new System.Version(
+            int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture),
+            int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture),
+            match.Groups[3].Success ? int.Parse(match.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture) : 0);
+        return true;
     }
 }

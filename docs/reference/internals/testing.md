@@ -13,7 +13,7 @@
 | --- | --- |
 | `PyFileTests.g.cs`、`PyFileCpythonTests.g.cs`（生成） | 源生成器扫描 `test_pyfiles/` 根层 `.py` 自动生成的两个 MSTest 包装：前者每夹具一个普通测试，后者每夹具一个 CPython 输出对比测试（登记了 `:cpython-diff:` 分歧的夹具带 `[Ignore]`） |
 | `PyFixtureRunner.cs` | 普通测试的共享 runner：`PyInterpreter.RunFile` 驱动单个夹具 |
-| `PyCpythonDiffRunner.cs` | 对比测试的共享 runner：把夹具作为脚本在 PySharp.Console 与本地 CPython 3.14 子进程中各跑一次，校验退出码与归一化 stdout 一致；同时提供 PySharp.Console 定位器（`TestPyFiles.cs` 的子进程测试也用它） |
+| `PyCpythonDiffRunner.cs` | 对比测试的共享 runner：把夹具作为脚本在 PySharp.Console 与本地 CPython 3.14 子进程中各跑一次，校验退出码与归一化 stdout 一致；夹具声明的 `:cpython-min:` / `:cpython-max:` 范围不含探测到的解释器时对比 Inconclusive。同时提供 PySharp.Console 定位器（`TestPyFiles.cs` 的子进程测试也用它） |
 | `TestPyFiles.cs` | 需要特殊 host 的手写测试（注入 argv、捕获 stdin/stderr、校验 exit code、REPL、字节级输出、临时目录布局） |
 | `UtilityTests.cs` | 与 Python 语义无关的 C# 工具类测试（`ConcurrentSet`、`MemoryFileSystem` 等） |
 | `StdIoTests.cs`、`ColorSupportTests.cs`、`TracebackTests.cs`、`WarningTests.cs`、`ModuleProviderTests.cs` 等 | 标准流、颜色输出、traceback 渲染、警告机制与模块提供器的 C# 侧测试 |

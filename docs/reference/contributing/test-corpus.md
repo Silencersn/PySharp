@@ -33,6 +33,8 @@ converts exact subtypes (bool) to pooled ints.
 | `:kind:` | 是 | `test` / `helper` | `test` 生成 MSTest 测试；`helper` 跳过生成。被其他夹具 import 的辅助件标 `helper`；**需要特殊 host 驱动的夹具**（注入 argv、捕获 stdio 内容等非默认 stdio 语义场景，由 `TestPyFiles.cs` 手写测试充当驱动者）同样标 `helper` 并在 docstring 注明驱动者。注意：仅因读取 stdin 并不需要 `helper`——进程内 runner 的 stdin 已恒为 EOF（见下）。必填而非默认，防止漏标辅助件时静默生成假测试 |
 | `:background:` | 否 | 自由文本 | 出身背景：当初的缺陷背景、CPython 行为引用（含版本与源码位置）。语义上承接原"回归"叙事 |
 | `:cpython-diff:` | 否 | 自由文本（单行） | 已知 CPython 分歧登记：非空时，CPython 对比测试以该理由 `[Ignore]`。理由必须描述分歧本身（"CPython 3.14 返回 mappingproxy 而 PySharp 返回 dict"），修复落地后**必须移除豁免**。空理由触发 PYFIX009 warning。字段对 `helper` 无意义 |
+| `:cpython-min:` | 否 | `major.minor[.patch]` | 夹具契约的 CPython 版本下界（含等，`3.11.4` 即 ≥ 3.11.4）：登记断言的行为自该版本引入。对比层探测到的解释器不在声明范围内时该夹具的对比测试 Inconclusive，普通测试照跑。对 `helper` 无意义 |
+| `:cpython-max:` | 否 | `major.minor[.patch]` | 夹具契约的 CPython 版本上界：带 patch 为含等上界（`3.14.2` 即 ≤ 3.14.2），不带 patch 管住整个 minor 系（`3.14` 即 < 3.15）。其余同 `:cpython-min:` |
 
 解析约束：支持 `"""` 与 `'''`；docstring 内不做转义处理，引号串不要出现在头部；未知字段触发 warning——新增字段属于生成器改动，先改生成器再使用。
 
@@ -60,6 +62,7 @@ converts exact subtypes (bool) to pooled ints.
 | 未知元数据字段 | warning |
 | docstring 标题行以 `Regression` 开头 | warning |
 | `:cpython-diff:` 值为空 | warning (PYFIX009) |
+| `:cpython-min:` / `:cpython-max:` 值非法 | error (PYFIX010)——静默丢弃声明的边界会让守卫失效 |
 
 生成范围是 `test_pyfiles/` **根层**的 `.py`（子目录天然排除，包内模块不会被扫描）。
 
@@ -76,6 +79,7 @@ converts exact subtypes (bool) to pooled ints.
 **环境与运行模型**：
 
 - CPython 探测顺序：环境变量 `PYSHARP_CPYTHON`（指向 3.14 的 python.exe，多版本共存时用它显式指定）→ `py -3.14` → PATH 上的 `python`/`python3`，要求版本为 `Python 3.14.x`。找不到时对比测试逐个 Inconclusive，不算失败——本层是"环境具备即校验"，不是硬依赖。
+- 夹具声明的 `:cpython-min:` / `:cpython-max:` 范围不含探测到的解释器时，该夹具的对比测试同样 Inconclusive（普通测试照跑）。典型用途：登记行为自某版本引入（如 `int_max_str_digits` 的 `:cpython-min: 3.11`）或将于某版本移除——将来升级对标版本时，相关夹具自动退出对比层，无需逐个改 `:cpython-diff:`。
 - 每次运行使用独立临时工作目录：夹具的相对文件 IO 落在临时目录，不污染语料与仓库。stdin 重定向为空（`input()` 两侧对称得到 EOFError）。单次超时 60 秒，超时按分歧处理。
 - 并发限流 8 路（叠加 MSTest 方法级并行）；实测整层使全量 `dotnet test` 增加约 20–40 秒（397 夹具 × 双侧子进程）。
 

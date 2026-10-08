@@ -9,6 +9,7 @@ block before the fixture exits.
     the C long conversion; non-index objects raise TypeError and values
     beyond C long raise OverflowError. The value validation is unchanged:
     only 0 or values >= 640 are accepted.
+:cpython-min: 3.11
 :kind: test
 """
 
