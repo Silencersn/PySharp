@@ -19,7 +19,7 @@
 
 ## Generated Source
 
-- Before inspecting source-generator output, rebuild the project with `EmitCompilerGeneratedFiles` enabled. This ensures that generated files are present and up to date.
+- Source generators emit their output to disk by default (`EmitCompilerGeneratedFiles` is set in `Directory.Build.props`). The generated files live under each project's `obj/<configuration>/<tfm>/generated/` and are refreshed by an ordinary build — inspect them there instead of concluding a definition is missing.
 
 ## Commit Messages
 

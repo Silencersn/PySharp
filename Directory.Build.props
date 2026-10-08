@@ -3,6 +3,10 @@
   <PropertyGroup>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- Source generators write their output under each project's
+         obj/<configuration>/<tfm>/generated/ so the generated sources are
+         inspectable without a special build switch. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <!-- Single source of truth for the release version; every project
          inherits it, including the bare dlls shipped in the main
          package's analyzers/ directory. -->
