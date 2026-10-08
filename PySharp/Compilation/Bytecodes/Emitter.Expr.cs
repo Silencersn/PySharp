@@ -599,7 +599,7 @@ partial class Emitter
         }
     }
 
-    private void InternalEmitGenerators(ImmutableArray<AstComprehensionNode> generators, Action emitElt, bool isGeneratorExp = false, ComprehensionVariableScope? inlineCompScope = null)
+    private void InternalEmitGenerators(ImmutableArray<AstComprehensionNode> generators, Action emitElt, bool isGeneratorExp = false, ComprehensionVariableScope? inlineCompScope = null, AstExprNode? inlineFrameOwner = null)
     {
         // the comprehension body resolves names in its own scope inside a
         // class body, and in the enclosing scope everywhere else
@@ -623,6 +623,19 @@ partial class Emitter
                 EmitSyncGenerator(i);
         }
 
+        // the inline frame is entered after the outermost iterable is
+        // evaluated: a generator suspending inside the iterable must not
+        // leave the comprehension's name-based locals frame dangling
+        // across the yield, since a resume only restores the generator's
+        // own frame
+        void EnterInlineFrame()
+        {
+            if (inlineFrameOwner is null)
+                return;
+            Builder.Emit(OpCode._EnterInlineFrame);
+            EmitInlineComprehensionCells(inlineFrameOwner);
+        }
+
         void EmitSyncGenerator(int i)
         {
             var forIterLabel = Builder.DefineLabel();
@@ -639,6 +652,10 @@ partial class Emitter
                 LoadExpr(generator.Iter);
                 Builder.Emit(OpCode.GetIter);
             }
+
+            if (i is 0)
+                EnterInlineFrame();
+
             using (new EmitterVariableScopeSwitch(this, bodyScope))
             {
                 Builder.MarkLabel(forIterLabel);
@@ -680,6 +697,9 @@ partial class Emitter
                 LoadExpr(generator.Iter);
                 Builder.Emit(OpCode.GetAIter);
             }
+
+            if (i is 0)
+                EnterInlineFrame();
             using (new EmitterVariableScopeSwitch(this, bodyScope))
             {
                 Builder.MarkLabel(forIterLabel);
@@ -737,14 +757,12 @@ partial class Emitter
     private void EmitListComp(ListCompNode node)
     {
         Builder.Emit(OpCode.BuildList, 0);
-        Builder.Emit(OpCode._EnterInlineFrame);
 
-        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Elt);
             Builder.Emit(OpCode.ListAppend, node.Generators.Length + 1);
-        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node), inlineFrameOwner: node);
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }
@@ -752,14 +770,12 @@ partial class Emitter
     private void EmitSetComp(SetCompNode node)
     {
         Builder.Emit(OpCode.BuildSet, 0);
-        Builder.Emit(OpCode._EnterInlineFrame);
 
-        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Elt);
             Builder.Emit(OpCode.SetAdd, node.Generators.Length + 1);
-        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node), inlineFrameOwner: node);
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }
@@ -767,15 +783,13 @@ partial class Emitter
     private void EmitDictComp(DictCompNode node)
     {
         Builder.Emit(OpCode.BuildMap, 0);
-        Builder.Emit(OpCode._EnterInlineFrame);
 
-        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Key);
             LoadExpr(node.Value);
             Builder.Emit(OpCode.MapAdd, node.Generators.Length + 1);
-        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node), inlineFrameOwner: node);
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }

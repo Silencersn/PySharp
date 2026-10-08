@@ -118,6 +118,25 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         {
             CurrentComprehensionStats = ComprehensionStatsStack.Pop();
         }
+
+        // CPython's yield check tests the enclosing symtable block: while
+        // the outermost iterables are being visited no comprehension block
+        // has been entered yet — not even for nested comprehensions met
+        // along the way — so a yield there belongs to the enclosing function
+        public bool IsEntirelyWithinOutermostIterables()
+        {
+            if (CurrentComprehensionStats.VisitingPart is not ComprehensionStatsVisitingPart.GeneratorIter)
+                return false;
+            foreach (var stats in ComprehensionStatsStack)
+            {
+                // the bottom entry is the state outside any comprehension
+                if (stats.Node is null)
+                    continue;
+                if (stats.VisitingPart is not ComprehensionStatsVisitingPart.GeneratorIter)
+                    return false;
+            }
+            return true;
+        }
     }
 
     private struct ComprehensionStats

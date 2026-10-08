@@ -355,10 +355,18 @@ partial class SemanticAnalyzer
         // rule, so a restricted block wins over the comprehension check below
         CheckRestrictedExpr(node);
 
-        if (_currentNestedComprehensionStats.IsWithinComprehension)
+        // CPython's check tests the enclosing symtable block
+        // (ste_comprehension), not the AST: the outermost iterables are
+        // visited outside every comprehension block, so a yield there
+        // belongs to the enclosing function and makes it a generator.
+        // The reported comprehension is the enclosing block's own, so a
+        // genexp met inside a listcomp's element blames the listcomp
+        if (_currentNestedComprehensionStats.IsWithinComprehension
+            && (_currentScopeStats.Scope is ComprehensionVariableScope or GeneratorExpVariableScope
+                || !_currentNestedComprehensionStats.IsEntirelyWithinOutermostIterables()))
         {
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
-                AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
+                AstUtils.GetExprNodeName(GetEnclosingComprehension()));
         }
 
         if (_currentScopeStats.Scope is AsyncFunctionVariableScope asyncYieldScope)
@@ -380,14 +388,32 @@ partial class SemanticAnalyzer
     {
         CheckRestrictedExpr(node);
 
-        if (_currentNestedComprehensionStats.IsWithinComprehension)
+        // CPython reports plain 'yield' even for 'yield from' inside a
+        // comprehension (symtable_raise_if_comprehension_block); the
+        // enclosing-block rule mirrors VisitYield above
+        if (_currentNestedComprehensionStats.IsWithinComprehension
+            && (_currentScopeStats.Scope is ComprehensionVariableScope or GeneratorExpVariableScope
+                || !_currentNestedComprehensionStats.IsEntirelyWithinOutermostIterables()))
         {
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension,
-                AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
+                AstUtils.GetExprNodeName(GetEnclosingComprehension()));
         }
 
-        if (_currentScopeStats.Scope is AsyncFunctionVariableScope)
+        if (_currentScopeStats.Scope is AsyncFunctionVariableScope asyncYieldFromScope)
+        {
+            // CPython's codegen walks a value-returning statement before
+            // the yields inside it (symtable has already marked the
+            // generator), so a yield from there reports the return rule;
+            // every other position reports its own — 'yield from' is
+            // always illegal in async functions, generators included
+            if (asyncYieldFromScope.ReturnWithValue is not null)
+            {
+                throw SyntaxErrorAt(asyncYieldFromScope.ReturnWithValue,
+                    PySR.InvalidSyntax_Semantic_ReturnWithValueInAsyncGenerator);
+            }
+
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideAsyncFunc);
+        }
 
         Debug.Assert(_currentScopeStats.Scope is not GeneratorExpVariableScope);
         if (_currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope
@@ -396,6 +422,21 @@ partial class SemanticAnalyzer
 
         callableYieldFromScope.IsGenerator = true;
         VisitNode(node.Value);
+    }
+
+    // the comprehension the enclosing symtable block belongs to; when no
+    // block matches (a scope walk reached the yield from outside any
+    // comprehension block) the innermost open comprehension is reported
+    private AstExprNode GetEnclosingComprehension()
+    {
+        return _currentScopeStats.Scope switch
+        {
+            ComprehensionVariableScope comprehension => comprehension.Owner,
+            GeneratorExpVariableScope genexp => genexp.Owner,
+            // the check only runs inside a comprehension, so the reported
+            // node is non-null on every path that reaches the throw
+            _ => _currentNestedComprehensionStats.CurrentComprehension!
+        };
     }
 
     private void VisitNamedExpr(NamedExprNode node)

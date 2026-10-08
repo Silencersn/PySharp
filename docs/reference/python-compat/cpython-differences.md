@@ -27,21 +27,21 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 
 ## 编译前端
 
-编译前端（词法、语法、语义分析、字节码发射）对 CPython 合法程序存在少量拒绝性差异：以下语法在
-CPython 3.14 下可编译，PySharp 在 `compile()` 阶段即报错。以 CPython 3.14.6 真实源码做过只编译
-不执行的扫描：标准库 `Lib` 根层 153 个模块全部通过；`Lib/test` 顶层 448 个测试文件中 438 个通过，
-失败的 10 个文件拆成语句级片段（CPython 合法片段共 13,627 个）后有 92 个被 PySharp 拒绝，
-归为六类缺口；其中类基类列表的 `*`/`**` 解包、序列模式的匿名 starred（`*_`，解析时漏消费
-`_`，有名 starred 任意位置本就可编译）、调用实参与下标中 `*` 后的表达式层级（`bitwise_or`
-升至完整 `expression`，对齐 CPython `starred_expression` 规则，显示与 `return` 位置的
-`bitwise_or` 层级保留）、推导式的 `async` 上下文（genexp 入口漏识别 `async for`；`await`
-报文与上下文豁免对齐 CPython 的隐式异步生成器语义——genexp 内任意上下文合法，内联推导式
-统一报 `asynchronous comprehension outside of an asynchronous function`）、f-string 的
+以 CPython 3.14.6 真实源码做过只编译不执行的扫描：标准库 `Lib` 根层 153 个模块全部通过；
+`Lib/test` 顶层 448 个测试文件中 438 个通过，失败的 10 个文件拆成语句级片段（CPython 合法片段
+共 13,627 个）后曾有 92 个被 PySharp 拒绝，归为六类缺口，现全部修复，对 CPython 合法程序
+已无已知的拒绝性差异。六类分别是：类基类列表的 `*`/`**` 解包；序列模式的匿名 starred（`*_`，
+解析时漏消费 `_`，有名 starred 任意位置本就可编译）；调用实参与下标中 `*` 后的表达式层级
+（`bitwise_or` 升至完整 `expression`，对齐 CPython `starred_expression` 规则，显示与 `return`
+位置的 `bitwise_or` 层级保留）；推导式的 `async` 上下文（genexp 入口漏识别 `async for`；
+`await` 报文与上下文豁免对齐 CPython 的隐式异步生成器语义——genexp 内任意上下文合法，内联
+推导式统一报 `asynchronous comprehension outside of an asynchronous function`）；f-string 的
 高级形态（表达式内三引号字面量的扫描状态恢复、format spec 内嵌套替换字段自带 spec 的深度
 判定、raw 与非 raw 的 `\{`/`\}` 花括号回退，及未闭合字段读入结束引号时的
-`f-string: expecting '}'` 报文）五类已修复，余下一类：
-
-- 函数内推导式中的 `yield`：`def g(): [x for x in [(yield 1)]]`。
+`f-string: expecting '}'` 报文）；以及推导式中的 `yield`（CPython 按当前符号表块判定：
+最外层可迭代对象在推导式块之外求值，其中的 `yield` 与 `yield from` 归属外层函数并使其成为
+生成器，lambda 体内同理；推导式体内各位置与模块/类体仍拒绝，报文形态与归属对象对齐，
+async 函数中 `yield from` 一律非法、带值 `return` 按语句遍历顺序优先报错）。
 
 ## 运行时与语言细节
 
