@@ -62,11 +62,13 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         if (value.IsSuccessful || value.Exception.PyType != PyKeyErrorObjectType.Shared)
             return value;
 
-        var missing = self.PyType.Slots.Missing;
-        if (missing is null)
+        // CPython dict_subscript: __missing__ resolves on the type's MRO at
+        // the KeyError point, so a runtime assignment takes effect on the
+        // next subscript without any slot re-wiring
+        if (!PyUtils.TryLookupSpecial(context, self, PySpecialNames.Missing, out var missing))
             return PyResult.KeyError(item);
 
-        return missing(context, self, item);
+        return missing.Call(context, [item]);
     }
 
     protected override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)

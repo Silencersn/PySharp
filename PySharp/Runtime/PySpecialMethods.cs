@@ -363,8 +363,14 @@ public static class PySpecialMethods
 
     public static PyResult<PyStrObject> Format(PyCallContext context, PyObject obj, PyObject formatSpec)
     {
-        var func = obj.PyType.Slots.Format ?? PyTypeObject.DefaultFormat;
-        var result = func(context, obj, formatSpec);
+        // CPython PyObject_Format: the name resolves on the type's MRO
+        // (object.__format__ is the dict-level default), binding through
+        // the descriptor protocol — a plain callable assigned to
+        // __format__ is invoked without the instance
+        if (!PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Format, out var func))
+            return ValidateResultOf<PyStrObject>(PyTypeObject.DefaultFormat(context, obj, formatSpec), MessageCreator);
+
+        var result = func.Call(context, [formatSpec]);
         return ValidateResultOf<PyStrObject>(result, MessageCreator);
 
         static string MessageCreator(PyObject o)
@@ -375,38 +381,39 @@ public static class PySpecialMethods
 
     public static PyResult Round(PyCallContext context, PyObject obj, PyObject ndigits)
     {
-        var func = obj.PyType.Slots.Round;
-        if (func is not null)
-            return func(context, obj, ndigits);
+        if (!PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Round, out var func))
+            return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Round);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Round);
+        // CPython builtin_round: round(x) invokes __round__() with no
+        // arguments and round(x, n) invokes __round__(n) — the
+        // ndigits=None spelling never passes an argument
+        return ndigits is PyNoneObject
+            ? func.Call(context)
+            : func.Call(context, [ndigits]);
     }
 
     public static PyResult Trunc(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Trunc;
-        if (func is not null)
-            return func(context, obj);
+        if (!PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Trunc, out var func))
+            return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Trunc);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Trunc);
+        return func.Call(context);
     }
 
     public static PyResult Floor(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Floor;
-        if (func is not null)
-            return func(context, obj);
+        if (!PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Floor, out var func))
+            return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Floor);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Floor);
+        return func.Call(context);
     }
 
     public static PyResult Ceil(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Ceil;
-        if (func is not null)
-            return func(context, obj);
+        if (!PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Ceil, out var func))
+            return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Ceil);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Ceil);
+        return func.Call(context);
     }
 
     public static PyResult<PyIntObject> Int(PyCallContext context, PyObject obj)

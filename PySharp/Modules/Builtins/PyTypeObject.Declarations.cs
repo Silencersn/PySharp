@@ -96,9 +96,6 @@ partial class PyTypeObject
         [PySpecialMethod("__float__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Float(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__complex__", typeof(PyUnaryFunction))]
-        static partial void Complex(PyCallContext context, TObject self);
-
         [PySpecialMethod("__index__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Index(PyCallContext context, TObject self);
 
@@ -185,8 +182,14 @@ partial class PyTypeObject
         // type-safe R* virtual methods stay on PyTypeObject<TObject> as
         // plain virtuals (no [PySpecialMethod], no generated bridges).
 
-        [PySpecialMethod("__missing__", typeof(PyBinaryFunction))]
-        static partial void Missing(PyCallContext context, TObject self, PyObject key);
+        // The 13 wide dunders (__complex__ .. __ceil__, the CPython names
+        // no slotdef carries) left the manifest too: their protocol entry
+        // points resolve the name on the type's MRO at call time
+        // (_PyObject_LookupSpecial), so the type dict is the single source
+        // of truth and the binding follows the descriptor protocol instead
+        // of being frozen at slot-wiring time. The wide virtuals stay on
+        // PyTypeObject<TObject> as [PySlot]-marked dict-only views
+        // (PyTypeGenerator.WideDictSlotNames).
 
         [PySpecialMethod("__get__", typeof(PyTernaryFunction))]
         static partial void Get(PyCallContext context, TObject self, PyObject instance, PyObject owner);
@@ -196,12 +199,6 @@ partial class PyTypeObject
 
         [PySpecialMethod("__delete__", typeof(PyBinaryFunction))]
         static partial void Delete(PyCallContext context, TObject self, PyObject instance);
-
-        [PySpecialMethod("__set_name__", typeof(PyTernaryFunction))]
-        static partial void SetName(PyCallContext context, TObject self, PyObject owner, PyObject name);
-
-        [PySpecialMethod("__format__", typeof(PyBinaryFunction))]
-        static partial void Format(PyCallContext context, TObject self, PyObject formatSpec);
 
         [PySpecialMethod("__iadd__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IAdd(PyCallContext context, TObject self, PyObject other);
@@ -260,12 +257,6 @@ partial class PyTypeObject
         [PySpecialMethod("__imul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Sequence))]
         static partial void InplaceRepeat(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__enter__", typeof(PyUnaryFunction))]
-        static partial void Enter(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__exit__", typeof(PyQuaternaryFunction))]
-        static partial void Exit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb);
-
         [PySpecialMethod("__await__", typeof(PyUnaryFunction))]
         static partial void Await(PyCallContext context, TObject self);
 
@@ -274,27 +265,6 @@ partial class PyTypeObject
 
         [PySpecialMethod("__anext__", typeof(PyUnaryFunction))]
         static partial void ANext(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__aenter__", typeof(PyUnaryFunction))]
-        static partial void AEnter(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__aexit__", typeof(PyQuaternaryFunction))]
-        static partial void AExit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb);
-
-        [PySpecialMethod("__reversed__", typeof(PyUnaryFunction))]
-        static partial void Reversed(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__round__", typeof(PyBinaryFunction))]
-        static partial void Round(PyCallContext context, TObject self, PyObject ndigits);
-
-        [PySpecialMethod("__trunc__", typeof(PyUnaryFunction))]
-        static partial void Trunc(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__floor__", typeof(PyUnaryFunction))]
-        static partial void Floor(PyCallContext context, TObject self);
-
-        [PySpecialMethod("__ceil__", typeof(PyUnaryFunction))]
-        static partial void Ceil(PyCallContext context, TObject self);
 
         [PySpecialMethod("__buffer__", typeof(PyBufferFunction))]
         static partial void Buffer(PyCallContext context, TObject self, int flags);

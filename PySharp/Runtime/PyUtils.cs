@@ -77,6 +77,42 @@ internal static class PyUtils
         return hintValue;
     }
 
+    // CPython _PyObject_LookupSpecial: the name is resolved on the type's
+    // MRO only (instance dictionaries and __getattribute__ are bypassed)
+    // and bound through the descriptor protocol immediately. A
+    // non-descriptor MRO entry comes back as-is, so a plain callable
+    // assigned to a special name is invoked without the instance; a
+    // failing __get__ propagates as the error it raised. Returns false
+    // when no MRO base provides the name, leaving no error state.
+    internal static bool TryLookupSpecial(PyCallContext context, PyObject obj, string name, [NotNullWhen(true)] out PyObject? bound)
+    {
+        if (!PyObject.TryLookupAttrInMro(obj.PyType, name, out var attr))
+        {
+            bound = null;
+            return false;
+        }
+
+        var getFunc = attr.PyType.Slots.Get;
+        if (getFunc is null)
+        {
+            bound = attr;
+            return true;
+        }
+
+        // Wrapper descriptors reuse the None *instance* as their
+        // class-access sentinel (CPython distinguishes this with a real
+        // obj == NULL), so looking a name up on an actual None would come
+        // back unbound and then fail the invocation — bind it directly.
+        if (obj is PyNoneObject && attr is PyWrapperDescriptorObject wrapper)
+        {
+            bound = new PyMethodWrapperObject(obj, wrapper._func);
+            return true;
+        }
+
+        bound = getFunc(context, attr, obj, obj.PyType).PyUnwrap(context);
+        return true;
+    }
+
     // CPython list_extend iter path: start iteration first (a failing
     // __iter__ wins over a failing hint), then consult the length hint on
     // the original iterable, then drain. Used where the result is a fresh

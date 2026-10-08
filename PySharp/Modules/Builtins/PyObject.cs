@@ -114,6 +114,13 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)HackCheckedDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
 
+        // object.__format__ lives in the dict exactly like CPython's
+        // object___format___impl slot wrapper: the wide-dunder consumers
+        // (format(), f-strings, str.format) resolve it through the MRO, so
+        // `del C.__format__` falls back to this default and getattr on any
+        // instance sees it
+        PyAttributes[PySpecialNames.Format] = new PyWrapperDescriptorObject((PyBinaryFunction)DefaultFormat);
+
         // the root comparison bridge: every type without its own override
         // resolves here through the MRO merge (DefaultEq/DefaultNe/NI order
         // comparisons — the pre-convergence FillSlot wiring of object)

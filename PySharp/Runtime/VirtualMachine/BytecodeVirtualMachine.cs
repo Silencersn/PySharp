@@ -139,26 +139,29 @@ internal static partial class BytecodeVirtualMachine
                         Stack.Push(consts[instructionArg]);
                         break;
 
+                    // Pops the context manager and pushes the bound protocol
+                    // method: the name resolves on the manager's type MRO and
+                    // binds through the descriptor protocol (a plain callable
+                    // assigned to __enter__ is invoked without the instance),
+                    // mirroring CPython's LOAD_SPECIAL over
+                    // _PyObject_LookupSpecialMethod
                     case OpCode.LoadSpecial:
-                        value = (LoadSpecialMethods)instructionArg switch
                         {
-                            LoadSpecialMethods.Enter => new PyWrapperDescriptorObject(
-                                Stack[-1].PyType.Slots.Enter ??
-                                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, Stack[-1].PyType.TpName)),
-                            LoadSpecialMethods.Exit => new PyWrapperDescriptorObject(
-                                Stack[-1].PyType.Slots.Exit ??
-                                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, Stack[-1].PyType.TpName)),
-                            LoadSpecialMethods.AEnter => new PyWrapperDescriptorObject(
-                                Stack[-1].PyType.Slots.AEnter ??
-                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAEnter, Stack[-1].PyType.TpName)),
-                            LoadSpecialMethods.AExit => new PyWrapperDescriptorObject(
-                                Stack[-1].PyType.Slots.AExit ??
-                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAExit, Stack[-1].PyType.TpName)),
+                            var manager = Stack.Pop();
+                            var (missingMessage, specialName) = (LoadSpecialMethods)instructionArg switch
+                            {
+                                LoadSpecialMethods.Enter => (PySR.Runtime_WithStmt_MissingEnter, PySpecialNames.Enter),
+                                LoadSpecialMethods.Exit => (PySR.Runtime_WithStmt_MissingExit, PySpecialNames.Exit),
+                                LoadSpecialMethods.AEnter => (PySR.Runtime_AsyncWith_MissingAEnter, PySpecialNames.AEnter),
+                                LoadSpecialMethods.AExit => (PySR.Runtime_AsyncWith_MissingAExit, PySpecialNames.AExit),
 
-                            _ => throw new UnreachableException()
-                        };
-                        Stack.Push(value);
-                        break;
+                                _ => throw new UnreachableException()
+                            };
+                            if (!PyUtils.TryLookupSpecial(context, manager, specialName, out var bound))
+                                throw context.TypeError(missingMessage, manager.PyType.TpName);
+                            Stack.Push(bound!);
+                            break;
+                        }
 
                     case OpCode._LoadExcInfo:
                         {

@@ -329,10 +329,12 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         foreach (var (name, value) in type.PyAttributes)
         {
-            var setNameFunc = value.PyType.Slots.SetName;
-            if (setNameFunc is null)
+            // CPython type_new_set_names: __set_name__ resolves on the
+            // member's own type MRO and binds the member as self; the
+            // member's dict entry is the single source of truth
+            if (!PyUtils.TryLookupSpecial(context, value, PySpecialNames.SetName, out var setNameFunc))
                 continue;
-            var result = setNameFunc(context, value, type, PyStrObject.FromString(name));
+            var result = setNameFunc.Call(context, [type, PyStrObject.FromString(name)]);
             if (result.IsError)
                 return result;
         }

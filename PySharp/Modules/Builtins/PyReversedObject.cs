@@ -29,9 +29,11 @@ public sealed partial class PyReversedObjectType : PyTypeObject<PyReversedObject
     {
         var obj = arguments[0];
 
-        var reversedFunc = obj.PyType.Slots.Reversed;
-        if (reversedFunc is not null)
-            return reversedFunc(context, obj);
+        // CPython builtin_reversed: __reversed__ resolves on the MRO and
+        // binds immediately — a plain callable assigned to the name is
+        // invoked without the instance
+        if (PyUtils.TryLookupSpecial(context, obj, PySpecialNames.Reversed, out var bound))
+            return bound.Call(context);
 
         var lenFunc = obj.PyType.Slots.Len;
         var getItemFunc = obj.PyType.Slots.GetItem;

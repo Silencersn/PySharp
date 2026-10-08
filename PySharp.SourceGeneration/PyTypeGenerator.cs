@@ -75,6 +75,28 @@ public class PyTypeGenerator : IIncrementalGenerator
         "NbInplaceOr",
     ];
 
+    // the wide dunders (__complex__ .. __ceil__): CPython carries no
+    // slotdef for these names — the protocol entry points resolve them on
+    // the type's MRO at call time (_PyObject_LookupSpecial), so an
+    // override owns no slot field; the generator wires only its dict view
+    // (FillWideDictView), which is what the call-time lookup finds
+    private static readonly HashSet<string> WideDictSlotNames =
+    [
+        "Complex",
+        "Missing",
+        "SetName",
+        "Format",
+        "Enter",
+        "Exit",
+        "AEnter",
+        "AExit",
+        "Reversed",
+        "Round",
+        "Trunc",
+        "Floor",
+        "Ceil",
+    ];
+
     // NbAdd -> Add, NbInplaceAdd -> IAdd (PySpecialNames and the
     // PyNumberMethods fields share the forward spelling)
     private static string NbForwardName(string name)
@@ -329,6 +351,16 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 var cast = slot.Name is "NbPow" or "NbInplacePow" ? "(PyTernaryFunction)" : "(PyBinaryFunction)";
                                 builder.AppendLine("Slots.Number ??= new();");
                                 builder.AppendLine($"FillSlot(PySpecialNames.{forward}, ref Slots.Number.{forward}, {cast}{slot.Name});");
+                            }
+                            else if (WideDictSlotNames.Contains(slot.Name))
+                            {
+                                // no slot field of its own — only the dict
+                                // view over the override, which is what the
+                                // call-time name lookup finds; the method
+                                // group binds the TObject-typed Func overload
+                                builder.AppendLine(slot.Name is "Round"
+                                    ? "FillRoundDictView(Round);"
+                                    : $"FillWideDictView(PySpecialNames.{slot.Name}, {slot.Name});");
                             }
                             else if (slot.SlotsMember is not null)
                             {

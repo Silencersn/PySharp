@@ -586,21 +586,16 @@ partial class Emitter
                 // dispatch to outer handlers, not re-enter this region
                 Builder.Emit(OpCode._PopFinally, 1);
                 if (preserveTos)
-                {
-                    // [exit, manager, value] -> [value, exit, manager]
-                    Builder.Emit(OpCode.Swap, 3);
+                    // [exit, value] -> [value, exit]
                     Builder.Emit(OpCode.Swap, 2);
-                }
                 EmitWithExitCall();
                 break;
 
             case EmitterRegionKind.AsyncWithItem:
                 Builder.Emit(OpCode._PopFinally, 1);
                 if (preserveTos)
-                {
-                    Builder.Emit(OpCode.Swap, 3);
+                    // [aexit, value] -> [value, aexit]
                     Builder.Emit(OpCode.Swap, 2);
-                }
                 EmitAsyncWithExitCall();
                 break;
 
@@ -1431,12 +1426,17 @@ partial class Emitter
             Builder.PushMetaInfo(item.ContextExpr.MetaInfo);
             // CPython probes __exit__ before __enter__ (codegen_with_inner);
             // the probe order decides which slot name the missing-slot
-            // TypeError reports when both are absent
+            // TypeError reports when both are absent. LOAD_SPECIAL pops a
+            // manager copy and pushes the bound protocol method, so the
+            // resident stack holds bound callables and the calls carry no
+            // instance argument (a plain callable assigned to a dunder is
+            // invoked without the manager, exactly like CPython's
+            // LOAD_SPECIAL over _PyObject_LookupSpecialMethod)
+            Builder.Emit(OpCode.Copy, 1); // -> [manager, manager]
             Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Exit); // -> [manager, exit]
             Builder.Emit(OpCode.Swap, 2); // -> [exit, manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [exit, manager, enter]
-            Builder.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
-            Builder.Emit(OpCode.Call, 1); // -> [exit, manager, value]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [exit, enter]
+            Builder.Emit(OpCode.Call, 0); // -> [exit, value]
             Builder.PopMetaInfo();
 
             Builder.Emit(OpCode._SetupFinally, finallyLabel);
@@ -1449,7 +1449,7 @@ partial class Emitter
                 StoreExpr(item.OptionalVars);
             else
                 Builder.Emit(OpCode.PopTop);
-            // -> [exit, manager]
+            // -> [exit]
 
             Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.WithItem });
             EmitWithItem(i + 1);
@@ -1457,8 +1457,8 @@ partial class Emitter
             Builder.Jump(finallyLabel);
 
             Builder.MarkLabel(exceptLabel);
-            Builder.Emit(OpCode._LoadExcInfo); // -> [exit, manager, exc_type, exc, traceback]
-            Builder.Emit(OpCode.Call, 4); // -> [handled]
+            Builder.Emit(OpCode._LoadExcInfo); // -> [exit, exc_type, exc, traceback]
+            Builder.Emit(OpCode.Call, 3); // -> [handled]
             Builder.Emit(OpCode.ToBool); // -> [handled_bool]
             Builder.Emit(OpCode._PopExceptionIfTrue);
             Builder.PopJumpIfTrue(finallyLabel); // -> []
@@ -1477,13 +1477,13 @@ partial class Emitter
         }
     }
 
-    // __exit__(manager, None, None, None), consuming the resident [exit, manager]
+    // __exit__(None, None, None), consuming the resident [exit]
     private void EmitWithExitCall()
     {
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-        Builder.Emit(OpCode.Call, 4);
+        Builder.Emit(OpCode.Call, 3);
         Builder.Emit(OpCode.PopTop);
     }
 
@@ -1510,13 +1510,15 @@ partial class Emitter
             LoadExpr(item.ContextExpr); // -> [manager]
             // Mirrors sync with: probe __aexit__ before __aenter__, matching
             // CPython's slot probe order for the missing-slot TypeError, and
-            // tags the prologue with the context expression's location
+            // tags the prologue with the context expression's location.
+            // LOAD_SPECIAL pops a manager copy and pushes the bound protocol
+            // method, so the calls carry no instance argument
             Builder.PushMetaInfo(item.ContextExpr.MetaInfo);
+            Builder.Emit(OpCode.Copy, 1); // -> [manager, manager]
             Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AExit); // -> [manager, aexit]
             Builder.Emit(OpCode.Swap, 2); // -> [aexit, manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [aexit, manager, aenter]
-            Builder.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
-            Builder.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [aexit, aenter]
+            Builder.Emit(OpCode.Call, 0); // -> [aexit, coroutine]
             Builder.PopMetaInfo();
 
             // Await __aenter__() result; oparg 1 selects the
@@ -1534,7 +1536,7 @@ partial class Emitter
             Builder.MarkLabel(afterEnterLabel);
             Builder.Emit(OpCode.Swap, 2); // swap coroutine and value
             Builder.Emit(OpCode.PopTop); // pop coroutine
-            // -> [aexit, manager, value]
+            // -> [aexit, value]
 
             Builder.Emit(OpCode._SetupFinally, finallyLabel);
             Builder.Emit(OpCode._SetupExcept, exceptLabel);
@@ -1546,7 +1548,7 @@ partial class Emitter
                 StoreExpr(item.OptionalVars);
             else
                 Builder.Emit(OpCode.PopTop);
-            // -> [aexit, manager]
+            // -> [aexit]
 
             Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.AsyncWithItem });
             EmitAsyncWithItem(i + 1);
@@ -1554,8 +1556,8 @@ partial class Emitter
             Builder.Jump(finallyLabel);
 
             Builder.MarkLabel(exceptLabel);
-            Builder.Emit(OpCode._LoadExcInfo); // -> [aexit, manager, exc_type, exc, traceback]
-            Builder.Emit(OpCode.Call, 4); // -> [coroutine]
+            Builder.Emit(OpCode._LoadExcInfo); // -> [aexit, exc_type, exc, traceback]
+            Builder.Emit(OpCode.Call, 3); // -> [coroutine]
 
             // Await __aexit__() result
             Builder.Emit(OpCode.GetAwaitable, 2);
@@ -1590,13 +1592,13 @@ partial class Emitter
         }
     }
 
-    // awaits __aexit__(manager, None, None, None), consuming [aexit, manager]
+    // awaits __aexit__(None, None, None), consuming the resident [aexit]
     private void EmitAsyncWithExitCall()
     {
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-        Builder.Emit(OpCode.Call, 4);
+        Builder.Emit(OpCode.Call, 3);
 
         Builder.Emit(OpCode.GetAwaitable, 2);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);

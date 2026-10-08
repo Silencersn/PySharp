@@ -540,7 +540,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             }
         }
 
-        var realResult = ToComponent(context, realArg, PySR.Runtime_Complex_RealMustBeRealNumber);
+        var realResult = ToComponent(context, realArg, PySR.Runtime_Complex_RealMustBeRealNumber, allowComplexSpecial: true, out var realConvertedToComplex);
         if (realResult.IsError)
             return realResult;
 
@@ -548,13 +548,18 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (imagArg is null)
             imagResult = PyComplexObject.FromRealImag(0, 0);
         else
-            imagResult = ToComponent(context, imagArg, PySR.Runtime_Complex_ImagMustBeRealNumber);
+            imagResult = ToComponent(context, imagArg, PySR.Runtime_Complex_ImagMustBeRealNumber, allowComplexSpecial: false, out _);
         if (imagResult.IsError)
             return imagResult;
 
         // CPython keeps deprecated combining arithmetic for complex parts
         // (real=2j stays accepted for now), so warn instead of rejecting.
-        if (realArg is PyComplexObject)
+        // The warning fires whenever the real side complexified but the
+        // original argument offered neither __float__ nor __index__
+        // (complex_new's nbr check on orig_r).
+        if (realConvertedToComplex
+            && realArg!.PyType.Slots.Float is null
+            && realArg.PyType.Slots.Index is null)
         {
             var warnResult = context.Warn(PyDeprecationWarningObjectType.Shared, PySR.Format(PySR.Runtime_Complex_RealMustBeRealNumber, "complex"));
             if (warnResult.IsError)
@@ -582,8 +587,10 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             if (imagArg is PyComplexObject)
                 real -= ci.Imaginary;
             // Add the real component's imaginary part last so a -0.0
-            // imaginary argument keeps its sign (0.0 + -0.0 is +0.0).
-            if (realArg is PyComplexObject)
+            // imaginary argument keeps its sign (0.0 + -0.0 is +0.0);
+            // cr_is_complex is decided on the converted value, so a
+            // __complex__ result contributes its imaginary part too.
+            if (realConvertedToComplex)
                 imag += cr.Imaginary;
         }
 
@@ -621,7 +628,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             return CreateOfType(cls, parsed.Real, parsed.Imaginary);
         }
 
-        var result = ToComponent(context, args[0], PySR.Runtime_Complex_ArgMustBeStringOrNumber);
+        var result = ToComponent(context, args[0], PySR.Runtime_Complex_ArgMustBeStringOrNumber, allowComplexSpecial: true, out _);
         if (result.IsError)
             return result;
 
@@ -637,15 +644,20 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     }
 
     // One constructor component: a complex value passes through with both
-    // parts; anything float- or index-able contributes its value as the real
-    // part, mirroring CPython's nb_float/nb_index acceptance.
-    private static PyResult<PyComplexObject> ToComponent(PyCallContext context, PyObject? arg, string errorMessage)
+    // parts; other values resolve CPython complex_new's conversion order.
+    // Only the "real" side consults __complex__ (try_complex_special_method
+    // replaces r with its result — the "imag" side goes straight to
+    // PyNumber_Float); convertedToComplex mirrors CPython's cr_is_complex,
+    // decided on the converted value.
+    private static PyResult<PyComplexObject> ToComponent(PyCallContext context, PyObject? arg, string errorMessage, bool allowComplexSpecial, out bool convertedToComplex)
     {
+        convertedToComplex = false;
         switch (arg)
         {
             case null:
                 return PyComplexObject.FromRealImag(0, 0);
             case PyComplexObject complex:
+                convertedToComplex = true;
                 return complex;
             case PyFloatObject floatObject:
                 return PyComplexObject.FromRealImag(floatObject.Value, 0);
@@ -654,6 +666,23 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
                     return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
                 return PyComplexObject.FromRealImag(argReal, 0);
         }
+
+        // __complex__ resolves on the type's MRO and binds through the
+        // descriptor protocol, exactly like the other wide dunders
+        if (allowComplexSpecial && PyUtils.TryLookupSpecial(context, arg, PySpecialNames.Complex, out var complexFunc))
+        {
+            var complexResult = complexFunc.Call(context);
+            if (complexResult.IsError)
+                return complexResult.ExceptionResult;
+            if (complexResult.Value is not PyComplexObject fromComplex)
+                return PyResult.TypeError(PySR.Runtime_Complex_ComplexReturnedNonComplex, complexResult.Value.PyType.TpName);
+            convertedToComplex = true;
+            return fromComplex;
+        }
+
+        var floatResult = PySpecialMethods.Float(context, arg);
+        if (!floatResult.IsError)
+            return PyComplexObject.FromRealImag(floatResult.Value.Value, 0);
 
         var index = PySpecialMethods.Index(context, arg);
         if (index.IsError)

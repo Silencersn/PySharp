@@ -35,6 +35,24 @@ public static partial class PySpecialNames
     public const string RXor = "__rxor__";
     public const string ROr = "__ror__";
 
+    // wide dunders: CPython carries no slotdef for these names — the
+    // protocol entry points resolve them on the type's MRO at call time
+    // (_PyObject_LookupSpecial), so they left the declaration manifest
+    // (no slot fields, no wiring) and live here as plain constants
+    public const string Complex = "__complex__";
+    public const string Missing = "__missing__";
+    public const string SetName = "__set_name__";
+    public const string Format = "__format__";
+    public const string Enter = "__enter__";
+    public const string Exit = "__exit__";
+    public const string AEnter = "__aenter__";
+    public const string AExit = "__aexit__";
+    public const string Reversed = "__reversed__";
+    public const string Round = "__round__";
+    public const string Trunc = "__trunc__";
+    public const string Floor = "__floor__";
+    public const string Ceil = "__ceil__";
+
     // attributes
     public const string Bases = "__bases__";
     public const string Name = "__name__";

@@ -90,8 +90,11 @@ partial class PyTypeObject<TObject>
     {
         throw new NotImplementedException($"{PySpecialNames.Float} does not have default implementation");
     }
+    // __complex__ has no slot field: like the other wide dunders it
+    // resolves through the type dict (complex() looks the name up on the
+    // argument's type), the virtual exists for override detection only
     [PySlot]
-    protected virtual partial PyResult Complex(PyCallContext context, TObject self)
+    protected virtual PyResult Complex(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Complex} does not have default implementation");
     }
@@ -374,8 +377,13 @@ partial class PyTypeObject<TObject>
         return DefaultBinaryOperator(context, self, other);
     }
 
+    // wide dunders below (Missing .. Ceil) have no slot fields: their
+    // protocol entry points resolve the name on the type's MRO at call
+    // time, so an override only feeds the dict view the generator wires
+    // (WideDictSlotNames) — the virtual bodies are never dispatched
+    // through a slot
     [PySlot]
-    protected virtual partial PyResult Missing(PyCallContext context, TObject self, PyObject key)
+    protected virtual PyResult Missing(PyCallContext context, TObject self, PyObject key)
     {
         throw new NotImplementedException($"{PySpecialNames.Missing} does not have default implementation");
     }
@@ -399,13 +407,13 @@ partial class PyTypeObject<TObject>
     }
 
     [PySlot]
-    protected virtual partial PyResult SetName(PyCallContext context, TObject self, PyObject owner, PyObject name)
+    protected virtual PyResult SetName(PyCallContext context, TObject self, PyObject owner, PyObject name)
     {
         throw new NotImplementedException($"{PySpecialNames.SetName} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Format(PyCallContext context, TObject self, PyObject formatSpec)
+    protected virtual PyResult Format(PyCallContext context, TObject self, PyObject formatSpec)
     {
         return DefaultFormat(context, self, formatSpec);
     }
@@ -504,12 +512,12 @@ partial class PyTypeObject<TObject>
         return DefaultBinaryOperator(context, self, other);
     }
     [PySlot]
-    protected virtual partial PyResult Enter(PyCallContext context, TObject self)
+    protected virtual PyResult Enter(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Enter} does not have default implementation");
     }
     [PySlot]
-    protected virtual partial PyResult Exit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    protected virtual PyResult Exit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
     {
         throw new NotImplementedException($"{PySpecialNames.Exit} does not have default implementation");
     }
@@ -533,43 +541,43 @@ partial class PyTypeObject<TObject>
     }
 
     [PySlot]
-    protected virtual partial PyResult AEnter(PyCallContext context, TObject self)
+    protected virtual PyResult AEnter(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.AEnter} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult AExit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    protected virtual PyResult AExit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
     {
         throw new NotImplementedException($"{PySpecialNames.AExit} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Reversed(PyCallContext context, TObject self)
+    protected virtual PyResult Reversed(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Reversed} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Round(PyCallContext context, TObject self, PyObject ndigits)
+    protected virtual PyResult Round(PyCallContext context, TObject self, PyObject ndigits)
     {
         throw new NotImplementedException($"{PySpecialNames.Round} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Trunc(PyCallContext context, TObject self)
+    protected virtual PyResult Trunc(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Trunc} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Floor(PyCallContext context, TObject self)
+    protected virtual PyResult Floor(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Floor} does not have default implementation");
     }
 
     [PySlot]
-    protected virtual partial PyResult Ceil(PyCallContext context, TObject self)
+    protected virtual PyResult Ceil(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Ceil} does not have default implementation");
     }

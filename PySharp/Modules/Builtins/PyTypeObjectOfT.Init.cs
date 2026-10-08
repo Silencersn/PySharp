@@ -156,6 +156,61 @@ partial class PyTypeObject<TObject>
         PyAttributes[name] = new PyWrapperDescriptorObject((PyTernaryFunction)Attribute);
     }
 
+    // The dict views for a wide-dunder override (__complex__ .. __ceil__,
+    // the names CPython carries no slotdef for): the protocol entry points
+    // resolve the name on the type's MRO at call time, so the override
+    // only feeds its dict view — the wrapper the lookup binds. Generated
+    // into FillSlots for every [PySlot]-marked wide override
+    // (PyTypeGenerator.WideDictSlotNames); no slot fields back these names
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillWideDictView(string name, Func<PyCallContext, TObject, PyResult> virtualMethod)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self)
+            => self is TObject selfOfT ? virtualMethod(context, selfOfT) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyUnaryFunction)Attribute);
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillWideDictView(string name, Func<PyCallContext, TObject, PyObject, PyResult> virtualMethod)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, PyObject other)
+            => self is TObject selfOfT ? virtualMethod(context, selfOfT, other) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyBinaryFunction)Attribute);
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillWideDictView(string name, Func<PyCallContext, TObject, PyObject, PyObject, PyResult> virtualMethod)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, PyObject second, PyObject third)
+            => self is TObject selfOfT ? virtualMethod(context, selfOfT, second, third) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyTernaryFunction)Attribute);
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillWideDictView(string name, Func<PyCallContext, TObject, PyObject, PyObject, PyObject, PyResult> virtualMethod)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, PyObject second, PyObject third, PyObject fourth)
+            => self is TObject selfOfT ? virtualMethod(context, selfOfT, second, third, fourth) : PyNotImplementedObject.NotImplemented;
+        PyAttributes[name] = new PyWrapperDescriptorObject((PyQuaternaryFunction)Attribute);
+    }
+
+    // round() invokes __round__ with no arguments when ndigits is absent
+    // and with one argument otherwise (CPython builtin_round), so the
+    // binary round virtual rides in a 0/1-adaptive view instead of the
+    // plain binary wrapper
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillRoundDictView(Func<PyCallContext, TObject, PyObject, PyResult> roundVirtual)
+    {
+        PyResult Attribute(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+        {
+            if (self is not TObject selfOfT)
+                return PyNotImplementedObject.NotImplemented;
+            var ndigits = args.Count is 0 ? PyNoneObject.None : args[0];
+            return roundVirtual(context, selfOfT, ndigits);
+        }
+        PyAttributes[PySpecialNames.Round] = new PyWrapperDescriptorObject((PySelfArgsKwargsFunction)Attribute);
+    }
+
     // the forward delegate is inherited when the first MRO base with a
     // non-null slot holds the very same delegate reference (FillNullWith
     // copies by reference)

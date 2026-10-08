@@ -249,25 +249,29 @@ internal static partial class PyMathFunctions
             return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(d) : Math.Floor(d));
         }
 
-        var slot = isCeil ? arg.PyType.Slots.Ceil : arg.PyType.Slots.Floor;
-        if (slot is not null)
-            return slot(context, arg);
-
-        var xResult = PySpecialMethods.Float(context, arg);
-        if (xResult.IsError)
+        var ceilName = isCeil ? PySpecialNames.Ceil : PySpecialNames.Floor;
+        if (!PyUtils.TryLookupSpecial(context, arg, ceilName, out var bound))
         {
-            // PyFloat_AsDouble accepts index-able ints as well
-            if (arg.PyType.Slots.Index is not null)
+            // no protocol method: CPython falls back to PyFloat_AsDouble
+            // (__float__ or __index__) before flooring
+            var xResult = PySpecialMethods.Float(context, arg);
+            if (xResult.IsError)
             {
-                var indexResult = PySpecialMethods.Index(context, arg);
-                if (indexResult.IsError)
-                    return indexResult;
-                return indexResult.Value;
+                // PyFloat_AsDouble accepts index-able ints as well
+                if (arg.PyType.Slots.Index is not null)
+                {
+                    var indexResult = PySpecialMethods.Index(context, arg);
+                    if (indexResult.IsError)
+                        return indexResult;
+                    return indexResult.Value;
+                }
+                return PyResult.TypeError(PySR.Runtime_Math_MustBeReal, arg.PyType.TpName);
             }
-            return PyResult.TypeError(PySR.Runtime_Math_MustBeReal, arg.PyType.TpName);
+            var x = xResult.Value.Value;
+            return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(x) : Math.Floor(x));
         }
-        var x = xResult.Value.Value;
-        return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(x) : Math.Floor(x));
+
+        return bound.Call(context);
     }
 
     [PyFunctionParameters("x", "/")]
