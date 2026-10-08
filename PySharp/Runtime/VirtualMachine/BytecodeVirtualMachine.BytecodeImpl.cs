@@ -371,8 +371,11 @@ internal static partial class BytecodeVirtualMachine
 
         // the call sequence keeps the callable below its argument list, and
         // CPython reports every clash of the merge against it
-        // (_PyEval_FormatKwargsError)
-        var callable = stack[-instructionArg - 2];
+        // (_PyEval_FormatKwargsError). The build-class sequence carries no
+        // callable at all — CPython's stack there holds __build_class__, so a
+        // null callable resolves to that same name.
+        var callableDepth = instructionArg + 2;
+        var callable = stack.Count >= callableDepth ? stack[-callableDepth] : null;
 
         if (map is PyDictObject dictSource)
         {
@@ -431,7 +434,7 @@ internal static partial class BytecodeVirtualMachine
     }
 
     // CPython _PyEval_FormatKwargsError lens over the whole DICT_MERGE.
-    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject callable, PyObject update, PyExceptionObject exception)
+    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject? callable, PyObject update, PyExceptionObject exception)
     {
         if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
             return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, PyCallableName.Get(context, callable), update.PyType.TpName);
@@ -444,7 +447,7 @@ internal static partial class BytecodeVirtualMachine
 
     // "%U got multiple values for keyword argument '%S'": the callable is named
     // in full, and the keyword keeps its own text rather than an object repr
-    private static PyRuntimeException MultipleKeywordError(PyCallContext context, PyObject callable, PyObject keyword)
+    private static PyRuntimeException MultipleKeywordError(PyCallContext context, PyObject? callable, PyObject keyword)
     {
         return context.TypeError(
             PySR.Runtime_Arguments_MultipleKeywords,
@@ -642,6 +645,57 @@ internal static partial class BytecodeVirtualMachine
         // closure is passed to the class body frame to populate free var cells;
         // __type_params__ is built inside the class body (via LoadDeref → BuildTuple → StoreName)
         // and becomes a class attribute through type.__new__.
+        stack.Push(type);
+    }
+
+    private static void InternalBuildClassEx(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states)
+    {
+        // The starred-bases counterpart of InternalBuildClass: the class
+        // header compiled like a CALL_FUNCTION_EX argument list, so the stack
+        // carries an args tuple (or the raw lone-*expr object) and a kwargs
+        // dict instead of the fixed-width positional operands.
+        var closure = (PyTupleObject?)stack.Pop();
+        var codeObj = (PyCodeObject)stack.Pop();
+        var kwargsDict = (PyDictObject)stack.Pop();
+        var callargs = stack.Pop();
+
+        // same conversion contract as CallFunctionEx: a lone *expr arrives as
+        // the raw object, any other shape is already a tuple or list
+        PyTupleObject basesTuple;
+        if (callargs is PyTupleObject existingTuple)
+        {
+            basesTuple = existingTuple;
+        }
+        else
+        {
+            if (callargs.PyType.Slots.Iter is null && callargs.PyType.Slots.GetItem is null)
+                throw context.TypeError(PySR.Runtime_Arguments_StarNotIterable, "__build_class__", callargs.PyType.TpName);
+
+            var tupleResult = PyUtils.IterableToTuple(context, callargs);
+            if (tupleResult.IsError)
+                throw new PyRuntimeException(context, tupleResult.Exception);
+            basesTuple = tupleResult.Value;
+        }
+
+        states.CacheKwargs.Clear();
+        var kwargs = states.CacheKwargs;
+        foreach (var pair in kwargsDict.Entries)
+        {
+            if (pair.Key is not PyStrObject str)
+                throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
+            kwargs[str.Value] = pair.Value;
+        }
+
+        var bases = new List<PyTypeObject>(basesTuple.Count);
+        foreach (var arg in basesTuple)
+        {
+            if (arg is not PyTypeObject baseType)
+                throw context.PySharpException("non-type base is not supported");
+            bases.Add(baseType);
+        }
+
+        var type = PyCore.BuildClass(context, codeObj, bases, kwargs, closure);
+
         stack.Push(type);
     }
 

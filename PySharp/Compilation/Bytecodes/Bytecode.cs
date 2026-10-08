@@ -282,6 +282,12 @@ public sealed class Bytecode
                     IncrementStackSize(-_arg - 1);
                     break;
 
+                case OpCode._BuildClassEx:
+                    // pops the args tuple, the kwargs dict, the code object and
+                    // the closure, pushes the built class
+                    IncrementStackSize(-3);
+                    break;
+
                 case OpCode.BuildList:
                 case OpCode.BuildTuple:
                 case OpCode.BuildSet:

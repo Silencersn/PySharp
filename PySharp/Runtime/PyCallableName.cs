@@ -9,8 +9,14 @@ namespace PySharp.Runtime;
 // __qualname__ is reported as str(x).
 internal static class PyCallableName
 {
-    internal static string Get(PyCallContext context, PyObject callable)
+    internal static string Get(PyCallContext context, PyObject? callable)
     {
+        // the build-class sequence has no callable on the stack; CPython's
+        // own kwargs-merge errors there name __build_class__, which the
+        // build-class machinery is
+        if (callable is null)
+            return "__build_class__()";
+
         string? qualname;
         string? module = null;
 

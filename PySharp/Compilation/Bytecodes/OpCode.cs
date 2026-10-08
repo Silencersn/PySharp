@@ -79,6 +79,7 @@ internal enum OpCode : byte
     Send,
 
     _BuildClass,
+    _BuildClassEx,
 
     MakeCell,
     _MakeCellFast,

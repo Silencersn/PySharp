@@ -1079,18 +1079,44 @@ partial class Emitter
 
     private void LoadClassDefArgsAndCoObj(ClassDefNode node, PyCodeObject codeObj)
     {
-        foreach (var baseType in node.Bases)
-            LoadExpr(baseType);
+        // CPython's class header is an argument list (compiler_call_helper):
+        // a *base or **keyword compiles exactly like the CALL_FUNCTION_EX path
+        // of a call — an args tuple plus a kwargs dict — for the build-class
+        // callable to unpack.
+        if (HasStarredClassArguments(node))
+        {
+            EmitCallArgsTuple(node.Bases);
+            EmitCallKwargsDict(node.Keywords);
+        }
+        else
+        {
+            foreach (var baseType in node.Bases)
+                LoadExpr(baseType);
 
-        foreach (var kwarg in node.Keywords)
-            LoadExpr(kwarg.Value);
+            foreach (var kwarg in node.Keywords)
+                LoadExpr(kwarg.Value);
 
-        var keywordsTuple = node.Keywords.Length is 0
-            ? PyTupleObject.Empty
-            : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
-        Builder.Emit(OpCode.LoadConst, keywordsTuple);
+            var keywordsTuple = node.Keywords.Length is 0
+                ? PyTupleObject.Empty
+                : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
+            Builder.Emit(OpCode.LoadConst, keywordsTuple);
+        }
 
         Builder.Emit(OpCode.LoadConst, codeObj);
+    }
+
+    private static bool HasStarredClassArguments(ClassDefNode node)
+    {
+        return node.Bases.Any(static baseType => baseType is StarredNode)
+            || node.Keywords.Any(static kwarg => kwarg.Arg is null);
+    }
+
+    private void EmitBuildClass(ClassDefNode node)
+    {
+        if (HasStarredClassArguments(node))
+            Builder.Emit(OpCode._BuildClassEx);
+        else
+            Builder.Emit(OpCode._BuildClass, node.Bases.Length + node.Keywords.Length);
     }
 
     private void EmitClassDef(ClassDefNode node)
@@ -1114,9 +1140,7 @@ partial class Emitter
         LoadClassDefArgsAndCoObj(node, codeObj);
 
         Builder.Emit(OpCode.PushNull); // closure placeholder
-        int arg = node.Bases.Length + node.Keywords.Length;
-        Builder.Emit(OpCode._BuildClass, arg);
-
+        EmitBuildClass(node);
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Builder.Emit(OpCode.Call, 1);
 
@@ -1159,8 +1183,7 @@ partial class Emitter
             }
             Builder.Emit(OpCode.BuildTuple, typeParams.Length);
 
-            int buildClassArg = node.Bases.Length + node.Keywords.Length;
-            Builder.Emit(OpCode._BuildClass, buildClassArg);
+            EmitBuildClass(node);
             Builder.Emit(OpCode.ReturnValue);
 
             genericParamCodeObj = new PyCodeObject(_source.Name, genericParamScope, Builder.ToBytecode());

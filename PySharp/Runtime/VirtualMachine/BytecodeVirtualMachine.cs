@@ -893,6 +893,10 @@ internal static partial class BytecodeVirtualMachine
                         InternalBuildClass(context, ref Stack, ref states, instructionArg);
                         break;
 
+                    case OpCode._BuildClassEx:
+                        InternalBuildClassEx(context, ref Stack, ref states);
+                        break;
+
                     case OpCode.MakeCell:
                         frame.Variables.StoreLocal(names[instructionArg], PyCellObject.CreateEmpty());
                         break;

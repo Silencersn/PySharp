@@ -704,7 +704,9 @@ partial class SemanticAnalyzer
     {
         // _nodesToRoot enumerates top-first, so index 1 is the starred node's direct parent.
         var parent = _nodesToRoot.ElementAtOrDefault(1);
-        if (parent is not (ListNode or TupleNode or SetNode or CallNode))
+        // a class definition's base list is an argument list (CPython class_def
+        // grammar), so *bases is as legal here as in a call
+        if (parent is not (ListNode or TupleNode or SetNode or CallNode or ClassDefNode))
         {
             throw SyntaxError(node.Ctx is ExprContextType.Store
                 ? PySR.InvalidSyntax_StarredExpression_TargetMustBeInListOrTuple

@@ -235,9 +235,15 @@ partial class Emitter
         }
 
         if (!hasStarred)
+        {
             EmitCallOrCallKw();
+        }
         else
-            EmitCallFunctionEx();
+        {
+            EmitCallArgsTuple(node.Args);
+            EmitCallKwargsDict(node.Keywords);
+            Builder.Emit(OpCode.CallFunctionEx);
+        }
 
         void EmitCallOrCallKw()
         {
@@ -262,90 +268,92 @@ partial class Emitter
 
             Builder.Emit(OpCode.CallKw, argsLength + node.Keywords.Length);
         }
+    }
 
-        void EmitCallFunctionEx()
+    // The positional half of a CALL_FUNCTION_EX argument list (compiler_call_helper):
+    // CPython compiles a lone *expr into the callargs object itself, so the
+    // runtime converts it (a bad *value names the callable); any other starred
+    // shape accumulates a list where LIST_EXTEND rejects the bad *value, and a
+    // starred shape freezes it with CALL_INTRINSIC_1 LIST_TO_TUPLE. An
+    // unstarred list is fine too — the runtime iterates it into a tuple.
+    private void EmitCallArgsTuple(ImmutableArray<AstExprNode> args)
+    {
+        if (args.Length is 1 && args[0] is StarredNode)
         {
-            // CPython compiles a lone *expr into the callargs object itself
-            // (compiler_call_helper): CALL_FUNCTION_EX converts it, so a bad
-            // *value names the callable. Any other starred shape accumulates
-            // a list where LIST_EXTEND rejects the bad *value, then
-            // CALL_INTRINSIC_1 LIST_TO_TUPLE freezes it.
-            if (node.Args.Length is 1 && node.Args[0] is StarredNode)
+            LoadExpr(args[0]);
+            return;
+        }
+
+        Builder.Emit(OpCode.BuildList, 0);
+        var starred = false;
+        foreach (var arg in args)
+        {
+            LoadExpr(arg);
+            if (arg is StarredNode)
             {
-                LoadExpr(node.Args[0]);
+                starred = true;
+                Builder.Emit(OpCode.ListExtend, 1);
             }
             else
             {
-                Builder.Emit(OpCode.BuildList, 0);
-                var starred = false;
-                foreach (var arg in node.Args)
-                {
-                    LoadExpr(arg);
-                    if (arg is StarredNode)
-                    {
-                        starred = true;
-                        Builder.Emit(OpCode.ListExtend, 1);
-                    }
-                    else
-                    {
-                        Builder.Emit(OpCode.ListAppend, 1);
-                    }
-                }
-
-                if (starred)
-                    Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.ListToTuple);
+                Builder.Emit(OpCode.ListAppend, 1);
             }
+        }
 
-            // CPython compiles kwargs of a **-call into one accumulating map
-            // (BUILD_MAP 0), merging consecutive explicit-keyword runs and each
-            // **mapping as separate DICT_MERGE groups in source order; without
-            // a **mapping it emits a single BUILD_MAP of all explicit keywords.
-            var hasMapping = node.Keywords.Any(static kwarg => kwarg.Arg is null);
+        if (starred)
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.ListToTuple);
+    }
 
-            if (hasMapping)
+    // The keyword half of a CALL_FUNCTION_EX argument list: CPython compiles
+    // kwargs of a **-call into one accumulating map (BUILD_MAP 0), merging
+    // consecutive explicit-keyword runs and each **mapping as separate
+    // DICT_MERGE groups in source order; without a **mapping it emits a
+    // single BUILD_MAP of all explicit keywords.
+    private void EmitCallKwargsDict(ImmutableArray<AstKeywordNode> keywords)
+    {
+        var hasMapping = keywords.Any(static kwarg => kwarg.Arg is null);
+
+        if (hasMapping)
+        {
+            Builder.Emit(OpCode.BuildMap, 0);
+            var pendingCount = 0;
+
+            foreach (var kwarg in keywords)
             {
-                Builder.Emit(OpCode.BuildMap, 0);
-                var pendingCount = 0;
-
-                foreach (var kwarg in node.Keywords)
+                if (kwarg.Arg is null)
                 {
-                    if (kwarg.Arg is null)
-                    {
-                        CloseKeywordGroup(ref pendingCount);
-                        LoadExpr(kwarg.Value);
-                        Builder.Emit(OpCode.DictMerge, 1);
-                        continue;
-                    }
-
-                    Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg));
+                    CloseKeywordGroup(ref pendingCount);
                     LoadExpr(kwarg.Value);
-                    pendingCount++;
+                    Builder.Emit(OpCode.DictMerge, 1);
+                    continue;
                 }
 
-                CloseKeywordGroup(ref pendingCount);
+                Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg));
+                LoadExpr(kwarg.Value);
+                pendingCount++;
             }
-            else
+
+            CloseKeywordGroup(ref pendingCount);
+        }
+        else
+        {
+            foreach (var kwarg in keywords)
             {
-                foreach (var kwarg in node.Keywords)
-                {
-                    Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg ?? throw new UnreachableException()));
-                    LoadExpr(kwarg.Value);
-                }
-
-                Builder.Emit(OpCode.BuildMap, node.Keywords.Length);
+                Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg ?? throw new UnreachableException()));
+                LoadExpr(kwarg.Value);
             }
 
-            Builder.Emit(OpCode.CallFunctionEx);
+            Builder.Emit(OpCode.BuildMap, keywords.Length);
+        }
 
-            void CloseKeywordGroup(ref int pendingCount)
-            {
-                if (pendingCount is 0)
-                    return;
+        void CloseKeywordGroup(ref int pendingCount)
+        {
+            if (pendingCount is 0)
+                return;
 
-                Builder.Emit(OpCode.BuildMap, pendingCount);
-                Builder.Emit(OpCode.DictMerge, 1);
-                pendingCount = 0;
-            }
+            Builder.Emit(OpCode.BuildMap, pendingCount);
+            Builder.Emit(OpCode.DictMerge, 1);
+            pendingCount = 0;
         }
     }
 
